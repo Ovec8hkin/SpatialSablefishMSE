@@ -40,6 +40,13 @@ compute_bx <- function(nages, mort, mat, waa, sel, ret, F, avg_rec){
   return(avg_rec*compute_sbpr(nages, mort, mat, waa, sel, ret, F))
 }
 
+calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec){
+  F35 <- spr_x(nages, mort, mat, waa, sel, ret ,target_x=0.35)
+  F40 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.40)
+  B40 <- compute_bx(nages, mort, mat, waa, sel, ret, F=F40, avg_rec=avg_rec)
+  return(list(F40=F40, F35=F35, B40=B40))
+}
+
 # assessment <- dget("data/sablefish_assessment_2023.rdat")
 
 # nages <- 30
