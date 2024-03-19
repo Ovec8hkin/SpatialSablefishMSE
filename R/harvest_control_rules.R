@@ -10,4 +10,7 @@ npfmc_tier3a_F <- function(ssb, fmax){
     return(F)
 }
 
+constant_F <- function(F){
+    return(F)
+}
 # npfmc_tier3a_F(ssb=10, fmax=F40)
