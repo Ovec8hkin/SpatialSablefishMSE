@@ -308,11 +308,6 @@ for(s in 1:nsims){
 outputs <- afscOM::listN(land_caa, disc_caa, caa, faa, naa, tac, dem_params, model_options)
 saveRDS(outputs, file="data/om1.RDS")
 
-outputs <- readRDS("data/om1.RDS")
-outputs$dem_params <- dem_params
-outputs$model_options <- model_options
-saveRDS(outputs, file="data/om1.RDS")
-
 #' 8. Plot OM Results
 #'
 p <- make_plot(naa, caa, faa)
