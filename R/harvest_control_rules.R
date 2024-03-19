@@ -16,6 +16,9 @@ npfmc_tier3_F <- function(ssb, B_ref, F_ref, alpha){
     return(F)
 }
 
+constant_F <- function(F){
+    return(F)
+}
 #' Title Compute F following a threshold rule, with a cap at B/B_ref = 1
 #'
 #' @param ssb Value for SSB
