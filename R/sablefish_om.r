@@ -53,7 +53,7 @@ model_params <- set_model_params(nyears, nages, nsexes, nregions, nfleets)
 
 M <- 0.113179
 mort <- generate_param_matrix(M, dimension_names = dimension_names)
-mort[,,2,] <- mort[,,2,]-0.00819813
+mort[,,2,] <- mort[,,2,]#-0.00819813
 
 prop_males <- 0.5
 sexrat <- generate_param_matrix(prop_males, dimension_names = dimension_names)
@@ -293,8 +293,10 @@ for(s in 1:nsims){
             joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
             joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
             joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
+            
+            # reference points are all female based
             ref_pts <- calculate_ref_points(
-                nages=30,
+                nages=nages,
                 mort = dp.y$mort[,,1,],
                 mat = dp.y$mat[,,1,],
                 waa = dp.y$waa[,,1,],
@@ -306,27 +308,11 @@ for(s in 1:nsims){
             ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
             hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40, 0.05)
 
-            # calculate quantities to get TAC
-            # Project population forward by 1 year with terminal F
-            proj_N <- array(NA, dim = c(dim(out_vars$naa_tmp)))
-            jointsel <- rbind(joint_self, joint_selm)
+            joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
+            joint_sel[,,1,] <- joint_self
+            joint_sel[,,2,] <- joint_selm
 
-            for(sx in 1:nsexes) {
-            for(a in 1:(nages - 1)) {
-                if(a == 1) proj_N[,1,sx,] <- mean(recruitment) * 0.5 # using this for now, but assessment uses 1979 - terminal
-                else proj_N[,a,sx,] <- out_vars$naa_tmp[,a,sx,] * exp((out_f[y] * jointsel[sx,a]) + M)
-            } # end a
-            proj_N[1,nages,sx,1] <- out_vars$naa_tmp[1,nages-1,sx,1]*exp(-(out_f[y] * jointsel[sx,nages-1]) + M) +
-                                    out_vars$naa_tmp[1,nages,sx,1]*exp(-(out_f[y] * jointsel[sx,nages]) + M)
-            # Now calculate TACs
-            TAC_tmp <- 0
-            FAA_tmp <- (hcr_F[y] * jointsel[sx,])
-            ZAA_tmp <- FAA_tmp + M
-            TAC_tmp <- sum(FAA_tmp / ZAA_tmp * proj_N[,,sx,] * (1 - exp(-ZAA_tmp)) * dp.y$waa[,,sx,])
-            TAC_tmp <- TAC_tmp + TAC_tmp # update TAC for females and male
-            } # end s
-
-            TACs[y+1] <- TAC_tmp
+            TACs[y+1] <- simulate_TAC(hcr_F[y], out_vars$naa_tmp, mean(recruitment)/2, join_sel, dp.y)
         }   
     }
 }
