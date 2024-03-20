@@ -1,12 +1,8 @@
-npfmc_tier3a_F <- function(ssb, fmax){
-    lrp <- 0.05
-    urp <- 1.0
-    F <- 0.0
-    if(ssb >= urp){
-        F <- fmax
-    }else if(lrp < ssb && ssb < urp){
-        F <- fmax * (ssb-lrp)/(urp-lrp)
-    }
+npfmc_tier3_F <- function(ssb, b40, f40, alpha){
+    if(ssb/b40 >= 1)  F <- f40 # if stock status >= 1
+    if(ssb/b40 > alpha && ssb/b40 < 1) F <- f40 * ((ssb/b40)-alpha)/(1-alpha) # if stock status > alpha & stock status < 1
+    if(ssb/b40 <= alpha) F <- 0 # if stock stats <= alpha
+    
     return(F)
 }
 

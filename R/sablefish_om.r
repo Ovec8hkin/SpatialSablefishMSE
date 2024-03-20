@@ -3,9 +3,14 @@ rm(list=ls())
 # remotes::install_github('BenWilliams-NOAA/afscOM')
 #library(afscOM)
 library(devtools)
-devtools::load_all("~/Desktop/Projects/afscOM")
+library(patchwork)
+library(tidyverse)
 
-assessment <- dget("~/Desktop/Projects/afscOM/data/test.rdat")
+devtools::load_all("~/Desktop/Side projects/afscOM")
+source("~/Desktop/Side projects/SablefishMSE/R/reference_points.R")
+source("~/Desktop/Side projects/SablefishMSE/R/harvest_control_rules.R")
+
+assessment <- dget("~/Desktop/Side projects/afscOM/data/test.rdat")
 
 #' 1. Define model dimensions and dimension names
 #'  - nyears: number of years over which to simulate
@@ -17,7 +22,7 @@ assessment <- dget("~/Desktop/Projects/afscOM/data/test.rdat")
 #' Dimension names must be defined in order to use the helper function
 #' `generate_param_matrix` which handles filling complex multi-dimensional
 #' arrays with smaller dimensions values, vectors, or matrices.
-nyears <- 101
+nyears <- 151
 nages  <- 30
 nsexes <- 2
 nregions <- 1
@@ -139,6 +144,8 @@ recruitment <- c(recruitment, projected_recruitment)
 #' `removals_input` can be either "catch" or "F", depending on what
 #' data you are providing as removals input.
 TACs <- rep(0, nyears)
+hcr_F <- rep(0, nyears)
+out_f <- rep(0, nyears) # vector to store outputted F
 TACs[1:64] <- (assessment$t.series[,"Catch_HAL"]+assessment$t.series[,"Catch_TWL"])
 
 fixed_fleet_prop <- rep(NA, nyears)
@@ -232,7 +239,7 @@ survey_obs <- list(
 #' demographic matrices to ensure input data is of the correct
 #' dimensionality.
 
-#set.seed(1007)
+set.seed(1007)
 for(y in 1:(nyears-1)){
 
     # Subset the demographic parameters list to only the current year
@@ -255,6 +262,7 @@ for(y in 1:(nyears-1)){
     caa[y,,,,] <- out_vars$caa_tmp
     faa[y,,,,] <- out_vars$faa_tmp
     naa[y+1,,,] <- out_vars$naa_tmp
+    out_f[y] <- sum(out_vars$F_f_tmp)
 
     survey_preds$ll_rpn[y,,,] <- out_vars$surv_preds$ll_rpn
     survey_preds$ll_rpw[y,,,] <- out_vars$surv_preds$ll_rpw
@@ -270,14 +278,15 @@ for(y in 1:(nyears-1)){
 
     #new_F <- 0.085
     if((y+1) > 64){
-        joint_sel <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+        joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+        joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
         joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
         F35 <- spr_x(
             nages=30, 
             mort = dp.y$mort[,,1,],
             mat = dp.y$mat[,,1,],
             waa = dp.y$waa[,,1,],
-            sel =  joint_sel,
+            sel =  joint_self,
             ret = joint_ret,
             target_x = 0.35
         )
@@ -286,7 +295,7 @@ for(y in 1:(nyears-1)){
             mort = dp.y$mort[,,1,],
             mat = dp.y$mat[,,1,],
             waa = dp.y$waa[,,1,],
-            sel =  joint_sel,
+            sel =  joint_self,
             ret = joint_ret,
             target_x = 0.40
         )
@@ -295,18 +304,40 @@ for(y in 1:(nyears-1)){
             mort = dp.y$mort[,,1,],
             mat = dp.y$mat[,,1,],
             waa = dp.y$waa[,,1,],
-            sel =  joint_sel,
+            sel =  joint_self,
             ret = joint_ret,
             F = F40,
             avg_rec = mean(recruitment/2)
         )
+        
         ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-        hcr_F <- npfmc_tier3a_F(ssb/B40, F35)
-
-        TACs[y+1] <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,]*dp.y$mat[,,1,]*joint_sel, 1, sum)*afscOM::F_to_mu(hcr_F)
+        hcr_F[y] <- npfmc_tier3_F(ssb, B40, F40, 0.05)
+        
+        # calculate quantities to get TAC
+        # Project population forward by 1 year with terminal F
+        proj_N <- array(NA, dim = c(dim(out_vars$naa_tmp)))
+        jointsel <- rbind(joint_self, joint_selm)
+    
+        for(s in 1:nsexes) {
+          for(a in 1:(nages - 1)) {
+            if(a == 1) proj_N[,1,s,] <- mean(recruitment) * 0.5 # using this for now, but assessment uses 1979 - terminal
+            else proj_N[,a,s,] <- out_vars$naa_tmp[,a,s,] * exp((out_f[y] * jointsel[s,a]) + M)
+          } # end a
+          proj_N[1,nages,s,1] <- out_vars$naa_tmp[1,nages-1,s,1]*exp(-(out_f[y] * jointsel[s,nages-1]) + M) +
+                                 out_vars$naa_tmp[1,nages,s,1]*exp(-(out_f[y] * jointsel[s,nages]) + M)
+          # Now calculate TACs
+          TAC_tmp <- 0
+          FAA_tmp <- (hcr_F[y] * jointsel[s,])
+          ZAA_tmp <- FAA_tmp + M
+          TAC_tmp <- sum(FAA_tmp / ZAA_tmp * proj_N[,,s,] * (1 - exp(-ZAA_tmp)) * dp.y$waa[,,s,])
+          TAC_tmp <- TAC_tmp + TAC_tmp # update TAC 
+        } # end s
+        
+        TACs[y+1] <- TAC_tmp
     }
 
 }
+
 
 #' 8. Plot OM Results
 #'
@@ -314,7 +345,7 @@ for(y in 1:(nyears-1)){
 ssb <- apply(naa[1:nyears,,1,]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
 bio <- apply(naa[1:nyears,,,]*dem_params$waa[,,,], 1, sum)
 catch <- apply(caa, 1, sum)
-f <- apply(apply(faa, c(1, 5), \(x) max(x)), 1, sum)
+# f <- apply(apply(faa, c(1, 5), \(x) max(x)), 1, sum)
 
 ssb_comp <- data.frame(
     year=1960:(1960+nyears-1),
@@ -325,7 +356,7 @@ ssb_comp <- data.frame(
     #assess_bio=assessment$t.series[, "totbiom"],
     om_bio = bio,
     #assess_f = assessment$t.series[,"fmort"],
-    om_f = f
+    om_f = out_f
 )
 
 library(ggplot2)
@@ -333,6 +364,7 @@ library(ggplot2)
 p1 <- ggplot(ssb_comp, aes(x=year))+
     #geom_line(aes(y=assess_ssb, color="Assessment"))+
     geom_line(aes(y=om_ssb, color="OM"), size=0.7)+
+    geom_hline(yintercept = B40) +
     scale_y_continuous(limits=c(0, 300), breaks=seq(0, 300, 50))+
     scale_x_continuous(breaks=seq(1960, 2020, 10))+
     coord_cartesian(expand=0)+
@@ -360,17 +392,16 @@ p3 <- ggplot(ssb_comp, aes(x=year))+
     labs(y="Biomass", x="Year", title="Total Biomass Comparison")+
     theme_bw()
 
-p4 <- ggplot(ssb_comp, aes(x=year))+
+p4 <- ggplot(ssb_comp %>% filter(om_f != 0), aes(x=year))+
     #geom_line(aes(y=assess_f, color="Assessment"))+
     geom_line(aes(y=om_f, color="OM"), size=0.7)+
+    geom_hline(yintercept = F40) +
     scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.2, 0.05))+
     scale_x_continuous(breaks=seq(1960, 2020, 10))+
     coord_cartesian(expand=0)+
     scale_color_manual(name="Model", values=c("black", "red"))+
     labs(y="F", x="Year", title="Fishing Mortality Comparison")+
     theme_bw()
-
-library(patchwork)
 
 p <- (p1+p2)/(p3+p4)+plot_layout(guides="collect")
 p
@@ -435,3 +466,4 @@ p3 <- ggplot(tw_surv_data, aes(x=Year, y=obssrv7, group=1))+
     theme_bw()
 
 p1/p2/p3 + plot_layout(guides="collect")
+
