@@ -268,12 +268,13 @@ for(s in 1:nsims){
             options=model_options
         )
 
-        # update state
-        land_caa[y,,,,,s] <- out_vars$land_caa_tmp
-        disc_caa[y,,,,,s] <- out_vars$disc_caa_tmp
-        caa[y,,,,,s] <- out_vars$caa_tmp
-        faa[y,,,,,s] <- out_vars$faa_tmp
-        naa[y+1,,,,s] <- out_vars$naa_tmp
+    # update state
+    land_caa[y,,,,] <- out_vars$land_caa_tmp
+    disc_caa[y,,,,] <- out_vars$disc_caa_tmp
+    caa[y,,,,] <- out_vars$caa_tmp
+    faa[y,,,,] <- out_vars$faa_tmp
+    naa[y+1,,,] <- out_vars$naa_tmp
+    out_f[y] <- sum(out_vars$F_f_tmp[1,1,1,1,])
 
         # survey_preds$ll_rpn[y,,,] <- out_vars$surv_preds$ll_rpn
         # survey_preds$ll_rpw[y,,,] <- out_vars$surv_preds$ll_rpw
@@ -287,33 +288,68 @@ for(s in 1:nsims){
         # survey_obs$ll_acs[y,,,] <- out_vars$surv_obs$ll_ac_obs
         # survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
 
-        #new_F <- 0.085
-        if((y+1) > 64){
-            joint_sel <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
-            joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
-            ref_points <- calculate_ref_points(
-                nages=30, 
-                mort = dp.y$mort[,,1,],
-                mat = dp.y$mat[,,1,],
-                waa = dp.y$waa[,,1,],
-                sel =  joint_sel,
-                ret = joint_ret,
-                avg_rec = mean(recruitment/2)
-            )
-            
-            ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            #hcr_F <- npfmc_tier3a_F(ssb/ref_points$B40, ref_points$F35)
-            hcr_F <- constant_F(F=0)
-            TACs[y+1] <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,]*dp.y$mat[,,1,]*joint_sel, 1, sum)*afscOM::F_to_mu(hcr_F)
-        }
+    #new_F <- 0.085
+    if((y+1) > 64){
+        joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+        joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+        joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
+        F35 <- spr_x(
+            nages=30,
+            mort = dp.y$mort[,,1,],
+            mat = dp.y$mat[,,1,],
+            waa = dp.y$waa[,,1,],
+            sel =  joint_self,
+            ret = joint_ret,
+            target_x = 0.35
+        )
+        F40 <- spr_x(
+            nages=30,
+            mort = dp.y$mort[,,1,],
+            mat = dp.y$mat[,,1,],
+            waa = dp.y$waa[,,1,],
+            sel =  joint_self,
+            ret = joint_ret,
+            target_x = 0.40
+        )
+        B40 <- compute_bx(
+            nages=30,
+            mort = dp.y$mort[,,1,],
+            mat = dp.y$mat[,,1,],
+            waa = dp.y$waa[,,1,],
+            sel =  joint_self,
+            ret = joint_ret,
+            F = F40,
+            avg_rec = mean(recruitment/2)
+        )
 
+        ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
+        hcr_F[y] <- npfmc_tier3_F(ssb, B40, F40, 0.05)
+
+        # calculate quantities to get TAC
+        # Project population forward by 1 year with terminal F
+        proj_N <- array(NA, dim = c(dim(out_vars$naa_tmp)))
+        jointsel <- rbind(joint_self, joint_selm)
+
+        for(s in 1:nsexes) {
+          for(a in 1:(nages - 1)) {
+            if(a == 1) proj_N[,1,s,] <- mean(recruitment) * 0.5 # using this for now, but assessment uses 1979 - terminal
+            else proj_N[,a,s,] <- out_vars$naa_tmp[,a,s,] * exp((out_f[y] * jointsel[s,a]) + M)
+          } # end a
+          proj_N[1,nages,s,1] <- out_vars$naa_tmp[1,nages-1,s,1]*exp(-(out_f[y] * jointsel[s,nages-1]) + M) +
+                                 out_vars$naa_tmp[1,nages,s,1]*exp(-(out_f[y] * jointsel[s,nages]) + M)
+          # Now calculate TACs
+          TAC_tmp <- 0
+          FAA_tmp <- (hcr_F[y] * jointsel[s,])
+          ZAA_tmp <- FAA_tmp + M
+          TAC_tmp <- sum(FAA_tmp / ZAA_tmp * proj_N[,,s,] * (1 - exp(-ZAA_tmp)) * dp.y$waa[,,s,])
+          TAC_tmp <- TAC_tmp + TAC_tmp # update TAC for females and male
+        } # end s
+
+        TACs[y+1] <- TAC_tmp
     }
-    tac[,,,,s] <- TACs
-    print(paste0("Completed: ", s, "/",nsims))
+
 }
 
-outputs <- afscOM::listN(land_caa, disc_caa, caa, faa, naa, tac, dem_params, model_options)
-saveRDS(outputs, file="data/om1.RDS")
 
 #' 8. Plot OM Results
 #'
@@ -326,17 +362,17 @@ make_plot <- function(naa, caa, faa){
     catch <- apply(caa, 1, sum)
     f <- apply(apply(faa, c(1, 5), \(x) max(x)), 1, sum)
 
-ssb_comp <- data.frame(
-    year=1960:(1960+nyears-1),
-    #assess_ssb=assessment$t.series[, "spbiom"],
-    om_ssb=ssb,
-    assess_catch=TACs,
-    om_catch=catch,
-    #assess_bio=assessment$t.series[, "totbiom"],
-    om_bio = bio,
-    #assess_f = assessment$t.series[,"fmort"],
-    om_f = out_f
-)
+    ssb_comp <- data.frame(
+        year=1960:(1960+nyears-1),
+        #assess_ssb=assessment$t.series[, "spbiom"],
+        om_ssb=ssb,
+        assess_catch=TACs,
+        om_catch=catch,
+        #assess_bio=assessment$t.series[, "totbiom"],
+        om_bio = bio,
+        #assess_f = assessment$t.series[,"fmort"],
+        om_f = out_f
+    )
 
     library(ggplot2)
 
