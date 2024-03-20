@@ -6,7 +6,8 @@ library(devtools)
 library(patchwork)
 library(tidyverse)
 
-devtools::load_all("~/Desktop/Projects/afscOM")
+afscOM_dir <- "~/Desktop/Projects/afscOM"
+devtools::load_all(afscOM_dir)
 source("R/reference_points.R")
 source("R/harvest_control_rules.R")
 
@@ -22,13 +23,13 @@ assessment <- dget("data/sablefish_assessment_2023.rdat")
 #' Dimension names must be defined in order to use the helper function
 #' `generate_param_matrix` which handles filling complex multi-dimensional
 #' arrays with smaller dimensions values, vectors, or matrices.
-nyears <- 100
+nyears <- 164
 nages  <- 30
 nsexes <- 2
 nregions <- 1
 nfleets <- 2
 nsurveys <- 2
-nsims <- 1
+nsims <- 100
 
 dimension_names <- list(
     "time" = 1:nyears,
@@ -207,6 +208,8 @@ disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 tac         = array(NA, dim=c(nyears, 1, 1, 1, nsims))
+hcr_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
+out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
 naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims))
 naa[1,,,,] = init_naa
 
@@ -244,7 +247,7 @@ naa[1,,,,] = init_naa
 seeds <- sample(1:(nsims*1000), size=nsims, replace=FALSE)
 model_options$simulate_observations <- FALSE
 for(s in 1:nsims){
-    
+    print(s)
     set.seed(seeds[s])
     recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
@@ -274,7 +277,9 @@ for(s in 1:nsims){
         caa[y,,,,,s] <- out_vars$caa_tmp
         faa[y,,,,,s] <- out_vars$faa_tmp
         naa[y+1,,,,s] <- out_vars$naa_tmp
-        out_f[y] <- sum(out_vars$F_f_tmp[1,1,1,1,])
+        out_f[y,,,,s] <- sum(out_vars$F_f_tmp[1,1,1,1,])
+        tac[y,,,,s] <- TACs[y]
+        hcr_f[y,,,,s] <- hcr_F[y]
 
         # survey_preds$ll_rpn[y,,,] <- out_vars$surv_preds$ll_rpn
         # survey_preds$ll_rpw[y,,,] <- out_vars$surv_preds$ll_rpw
@@ -288,7 +293,7 @@ for(s in 1:nsims){
         # survey_obs$ll_acs[y,,,] <- out_vars$surv_obs$ll_ac_obs
         # survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
 
-    #new_F <- 0.085
+        #new_F <- 0.085
         if((y+1) > 64){
             joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
             joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
@@ -320,14 +325,14 @@ for(s in 1:nsims){
 
 #' 8. Plot OM Results
 #'
-p <- make_plot(naa, caa, faa)
+p <- make_plot(naa, caa, faa, sim=sample(1:100, 1))
 p
 
-make_plot <- function(naa, caa, faa){
-    ssb <- apply(naa[1:nyears,,1,,1]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
-    bio <- apply(naa[1:nyears,,,,1]*dem_params$waa[,,,], 1, sum)
-    catch <- apply(caa, 1, sum)
-    f <- apply(apply(faa, c(1, 5), \(x) max(x)), 1, sum)
+make_plot <- function(naa, caa, faa, sim=1){
+    ssb <- apply(naa[1:nyears,,1,,sim]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
+    bio <- apply(naa[1:nyears,,,,sim]*dem_params$waa[,,,], 1, sum)
+    catch <- apply(caa[1:nyears,,,,,sim], 1, sum)
+    #f <- apply(apply(faa[1:nyears,,,,,sim, drop=FALSE], c(1, 5), \(x) max(x)), 1, sum)
 
     ssb_comp <- data.frame(
         year=1960:(1960+nyears-1),
@@ -338,16 +343,17 @@ make_plot <- function(naa, caa, faa){
         #assess_bio=assessment$t.series[, "totbiom"],
         om_bio = bio,
         #assess_f = assessment$t.series[,"fmort"],
-        om_f = out_f
+        om_f = out_f[1:nyears,,,,sim]
     )
 
     library(ggplot2)
+    years_breaks <- seq(min(ssb_comp$year), max(ssb_comp$year), 20)
 
     p1 <- ggplot(ssb_comp, aes(x=year))+
         #geom_line(aes(y=assess_ssb, color="Assessment"))+
         geom_line(aes(y=om_ssb, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 500), breaks=seq(0, 500, 50))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="SSB", x="Year", title="Spawning Biomass Comparison")+
@@ -357,7 +363,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_catch, color="Assessment"))+
         geom_line(aes(y=om_catch, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 10))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="Catch", x="Year", title="Total Catch Comparison")+
@@ -367,7 +373,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_bio, color="Assessment"))+
         geom_line(aes(y=om_bio, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 1100), breaks=seq(0, 1100, 100))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="Biomass", x="Year", title="Total Biomass Comparison")+
@@ -377,7 +383,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_f, color="Assessment"))+
         geom_line(aes(y=om_f, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.2, 0.05))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="F", x="Year", title="Fishing Mortality Comparison")+
@@ -386,7 +392,6 @@ make_plot <- function(naa, caa, faa){
     library(patchwork)
 
     p <- (p1+p2)/(p3+p4)+plot_layout(guides="collect")
-    p
     #ggsave("~/Desktop/sablefish_assess_om.png", plot=p, width=8, height=8, units=c("in"))
 
 
