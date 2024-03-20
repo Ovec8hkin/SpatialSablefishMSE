@@ -322,6 +322,8 @@ for(s in 1:nsims){
     }
 }
 
+outputs <- afscOM::listN(land_caa, disc_caa, caa, faa, naa, tac, dem_params, model_options)
+saveRDS(outputs, file="data/om1.RDS")
 
 #' 8. Plot OM Results
 #'
@@ -455,4 +457,6 @@ make_plot <- function(naa, caa, faa, sim=1){
     # plot <- p1/p2/p3 + plot_layout(guides="collect")
     return(p)
 }
+
+
 
