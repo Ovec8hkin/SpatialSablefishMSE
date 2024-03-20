@@ -22,7 +22,7 @@ assessment <- dget("~/Desktop/Side projects/afscOM/data/test.rdat")
 #' Dimension names must be defined in order to use the helper function
 #' `generate_param_matrix` which handles filling complex multi-dimensional
 #' arrays with smaller dimensions values, vectors, or matrices.
-nyears <- 151
+nyears <- 101
 nages  <- 30
 nsexes <- 2
 nregions <- 1
@@ -134,13 +134,13 @@ recruitment <- c(recruitment, projected_recruitment)
 #'  - fleet apportionment: the proportion of the TAC allocation to each
 #'                         fishing fleet in each region in the model
 #' The apportionment timeseries are placed in a `model_options` list.
-#' 
+#'
 #' Alternatively, a timeseries of fishing mortality rates, F, can be
 #' provided in lieu of TACs. In this case, the timeseries of F for each
 #' fleet, in each area, must be provided in an array of dimensions
-#' [nyears, 1, 1, nregions, nfleets]. 
-#' 
-#' Always specify the `removals_input` in the `model_options` list. 
+#' [nyears, 1, 1, nregions, nfleets].
+#'
+#' Always specify the `removals_input` in the `model_options` list.
 #' `removals_input` can be either "catch" or "F", depending on what
 #' data you are providing as removals input.
 TACs <- rep(0, nyears)
@@ -161,11 +161,11 @@ model_options <- list(
 
 
 # f_timeseries <- assessment$t.series[,c("F_HAL", "F_TWL")] %>% as.matrix
-# f_timeseries <- array(f_timeseries, dim=c(nyears, 1, 1, 1, 2), 
-#                 dimnames = list("time"=1:nyears, 
-#                                 age="all",  
-#                                 sex="all", 
-#                                 "region"="alaska", 
+# f_timeseries <- array(f_timeseries, dim=c(nyears, 1, 1, 1, 2),
+#                 dimnames = list("time"=1:nyears,
+#                                 age="all",
+#                                 sex="all",
+#                                 "region"="alaska",
 #                                 "fleet"=c("Fixed", "Trawl")))
 
 # model_options <- list(
@@ -173,7 +173,7 @@ model_options <- list(
 # )
 
 #' 6. Define parameters for observation processes
-#' Observation process parameters include catchability coefficients 
+#' Observation process parameters include catchability coefficients
 #' (q), observation errors, and sample sizes for age/length comps.
 
 obs_pars <- list(
@@ -262,7 +262,7 @@ for(y in 1:(nyears-1)){
     caa[y,,,,] <- out_vars$caa_tmp
     faa[y,,,,] <- out_vars$faa_tmp
     naa[y+1,,,] <- out_vars$naa_tmp
-    out_f[y] <- sum(out_vars$F_f_tmp)
+    out_f[y] <- sum(out_vars$F_f_tmp[1,1,1,1,])
 
     survey_preds$ll_rpn[y,,,] <- out_vars$surv_preds$ll_rpn
     survey_preds$ll_rpw[y,,,] <- out_vars$surv_preds$ll_rpw
@@ -282,7 +282,7 @@ for(y in 1:(nyears-1)){
         joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
         joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
         F35 <- spr_x(
-            nages=30, 
+            nages=30,
             mort = dp.y$mort[,,1,],
             mat = dp.y$mat[,,1,],
             waa = dp.y$waa[,,1,],
@@ -291,7 +291,7 @@ for(y in 1:(nyears-1)){
             target_x = 0.35
         )
         F40 <- spr_x(
-            nages=30, 
+            nages=30,
             mort = dp.y$mort[,,1,],
             mat = dp.y$mat[,,1,],
             waa = dp.y$waa[,,1,],
@@ -309,15 +309,15 @@ for(y in 1:(nyears-1)){
             F = F40,
             avg_rec = mean(recruitment/2)
         )
-        
+
         ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
         hcr_F[y] <- npfmc_tier3_F(ssb, B40, F40, 0.05)
-        
+
         # calculate quantities to get TAC
         # Project population forward by 1 year with terminal F
         proj_N <- array(NA, dim = c(dim(out_vars$naa_tmp)))
         jointsel <- rbind(joint_self, joint_selm)
-    
+
         for(s in 1:nsexes) {
           for(a in 1:(nages - 1)) {
             if(a == 1) proj_N[,1,s,] <- mean(recruitment) * 0.5 # using this for now, but assessment uses 1979 - terminal
@@ -330,9 +330,9 @@ for(y in 1:(nyears-1)){
           FAA_tmp <- (hcr_F[y] * jointsel[s,])
           ZAA_tmp <- FAA_tmp + M
           TAC_tmp <- sum(FAA_tmp / ZAA_tmp * proj_N[,,s,] * (1 - exp(-ZAA_tmp)) * dp.y$waa[,,s,])
-          TAC_tmp <- TAC_tmp + TAC_tmp # update TAC 
+          TAC_tmp <- TAC_tmp + TAC_tmp # update TAC for females and male
         } # end s
-        
+
         TACs[y+1] <- TAC_tmp
     }
 
