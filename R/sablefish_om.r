@@ -3,9 +3,16 @@ rm(list=ls())
 # remotes::install_github('BenWilliams-NOAA/afscOM')
 #library(afscOM)
 library(devtools)
-devtools::load_all("~/Desktop/Projects/afscOM")
+library(patchwork)
+library(tidyverse)
 
-assessment <- dget("~/Desktop/Projects/afscOM/data/test.rdat")
+afscOM_dir <- "~/Desktop/Projects/afscOM"
+devtools::load_all(afscOM_dir)
+source("R/reference_points.R")
+source("R/harvest_control_rules.R")
+source("R/simulate_TAC.R")
+
+assessment <- dget("data/sablefish_assessment_2023.rdat")
 
 #' 1. Define model dimensions and dimension names
 #'  - nyears: number of years over which to simulate
@@ -17,7 +24,7 @@ assessment <- dget("~/Desktop/Projects/afscOM/data/test.rdat")
 #' Dimension names must be defined in order to use the helper function
 #' `generate_param_matrix` which handles filling complex multi-dimensional
 #' arrays with smaller dimensions values, vectors, or matrices.
-nyears <- 1000
+nyears <- 164
 nages  <- 30
 nsexes <- 2
 nregions <- 1
@@ -48,7 +55,7 @@ model_params <- set_model_params(nyears, nages, nsexes, nregions, nfleets)
 
 M <- 0.113179
 mort <- generate_param_matrix(M, dimension_names = dimension_names)
-mort[,,2,] <- mort[,,2,]-0.00819813
+mort[,,2,] <- mort[,,2,]#-0.00819813
 
 prop_males <- 0.5
 sexrat <- generate_param_matrix(prop_males, dimension_names = dimension_names)
@@ -130,16 +137,18 @@ recruitment <- c(recruitment, projected_recruitment)
 #'  - fleet apportionment: the proportion of the TAC allocation to each
 #'                         fishing fleet in each region in the model
 #' The apportionment timeseries are placed in a `model_options` list.
-#' 
+#'
 #' Alternatively, a timeseries of fishing mortality rates, F, can be
 #' provided in lieu of TACs. In this case, the timeseries of F for each
 #' fleet, in each area, must be provided in an array of dimensions
-#' [nyears, 1, 1, nregions, nfleets]. 
-#' 
-#' Always specify the `removals_input` in the `model_options` list. 
+#' [nyears, 1, 1, nregions, nfleets].
+#'
+#' Always specify the `removals_input` in the `model_options` list.
 #' `removals_input` can be either "catch" or "F", depending on what
 #' data you are providing as removals input.
 TACs <- rep(0, nyears)
+hcr_F <- rep(0, nyears)
+out_f <- rep(0, nyears) # vector to store outputted F
 TACs[1:64] <- (assessment$t.series[,"Catch_HAL"]+assessment$t.series[,"Catch_TWL"])
 
 fixed_fleet_prop <- rep(NA, nyears)
@@ -155,11 +164,11 @@ model_options <- list(
 
 
 # f_timeseries <- assessment$t.series[,c("F_HAL", "F_TWL")] %>% as.matrix
-# f_timeseries <- array(f_timeseries, dim=c(nyears, 1, 1, 1, 2), 
-#                 dimnames = list("time"=1:nyears, 
-#                                 age="all",  
-#                                 sex="all", 
-#                                 "region"="alaska", 
+# f_timeseries <- array(f_timeseries, dim=c(nyears, 1, 1, 1, 2),
+#                 dimnames = list("time"=1:nyears,
+#                                 age="all",
+#                                 sex="all",
+#                                 "region"="alaska",
 #                                 "fleet"=c("Fixed", "Trawl")))
 
 # model_options <- list(
@@ -167,7 +176,7 @@ model_options <- list(
 # )
 
 #' 6. Define parameters for observation processes
-#' Observation process parameters include catchability coefficients 
+#' Observation process parameters include catchability coefficients
 #' (q), observation errors, and sample sizes for age/length comps.
 
 obs_pars <- list(
@@ -200,6 +209,8 @@ disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
 tac         = array(NA, dim=c(nyears, 1, 1, 1, nsims))
+hcr_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
+out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
 naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims))
 naa[1,,,,] = init_naa
 
@@ -237,7 +248,7 @@ naa[1,,,,] = init_naa
 seeds <- sample(1:(nsims*1000), size=nsims, replace=FALSE)
 model_options$simulate_observations <- FALSE
 for(s in 1:nsims){
-    
+    print(s)
     set.seed(seeds[s])
     recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
@@ -267,6 +278,9 @@ for(s in 1:nsims){
         caa[y,,,,,s] <- out_vars$caa_tmp
         faa[y,,,,,s] <- out_vars$faa_tmp
         naa[y+1,,,,s] <- out_vars$naa_tmp
+        out_f[y,,,,s] <- sum(out_vars$F_f_tmp[1,1,1,1,])
+        tac[y,,,,s] <- TACs[y]
+        hcr_f[y,,,,s] <- hcr_F[y]
 
         # survey_preds$ll_rpn[y,,,] <- out_vars$surv_preds$ll_rpn
         # survey_preds$ll_rpw[y,,,] <- out_vars$surv_preds$ll_rpw
@@ -282,42 +296,41 @@ for(s in 1:nsims){
 
         #new_F <- 0.085
         if((y+1) > 64){
-            joint_sel <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
             joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
-            ref_points <- calculate_ref_points(
-                nages=30, 
+            
+            # reference points are all female based
+            ref_pts <- calculate_ref_points(
+                nages=nages,
                 mort = dp.y$mort[,,1,],
                 mat = dp.y$mat[,,1,],
                 waa = dp.y$waa[,,1,],
-                sel =  joint_sel,
+                sel =  joint_self,
                 ret = joint_ret,
-                avg_rec = mean(recruitment/2)
+                avg_rec = mean(recruitment)/2
             )
-            
-            ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            #hcr_F <- npfmc_tier3a_F(ssb/ref_points$B40, ref_points$F35)
-            hcr_F <- constant_F(F=0)
-            TACs[y+1] <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,]*dp.y$mat[,,1,]*joint_sel, 1, sum)*afscOM::F_to_mu(hcr_F)
-        }
 
+            ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
+            hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
+
+            joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
+            joint_sel[,,1,] <- joint_self
+            joint_sel[,,2,] <- joint_selm
+
+            TACs[y+1] <- simulate_TAC(hcr_F[y], out_vars$naa_tmp, mean(recruitment)/2, joint_sel, dp.y)
+        }   
     }
-    tac[,,,,s] <- TACs
-    print(paste0("Completed: ", s, "/",nsims))
 }
 
 outputs <- afscOM::listN(land_caa, disc_caa, caa, faa, naa, tac, dem_params, model_options)
 saveRDS(outputs, file="data/om1.RDS")
 
-#' 8. Plot OM Results
-#'
-p <- make_plot(naa, caa, faa)
-p
-
-make_plot <- function(naa, caa, faa){
-    ssb <- apply(naa[1:nyears,,1,]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
-    bio <- apply(naa[1:nyears,,,]*dem_params$waa[,,,], 1, sum)
-    catch <- apply(caa, 1, sum)
-    f <- apply(apply(faa, c(1, 5), \(x) max(x)), 1, sum)
+make_plot <- function(naa, caa, faa, sim=1){
+    ssb <- apply(naa[1:nyears,,1,,sim]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
+    bio <- apply(naa[1:nyears,,,,sim]*dem_params$waa[,,,], 1, sum)
+    catch <- apply(caa[1:nyears,,,,,sim], 1, sum)
+    #f <- apply(apply(faa[1:nyears,,,,,sim, drop=FALSE], c(1, 5), \(x) max(x)), 1, sum)
 
     ssb_comp <- data.frame(
         year=1960:(1960+nyears-1),
@@ -328,16 +341,17 @@ make_plot <- function(naa, caa, faa){
         #assess_bio=assessment$t.series[, "totbiom"],
         om_bio = bio,
         #assess_f = assessment$t.series[,"fmort"],
-        om_f = f
+        om_f = out_f[1:nyears,,,,sim]
     )
 
     library(ggplot2)
+    years_breaks <- seq(min(ssb_comp$year), max(ssb_comp$year), 20)
 
     p1 <- ggplot(ssb_comp, aes(x=year))+
         #geom_line(aes(y=assess_ssb, color="Assessment"))+
         geom_line(aes(y=om_ssb, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 500), breaks=seq(0, 500, 50))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="SSB", x="Year", title="Spawning Biomass Comparison")+
@@ -347,7 +361,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_catch, color="Assessment"))+
         geom_line(aes(y=om_catch, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 10))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="Catch", x="Year", title="Total Catch Comparison")+
@@ -357,7 +371,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_bio, color="Assessment"))+
         geom_line(aes(y=om_bio, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 1100), breaks=seq(0, 1100, 100))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="Biomass", x="Year", title="Total Biomass Comparison")+
@@ -367,7 +381,7 @@ make_plot <- function(naa, caa, faa){
         #geom_line(aes(y=assess_f, color="Assessment"))+
         geom_line(aes(y=om_f, color="OM"), size=0.7)+
         scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.2, 0.05))+
-        scale_x_continuous(breaks=seq(1960, 2020, 10))+
+        scale_x_continuous(breaks=years_breaks)+
         coord_cartesian(expand=0)+
         scale_color_manual(name="Model", values=c("black", "red"))+
         labs(y="F", x="Year", title="Fishing Mortality Comparison")+
@@ -376,7 +390,6 @@ make_plot <- function(naa, caa, faa){
     library(patchwork)
 
     p <- (p1+p2)/(p3+p4)+plot_layout(guides="collect")
-    p
     #ggsave("~/Desktop/sablefish_assess_om.png", plot=p, width=8, height=8, units=c("in"))
 
 
@@ -440,4 +453,9 @@ make_plot <- function(naa, caa, faa){
     # plot <- p1/p2/p3 + plot_layout(guides="collect")
     return(p)
 }
+
+#' 8. Plot OM Results
+#'
+p <- make_plot(naa, caa, faa, sim=sample(1:100, 1))
+p
 
