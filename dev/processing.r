@@ -5,12 +5,17 @@ rm(list=ls())
 library(devtools)
 library(patchwork)
 library(tidyverse)
+library(ggdist)
+library(ggh4x)
 
 afscOM_dir <- "~/Desktop/Projects/afscOM"
 devtools::load_all(afscOM_dir)
 source("R/reference_points.R")
 source("R/harvest_control_rules.R")
 source("R/simulate_TAC.R")
+source("R/age_structure_stats.R")
+source("R/data_utils.R")
+source("R/data_processing.R")
 
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 
@@ -57,6 +62,7 @@ naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimname
 naa[1,,,,] = init_naa
 
 seeds <- sample(1:(nsims*1000), size=nsims, replace=FALSE)
+ref_naa <- readRDS("data/agestruct_f40.RDS")
 for(s in 1:50){
     print(s)
     set.seed(seeds[s])
@@ -110,7 +116,17 @@ for(s in 1:50){
             )
 
             ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
+            hcr_F[y] <- as_scalar_threshold_f(
+                            ssb/ref_pts$B40, 
+                            naa=out_vars$naa_tmp[,,1,], 
+                            ref_naa=ref_naa,
+                            as_func = abi,
+                            ref = ref_naa,
+                            f_min=0,
+                            f_max=ref_pts$F40,
+                            lrp=0.05,
+                            urp=1.0
+                        )
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
             joint_sel[,,1,] <- joint_self
@@ -158,7 +174,7 @@ ggplot(d)+
         legend.position = "bottom"
     )
 
-ggsave("~/Desktop/tier3_hcr.jpeg")
+# ggsave("~/Desktop/tier3_hcr.jpeg")
 
 final_ref_points_tot <- calculate_ref_points(nages, dp.y$mort, dp.y$mat, dp.y$waa, joint_sel, array(1, dim=dim(joint_sel)), mean(recruitment))
 final_ref_points_fem <- calculate_ref_points(nages, dp.y$mort[,,1,], dp.y$mat[,,1,], dp.y$waa[,,1,], joint_sel[,,1,], joint_ret, mean(recruitment)/2)

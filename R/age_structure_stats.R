@@ -18,8 +18,8 @@ prop_fully_mature <- function(naa, mat){
     return(sum(naa * full_maturity))
 }
 
-abi <- function(naa, ref_naa, threshold=0.90){
-    ref_naa <- ref_naa[2:length(ref_naa)]
+abi <- function(naa, ref, threshold=0.90){
+    ref_naa <- ref[2:length(ref)]
     ref_naa_prop <- ref_naa/sum(ref_naa)
     A_ref <- min(which(cumsum(ref_naa_prop) > threshold))-1
     P_ref <- sum(ref_naa_prop[(A_ref+1):length(ref_naa_prop)])

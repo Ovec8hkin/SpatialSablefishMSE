@@ -68,3 +68,32 @@ threshold_f <- function(x, f_min, f_max, lrp, urp){
     if(x <= lrp) F <- f_min # if stock stats <= alpha
     return(F)
 }
+
+#' Threshold HCR with Fmax scaled by Age Structure
+#' 
+#' Compute an allowable fishing mortality rate from
+#' a threshold HCR parameterized by f_min, f_max, lrp,
+#' and urp, but scales f_max by an age structure summary
+#' statistic relative to the value of that summmary
+#' statistic for some reference age structure.
+#'
+#' @param x input to HCR (e.g. SSB or, SSB/B40)
+#' @param naa an age structure (e.g. numbers at age or biomass at age)
+#' @param ref_naa am age structure to compare `naa` to
+#' @param as_func a function that compute an age structure statistic (must take naa as its first argument)
+#' @param ... additional arguments to pass to `as_func(naa, ...)`
+#' @param f_min F to use when x < lrp
+#' @param f_max F to use when x > urp
+#' @param lrp value of x below which f_min applies
+#' @param urp value of x above which f_max applies
+#'
+#' @export as_scalar_threshold_f
+#'
+#' @example
+#'
+as_scalar_threshold_f <- function(x, naa, ref_naa, as_func, ..., f_min, f_max, lrp, urp){
+    as_stat <- as_func(naa,...)/as_func(ref_naa,...)
+    as_scalar <- threshold_f(as_stat, f_min=0, f_max=1, lrp=0, urp=1)
+    f <- threshold_f(x, f_min, f_max*as_scalar, lrp, urp)
+    return(f)
+}
