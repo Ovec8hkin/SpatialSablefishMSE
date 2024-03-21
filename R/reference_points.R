@@ -1,3 +1,19 @@
+#' Compute Spawning Biomass per Recruit (SBPR)
+#'
+#' Compute SBPR under a given level of fishing mortality.
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param F instantenous fishing mortality rate
+#'
+#' @export
+#'
+#' @example
+#'
 compute_sbpr <- function(nages, mort, mat, waa, sel, ret, F){
     naa <- rep(NA, nages)
     naa[1] <- 1
@@ -9,12 +25,47 @@ compute_sbpr <- function(nages, mort, mat, waa, sel, ret, F){
     return(ssb)
 }
 
+#' Compute Spawning Potential Ratio (SPR)
+#' 
+#' Compute SPR, the ratio of spawning biomass under a 
+#' given leve of fishing mortality relative to unfished
+#' spawning biomass.
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param F instantenous fishing mortality rate
+#'
+#' @export
+#'
+#' @example
+#'
 compute_spr <- function(nages, mort, mat, waa, sel, ret, F){
     ssb_unfished <- compute_sbpr(nages, mort, mat, waa, sel, ret, F=0)
     ssb_fished   <- compute_sbpr(nages, mort, mat, waa, sel, ret, F)
     return(ssb_fished/ssb_unfished)
 }
 
+#' Find F that yields a given SPR%
+#' 
+#' Use bisection algorithm to identify the level of
+#' fishing mortality required to yield an SPR of x%.
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param target_x desired SPR proportion
+#'
+#' @export
+#'
+#' @example
+#'
 spr_x <- function(nages, mort, mat, waa, sel, ret, target_x=0.35){
     range <- vector(length=2)
     range[1] <- 0
@@ -36,33 +87,50 @@ spr_x <- function(nages, mort, mat, waa, sel, ret, target_x=0.35){
     return(Fx)
 }
 
+#' Compute average SSB under a level of F
+#' 
+#' Compute average SSB under a given level of
+#' fishing mortality.
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param F instantenous fishing mortality rate
+#' @param avg_rec average recruitment
+#'
+#' @export
+#'
+#' @example
+#'
 compute_bx <- function(nages, mort, mat, waa, sel, ret, F, avg_rec){
   return(avg_rec*compute_sbpr(nages, mort, mat, waa, sel, ret, F))
 }
 
+#' Calculate NPFMC groundfish reference points
+#' 
+#' Calculate F_OFL (F_35%), F_ABC (F_40%), and B40
+#' (SSB under F_ABC).
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param F instantenous fishing mortality rate
+#' @param avg_rec average recruitment
+#'
+#' @return list of F40, F35, and B40
+#' @export calculate_ref_points
+#'
+#' @example
+#'
 calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec){
   F35 <- spr_x(nages, mort, mat, waa, sel, ret ,target_x=0.35)
   F40 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.40)
   B40 <- compute_bx(nages, mort, mat, waa, sel, ret, F=F40, avg_rec=avg_rec)
   return(list(F40=F40, F35=F35, B40=B40))
 }
-
-# assessment <- dget("data/sablefish_assessment_2023.rdat")
-
-# nages <- 30
-# mort <- assessment$M[1,1]
-# mat <- assessment$growthmat[,"mage.block1"]
-# waa <- assessment$growthmat[,"wt.f.block1"]
-# sel <- as.vector(assessment$agesel[,"fish5sel.f"])+as.vector(assessment$agesel[,"fish3sel.f"])
-# sel <- sel/max(sel)
-# ret <- 1
-# avg_rec <- mean(assessment$natage.female[,1])
-
-
-# compute_sbpr(nages, mort, mat, waa, sel, ret, F=0)
-# compute_spr(nages, mort, mat, waa, sel, ret, F=0.0957209)
-# F40 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.40)
-
-# B40 <- compute_bx(nages, mort, mat, waa, sel, ret, F=F40, avg_rec=avg_rec)
-
-# sum(assessment$natage.female[64,]*mat*waa)/B40
