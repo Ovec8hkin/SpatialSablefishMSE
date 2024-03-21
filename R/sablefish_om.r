@@ -10,6 +10,7 @@ afscOM_dir <- "~/Desktop/Projects/afscOM"
 devtools::load_all(afscOM_dir)
 source("R/reference_points.R")
 source("R/harvest_control_rules.R")
+source("R/simulate_TAC.R")
 
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 
@@ -311,24 +312,19 @@ for(s in 1:nsims){
             )
 
             ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40, 0.05)
+            hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
             joint_sel[,,1,] <- joint_self
             joint_sel[,,2,] <- joint_selm
 
-            TACs[y+1] <- simulate_TAC(hcr_F[y], out_vars$naa_tmp, mean(recruitment)/2, join_sel, dp.y)
+            TACs[y+1] <- simulate_TAC(hcr_F[y], out_vars$naa_tmp, mean(recruitment)/2, joint_sel, dp.y)
         }   
     }
 }
 
 outputs <- afscOM::listN(land_caa, disc_caa, caa, faa, naa, tac, dem_params, model_options)
 saveRDS(outputs, file="data/om1.RDS")
-
-#' 8. Plot OM Results
-#'
-p <- make_plot(naa, caa, faa, sim=sample(1:100, 1))
-p
 
 make_plot <- function(naa, caa, faa, sim=1){
     ssb <- apply(naa[1:nyears,,1,,sim]*dem_params$waa[,,1,]*dem_params$mat[,,1,], 1, sum)
@@ -458,5 +454,8 @@ make_plot <- function(naa, caa, faa, sim=1){
     return(p)
 }
 
-
+#' 8. Plot OM Results
+#'
+p <- make_plot(naa, caa, faa, sim=sample(1:100, 1))
+p
 

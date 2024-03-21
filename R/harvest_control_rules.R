@@ -64,7 +64,7 @@ threshold_cap <- function(ssb,B_ref,F_ref,alpha) {
 #'
 threshold_f <- function(x, f_min, f_max, lrp, urp){
     if(x >= urp)  F <- f_max # if stock status >= 1
-    if(x > lrp && x < urp) F <- F_ref * ((x-lrp)/(urp-lrp) # if stock status > alpha & stock status < 1
+    if(x > lrp && x < urp) F <- f_max * ((x-lrp)/(urp-lrp)) # if stock status > alpha & stock status < 1
     if(x <= lrp) F <- f_min # if stock stats <= alpha
     return(F)
 }
