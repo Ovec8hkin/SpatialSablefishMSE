@@ -213,9 +213,11 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     saveRDS(new_data, "data/sablefish_em_data_curr.RDS")
     saveRDS(new_parameters, "data/sablefish_em_par_curr.RDS")
 
+    capture.output(valid <- validate_input_data_and_parameters(new_data, new_parameters))
 
-    if(validate_input_data_and_parameters(new_data, new_parameters))
+    if(valid)
         return(afscOM::listN(new_data, new_parameters))
     else
+        print("Something was wrong with the EM data.")
         return(FALSE)
 }
