@@ -1,3 +1,18 @@
+#' Run Multiple MSE Simulations
+#' #'
+#' Wrapper function around `run_mse` that handle running and
+#' compiling the outputs of multiple MSE closed-loop simulations,
+#' across different random seeds.
+#'
+#' @param nsims the number of unique simulations to run
+#' @param seeds vector of random seeds to use (length(seeds) == nsims)
+#' @param nyears number of years in each simulation
+#' @param ... additional parameter sto pass to the `run_mse` call
+#'
+#' @export list of arrays of containing OM results from each simulation
+#'
+#' @example
+#'
 run_mse_multiple <- function(nsims, seeds, nyears, ...){
 
     dimension_names <- list(
