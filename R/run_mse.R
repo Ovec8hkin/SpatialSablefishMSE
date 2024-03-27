@@ -20,14 +20,15 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
     # Load OM parameters into global environment
-    list2env(om, globalenv())
+    list2env(om)
 
     # Load OM dimensions into global environment
-    list2env(afscOM::get_model_dimensions(dem_params$sel), globalenv())
+    list2env(afscOM::get_model_dimensions(dem_params$sel))
 
     if(!is.na(nyears_input)){
         nyears <- nyears_input
     }
+    print(paste("NYEARS:", nyears))
 
     dimension_names <- list(
         "time" = 1:nyears,
@@ -68,7 +69,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
         fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
     )
 
-    set.seed(seeds)
+    set.seed(seed)
     recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
     recruitment <- c(recruitment, projected_recruitment)
@@ -185,6 +186,6 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
     file.remove("data/sablefish_em_data_curr.RDS")
     file.remove("data/sablefish_em_par_curr.RDS")
 
-    return(afscOM::listN(naa, naa_est, caa, faa, out_f))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs))
 
 }
