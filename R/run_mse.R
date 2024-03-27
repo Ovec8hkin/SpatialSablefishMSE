@@ -126,7 +126,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
 
             mod_report <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
             assessment_ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
-            assessment_rec <- SpatialSablefishAssessment::get_recruitment(mod_report)
+            assessment_rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% pull(Recruitment)
 
             # Store assessment estimates of age composition
             # for comparing EM and OM
@@ -154,7 +154,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
                 waa = dp.y$waa[,,1,],
                 sel =  joint_self,
                 ret = joint_ret,
-                avg_rec = mean(recruitment)/2
+                avg_rec = mean(assessment_rec)/2
             )
 
             #ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
@@ -172,14 +172,14 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
 
             naa_est_tmp <- naa_est[y,,,, drop=FALSE]
 
-            #hcr_F[y] <- match.fun(hcr)(ref_pts, naa_est_tmp, dp.y, ...)
-            hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
+            hcr_F[y] <- match.fun(hcr)(ref_pts, naa_est_tmp, dp.y, ...)
+            #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
             joint_sel[,,1,] <- joint_self
             joint_sel[,,2,] <- joint_selm
 
-            TACs[y+1] <- simulate_TAC(hcr_F[y], naa_est_tmp, mean(recruitment)/2, joint_sel, dp.y)
+            TACs[y+1] <- simulate_TAC(hcr_F[y], naa_est_tmp, mean(assessment_rec)/2, joint_sel, dp.y)
         }   
     }
 
