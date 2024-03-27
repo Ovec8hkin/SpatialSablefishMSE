@@ -215,9 +215,10 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
 
     capture.output(valid <- validate_input_data_and_parameters(new_data, new_parameters))
 
-    if(valid)
+    if(valid){
         return(afscOM::listN(new_data, new_parameters))
-    else
+    }else{
         print("Something was wrong with the EM data.")
         return(FALSE)
+    }
 }

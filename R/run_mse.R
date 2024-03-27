@@ -13,7 +13,7 @@
 #'
 #' @example
 #'
-run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
+run_mse <- function(om, hcr, ..., nsims=10, nyears_input=NA, seed=1120){
    
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -22,6 +22,10 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
 
     # Load OM dimensions into global environment
     list2env(afscOM::get_model_dimensions(dem_params$sel), globalenv())
+
+    if(!is.na(nyears_input)){
+        nyears <- nyears_input
+    }
 
     dimension_names <- list(
         "time" = 1:nyears,
@@ -53,6 +57,16 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=1:nsims))
     naa[1,,,,] = init_naa
 
+    naa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=1:nsims))
+
+    survey_obs <- list(
+        ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions)),
+        ll_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
+        tw_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
+        ll_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
+        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
+    )
+
     set.seed(seed)
     seeds <- sample(1:(nsims*1000), size=nsims, replace=FALSE)
     # ref_as <- readRDS("data/agestruct_f40.RDS")
@@ -65,7 +79,7 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
         recruitment <- c(recruitment, projected_recruitment)
 
         for(y in 1:(nyears-1)){
-
+            print(y)
             # Subset the demographic parameters list to only the current year
             # and DO NOT drop lost dimensions.
             dp.y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
@@ -92,8 +106,45 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
             tac[y,,,,s] <- TACs[y]
             hcr_f[y,,,,s] <- hcr_F[y]
 
-            #new_F <- 0.085
+            survey_obs$ll_rpn[y,,,] <- out_vars$surv_obs$ll_rpn
+            survey_obs$ll_rpw[y,,,] <- out_vars$surv_obs$ll_rpw
+            survey_obs$tw_rpw[y,,,] <- out_vars$surv_obs$tw_rpw
+            survey_obs$ll_acs[y,,,] <- out_vars$surv_obs$ll_ac_obs
+            survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
+
+            
             if((y+1) > 64){
+
+                # Do all of the data formatting and running
+                # of the TMB Sablefish model
+                assess_inputs <- format_em_data(
+                    nyears = y,
+                    dem_params = dp.y,
+                    land_caa = out_vars$land_caa_tmp,
+                    survey_indices = out_vars$surv_obs,
+                    fxfish_caa_obs = survey_obs$fxfish_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
+                    ll_ac_obs = survey_obs$ll_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
+                    model_options = model_options,
+                    added_years = 1
+                )
+
+                mod_report <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
+                assessment_ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
+
+                # Store assessment estimates of age composition
+                # for comparing EM and OM
+                if(y == 64){
+                    naaf <- t(mod_report$natage_f[,1:63])
+                    naam <- t(mod_report$natage_m[,1:63])
+                    naa_est[1:63,,1,,s] <- naaf
+                    naa_est[1:63,,2,,s] <- naam
+                }
+
+                naa_est[y,,1,,s] <- mod_report$natage_f[,y]
+                naa_est[y,,2,,s] <- mod_report$natage_m[,y]
+
+                # Solve for reference points, F from the HCR,
+                # and compute TAC for the next year.
                 joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
                 joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
                 joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
@@ -109,7 +160,7 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
                     avg_rec = mean(recruitment)/2
                 )
 
-                ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
+                #ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
                 # hcr_F[y] <- as_scalar_threshold_f(
                 #                 ssb/ref_pts$B40, 
                 #                 naa=out_vars$naa_tmp[,,1,], 
@@ -122,17 +173,24 @@ run_mse <- function(om, hcr, ..., nsims=10, seed=1120){
                 #                 urp=1.0
                 #             )
 
-                hcr_F[y] <- match.fun(hcr)(ref_pts, out_vars$naa_tmp, dp.y, ...)
+                naa_est_tmp <- afscOM::subset_matrix(naa_est[y,,,,s, drop=FALSE], r=1, d=5, drop=TRUE)
+
+                hcr_F[y] <- match.fun(hcr)(ref_pts, naa_est_tmp, dp.y, ...)
+                #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
                 joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
                 joint_sel[,,1,] <- joint_self
                 joint_sel[,,2,] <- joint_selm
 
-                TACs[y+1] <- simulate_TAC(hcr_F[y], out_vars$naa_tmp, mean(recruitment)/2, joint_sel, dp.y)
+                TACs[y+1] <- simulate_TAC(hcr_F[y], naa_est_tmp, mean(recruitment)/2, joint_sel, dp.y)
             }   
         }
+
+        file.remove("data/sablefish_em_data_curr.RDS")
+        file.remove("data/sablefish_em_par_curr.RDS")
+
     }
 
-    return(afscOM::listN(naa, caa, faa, out_f))
+    return(afscOM::listN(naa, naa_est, caa, faa, out_f))
 
 }
