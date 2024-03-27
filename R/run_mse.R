@@ -6,14 +6,16 @@
 #' demagraphic parameters list and model options list)
 #' @param hcr a function to compute the allowable F in the next year
 #' @param ... parameters to pass to the `hcr` function
-#' @param nsims number of random simulation to run
+#' @param nyears_input number of years to simulate forward (will override the dimensions
+#' of the demagraphic parameters matrices defined in the OM)
+#' @param spinup_years number of years before estimation process should begin
 #' @param seed random seed
 #'
 #' @export run_mse
 #'
 #' @example
 #'
-run_mse <- function(om, hcr, ..., nyears_input=NA, seed=1120){
+run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
    
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -106,7 +108,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, seed=1120){
         survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
 
         
-        if((y+1) > 64){
+        if((y+1) > spinup_years){
 
             # Do all of the data formatting and running
             # of the TMB Sablefish model
@@ -127,11 +129,11 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, seed=1120){
 
             # Store assessment estimates of age composition
             # for comparing EM and OM
-            if(y == 64){
-                naaf <- t(mod_report$natage_f[,1:63])
-                naam <- t(mod_report$natage_m[,1:63])
-                naa_est[1:63,,1,] <- naaf
-                naa_est[1:63,,2,] <- naam
+            if(y == spinup_years){
+                naaf <- t(mod_report$natage_f[,1:(spinup_years-1)])
+                naam <- t(mod_report$natage_m[,1:(spinup_years-1)])
+                naa_est[1:(spinup_years-1),,1,] <- naaf
+                naa_est[1:(spinup_years-1),,2,] <- naam
             }
 
             naa_est[y,,1,] <- mod_report$natage_f[,y]
