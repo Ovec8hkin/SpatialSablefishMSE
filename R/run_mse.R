@@ -20,10 +20,10 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
     # Load OM parameters into global environment
-    list2env(om)
+    list2env(om, env=environment())
 
     # Load OM dimensions into global environment
-    list2env(afscOM::get_model_dimensions(dem_params$sel))
+    list2env(afscOM::get_model_dimensions(dem_params$sel), env=environment())
 
     if(!is.na(nyears_input)){
         nyears <- nyears_input

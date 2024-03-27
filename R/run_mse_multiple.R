@@ -24,6 +24,11 @@ run_mse_multiple <- function(nsims, seeds, nyears, ...){
         "sim" = seeds
     )
 
+    nages <- length(dimension_names[["age"]])
+    nsexes <- length(dimension_names[["sex"]])
+    nregions <- length(dimension_names[["region"]])
+    nfleets <- length(dimension_names[["fleet"]])
+
     land_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
@@ -44,7 +49,7 @@ run_mse_multiple <- function(nsims, seeds, nyears, ...){
 
     for(s in 1:nsims){
         seed <- seeds[s]
-        mse <- run_mse(om=om, hcr=hcr, nyears_input=nyears, seed=seed)
+        mse <- run_mse(..., nyears_input=nyears, seed=seed)
     
         land_caa[,,,,,s] <- mse$land_caa
         disc_caa[,,,,,s] <- mse$disc_caa
