@@ -12,7 +12,7 @@
 #' @example
 #'
 fit_TMB_model <- function(data, parameters){
-    par_map <- map = list(
+    par_map <- list(
         ln_M_year_devs = factor(rep(NA, length(parameters$ln_M_year_devs))),
         ln_M_age_devs = factor(rep(NA, length(parameters$ln_M_age_devs)))
     )
