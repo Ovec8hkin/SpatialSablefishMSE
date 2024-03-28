@@ -1,0 +1,42 @@
+Package: SablefishMSE
+Title: Conduct Managemnt Strategy Evaluation for Alaska Sablefish
+Version: 0.0.0.9000
+Authors@R: c(
+    person(given = "Joshua", 
+            family = "Zahner",
+            email = "joshua@alaska.edu", 
+            role = c("aut")),
+    person(given = "Benjamin", 
+            family = "Williams", 
+            email = "ben.williams@noaa.gov", 
+            role = c("aut", "cre")),
+    person(given = "Dan", 
+            family = "Goethel",
+            role = "aut"),
+    person(given = "Curry", 
+            family = "Cunningham",
+            role = "aut"),
+    person(given = "Chris", 
+            family = "Lunsford",
+            role = "ctb"),
+    person(given = "Matt", 
+            family = "Cheng",
+            role = "ctb")
+    )
+Maintainer: Joshua A. Zahner <joshuazahner@gmail.com>
+Description: Conduct a management strategy evaluation (MSE) for Alaska Sablefish.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 3.5.0),
+Imports:
+    ggdist,
+    ggh4x,
+    reshape2,
+    dplyr,
+    ggplot2
+DevPackage:
+    Craig44/SpatialSablefishAssessment
+    BenWilliams-NOAA/afscOM
+RoxygenNote: 7.2.3
