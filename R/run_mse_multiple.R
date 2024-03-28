@@ -9,8 +9,9 @@
 #' @param nyears number of years in each simulation
 #' @param ... additional parameter sto pass to the `run_mse` call
 #'
-#' @export list of arrays of containing OM results from each simulation
-#'
+#' @return list of arrays of containing OM results from each simulation
+#' @export run_mse_multiple
+#' 
 #' @example
 #'
 run_mse_multiple <- function(nsims, seeds, nyears, ...){

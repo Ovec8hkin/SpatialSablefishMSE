@@ -1,21 +1,26 @@
-# om <- readRDS("data/om2.RDS")
-# nyears <- 64
-# dem_params <- om_new$dem_params
-# # dem_params$waa <- dem_params$waa[nyears,,,,drop=FALSE]
-# # dem_params$mat <- dem_params$mat[nyears,,,,drop=FALSE]
-# # dem_params$mort <- dem_params$mort[nyears,,,,drop=FALSE]
-
-# # land_caa <- om_new$land_caa[nyears,,,,,1,drop=FALSE]
-# # survey_indices <- om_new$survey_obs
-# # survey_indices$ll_rpn <- om$survey_obs$ll_rpn[nyears]
-# # survey_indices$ll_rpw <- om$survey_obs$ll_rpw[nyears]
-# # survey_indices$tw_rpw <- om$survey_obs$tw_rpw[nyears]
-
-# # fxfish_caa_obs <- om_new$survey_obs$fxfish_acs[nyears-1,,,, drop=FALSE]
-# # ll_ac_obs <- om_new$survey_obs$ll_acs[nyears-1,,,, drop=FALSE]
-# # model_options <- om_new$model_options
-# # added_years <- 1
-
+#' Format OM Observation Data for TMB Assessment Model
+#' #'
+#' Format data and observations from an `afscOM` operating model
+#' and update the model data and parameters required by the 
+#' `SpatialSablefishAssessment` TMB assessment model. 
+#' 
+#' This function requires the existence of 'data/sablefish_em_data_2022.RDS',
+#' and 'data/sablefish_em_par_2022.RDS' files, which come packaged with the
+#' `SablefishMSE` codebase. 
+#'
+#' @param nyears the number of years of data that will be passed to the model
+#' @param dem_params demographic parameter matrices subsetted to 1 year
+#' @param land_caa one year worth of landed catch-at-age data (dimensins [1, nages, nsexes, nregions, nfleets])
+#' @param survey_indices one year worth of survey indices (LL RPN, LL RPW, and TW RPW)
+#' @param fxfish_caa_obs one year worth of catch-at-age observation from the fixed gear fishery
+#' @param ll_ac_obs one year worth of age composition observations frmo the longline survey
+#' @param model_options list of model options provided to the OM
+#' @param added_year the number of new years of data being added (should usually be 1) 
+#'
+#' @export format_em_data
+#'
+#' @example
+#'
 format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, ll_ac_obs, model_options, added_years=1){
 
     # Read the most current set of data from an RDS file
