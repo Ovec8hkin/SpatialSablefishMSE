@@ -37,7 +37,8 @@ dimension_names <- list(
     "age"  = 2:31,
     "sex"  = c("F", "M"),
     "region" = "alaska",
-    "fleet" = c("Fixed", "Trawl")
+    "fleet" = c("Fixed", "Trawl"),
+    "sims" = 1:nsims
 )
 
 model_params <- set_model_params(nyears, nages, nsexes, nregions, nfleets)
@@ -197,6 +198,7 @@ obs_pars <- list(
 )
 
 model_options$obs_pars <- obs_pars
+model_options$simulate_observations <- FALSE
 
 #' 6. Setup empty array to collect derived quantities from the OM
 #' It is left to the user to decide what information to store, and
@@ -204,14 +206,14 @@ model_options$obs_pars <- obs_pars
 #'
 #' Here, we are storing all OM outputs as they are returned from the
 #' OM.
-land_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
-disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
-caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
-faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims))
-tac         = array(NA, dim=c(nyears, 1, 1, 1, nsims))
-hcr_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
-out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims))
-naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims))
+land_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+tac         = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sims"=1:nsims))
+hcr_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sims"=1:nsims))
+out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sims"=1:nsims))
+naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=1:nsims))
 naa[1,,,,] = init_naa
 
 # survey_preds <- list(
@@ -245,8 +247,16 @@ naa[1,,,,] = init_naa
 #' demographic matrices to ensure input data is of the correct
 #' dimensionality.
 
+om_object <- list(
+    dem_params = dem_params,
+    init_naa = init_naa,
+    model_options = model_options
+)
+saveRDS(om_object, "data/sablefish_om.RDS")
+
+ref_naa <- readRDS("data/agestruct_f40.RDS")
+
 seeds <- sample(1:(nsims*1000), size=nsims, replace=FALSE)
-model_options$simulate_observations <- FALSE
 for(s in 1:nsims){
     print(s)
     set.seed(seeds[s])
@@ -312,7 +322,18 @@ for(s in 1:nsims){
             )
 
             ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
+            hcr_F[y] <- as_scalar_threshold_f(
+                            ssb/ref_pts$B40, 
+                            naa=out_vars$naa_tmp[,,1,], 
+                            ref_naa=ref_naa,
+                            as_func = average_age,
+                            ages = 2:31,
+                            f_min=0,
+                            f_max=ref_pts$F40,
+                            lrp=0.05,
+                            urp=1.0
+                        )
+            # hcr_F[y] <- npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
             joint_sel[,,1,] <- joint_self
