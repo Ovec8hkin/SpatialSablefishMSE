@@ -3,6 +3,7 @@ rm(list=ls())
 library(ggdist)
 library(ggh4x)
 library(reshape2)
+library(SpatialSablefishAssessment)
 
 # library(afscOM) # may work but not certain
 

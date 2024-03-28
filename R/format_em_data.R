@@ -58,8 +58,8 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     new_data$female_mean_weight_by_age <- cbind(new_data$female_mean_weight_by_age, waa_f)
 
     # age-length transition matrix
-    male_al_trans_mat <- extend_3darray_last_dim(new_data$male_age_length_transition, n=extra_years)
-    female_al_trans_mat <- extend_3darray_last_dim(new_data$female_age_length_transition, n=extra_years)
+    male_al_trans_mat <- SpatialSablefishAssessment::extend_3darray_last_dim(new_data$male_age_length_transition, n=extra_years)
+    female_al_trans_mat <- SpatialSablefishAssessment::extend_3darray_last_dim(new_data$female_age_length_transition, n=extra_years)
 
     new_data$male_age_length_transition <- male_al_trans_mat
     new_data$female_age_length_transition <- female_al_trans_mat
@@ -82,38 +82,38 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     new_data$trwl_fishery_catch <- c(new_data$trwl_fishery_catch, tw_catch)
 
     # fishery selectivity
-    ll_sel_yr_indic <- extend_vec_last_val(new_data$ll_sel_by_year_indicator, n=extra_years)
-    tw_sel_yr_indic <- extend_vec_last_val(new_data$trwl_sel_by_year_indicator, n=extra_years)
-    jp_sel_yr_indic <- extend_vec_last_val(new_data$srv_jap_fishery_ll_sel_by_year_indicator, n=extra_years)
+    ll_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_sel_by_year_indicator, n=extra_years)
+    tw_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$trwl_sel_by_year_indicator, n=extra_years)
+    jp_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_fishery_ll_sel_by_year_indicator, n=extra_years)
 
     new_data$ll_sel_by_year_indicator <- ll_sel_yr_indic
     new_data$trwl_sel_by_year_indicator <- tw_sel_yr_indic
     new_data$srv_jap_fishery_ll_sel_by_year_indicator <- jp_sel_yr_indic
 
     # survey selectivity and catchability
-    srv_ll_sel_yr_indic <- extend_vec_last_val(new_data$srv_dom_ll_sel_by_year_indicator, n=extra_years)
-    srv_tw_sel_yr_indic <- extend_vec_last_val(new_data$srv_nmfs_trwl_sel_by_year_indicator, n=extra_years)
-    srv_jp_sel_yr_indic <- extend_vec_last_val(new_data$srv_jap_ll_sel_by_year_indicator, n=extra_years)
+    srv_ll_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_dom_ll_sel_by_year_indicator, n=extra_years)
+    srv_tw_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_nmfs_trwl_sel_by_year_indicator, n=extra_years)
+    srv_jp_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_ll_sel_by_year_indicator, n=extra_years)
 
     new_data$srv_dom_ll_sel_by_year_indicator <- srv_ll_sel_yr_indic
     new_data$srv_nmfs_trwl_sel_by_year_indicator <- srv_tw_sel_yr_indic
     new_data$srv_jap_ll_sel_by_year_indicator <- srv_jp_sel_yr_indic
 
-    srv_ll_q_yr_indic <- extend_vec_last_val(new_data$srv_dom_ll_q_by_year_indicator, n=extra_years)
-    srv_tw_q_yr_indic <- extend_vec_last_val(new_data$srv_nmfs_trwl_q_by_year_indicator, n=extra_years)
-    srv_jp_q_yr_indic <- extend_vec_last_val(new_data$srv_jap_ll_q_by_year_indicator, n=extra_years)
-    jp_q_yr_indic <- extend_vec_last_val(new_data$srv_jap_fishery_ll_q_by_year_indicator, n=extra_years)
+    srv_ll_q_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_dom_ll_q_by_year_indicator, n=extra_years)
+    srv_tw_q_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_nmfs_trwl_q_by_year_indicator, n=extra_years)
+    srv_jp_q_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_ll_q_by_year_indicator, n=extra_years)
+    jp_q_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_fishery_ll_q_by_year_indicator, n=extra_years)
 
     new_data$srv_dom_ll_q_by_year_indicator <- srv_ll_q_yr_indic
     new_data$srv_nmfs_trwl_q_by_year_indicator <- srv_tw_q_yr_indic
     new_data$srv_jap_ll_q_by_year_indicator <- srv_jp_q_yr_indic
     new_data$srv_jap_fishery_ll_q_by_year_indicator <- jp_q_yr_indic
 
-    ll_cpue_q_yr_indic <- extend_vec_last_val(new_data$ll_cpue_q_by_year_indicator, n=extra_years)
+    ll_cpue_q_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_cpue_q_by_year_indicator, n=extra_years)
     new_data$ll_cpue_q_by_year_indicator <- ll_cpue_q_yr_indic
 
     # catch at age new_data
-    ll_caa_indic <- extend_vec_last_val(new_data$ll_catchatage_indicator, n=extra_years)
+    ll_caa_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_catchatage_indicator, n=extra_years)
     ll_caa_indic[(length(ll_caa_indic)-1)] <- 1
     new_data$ll_catchatage_indicator <- ll_caa_indic
 
@@ -123,7 +123,7 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     obs_ll_caa <- apply(fxfish_caa_obs[,,,,drop=FALSE], c(1, 2), sum)
     new_data$obs_ll_catchatage <- cbind(new_data$obs_ll_catchatage, apply(obs_ll_caa, 1, as.double))
 
-    srv_ll_caa_indic <- extend_vec_last_val(new_data$srv_dom_ll_age_indicator, n=extra_years)
+    srv_ll_caa_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_dom_ll_age_indicator, n=extra_years)
     srv_ll_caa_indic[(length(years)-1)] <- 1
     new_data$srv_dom_ll_age_indicator <- srv_ll_caa_indic
 
@@ -133,15 +133,15 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     obs_srv_ll_caa <- apply(ll_ac_obs[,,,,drop=FALSE], c(1, 2), sum)
     new_data$obs_srv_dom_ll_age <- cbind(new_data$obs_srv_dom_ll_age, apply(obs_srv_ll_caa, 1, as.double))
 
-    srv_jpll_caa_indic <- extend_vec_last_val(new_data$srv_jap_ll_age_indicator, n=extra_years)
+    srv_jpll_caa_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_ll_age_indicator, n=extra_years)
     new_data$srv_jap_ll_age_indicator <- srv_jpll_caa_indic
 
     srv_tw_caa_indic <- c(new_data$srv_nmfs_trwl_age_indicator, rep(0, length.out=extra_years))
     new_data$srv_nmfs_trwl_age_indicator <- srv_tw_caa_indic
 
     # catch at length
-    ll_cal_indic <- extend_vec_last_val(new_data$ll_catchatlgth_indicator, n=extra_years)
-    tw_cal_indic <- extend_vec_last_val(new_data$trwl_catchatlgth_indicator, n=extra_years)
+    ll_cal_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_catchatlgth_indicator, n=extra_years)
+    tw_cal_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$trwl_catchatlgth_indicator, n=extra_years)
 
     new_data$ll_catchatlgth_indicator <- ll_cal_indic
     new_data$trwl_catchatlgth_indicator <- tw_cal_indic
@@ -152,14 +152,14 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     new_data$srv_dom_ll_lgth_indicator <- srv_ll_cal_indic
     new_data$srv_nmfs_trwl_lgth_indicator <- srv_tw_cal_indic
 
-    srv_jpll_cal_indic <- extend_vec_last_val(new_data$srv_jap_ll_lgth_indicator, n=extra_years)
-    jp_ll_cal_indic <- extend_vec_last_val(new_data$srv_jap_fishery_ll_lgth_indicator, n=extra_years)
+    srv_jpll_cal_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_ll_lgth_indicator, n=extra_years)
+    jp_ll_cal_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_fishery_ll_lgth_indicator, n=extra_years)
 
     new_data$srv_jap_ll_lgth_indicator <- srv_jpll_cal_indic
     new_data$srv_jap_fishery_ll_lgth_indicator <- jp_ll_cal_indic
 
     # Survey new_data
-    srv_ll_rpn_indic <- extend_vec_last_val(new_data$srv_dom_ll_bio_indicator, n=extra_years)
+    srv_ll_rpn_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_dom_ll_bio_indicator, n=extra_years)
     srv_ll_rpn_obs <- survey_indices$ll_rpn
     srv_ll_rpn_ses <- model_options$obs_pars$surv_ll$rpn_cv*survey_indices$ll_rpn
 
@@ -167,7 +167,7 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     new_data$obs_dom_ll_bio <- c(new_data$obs_dom_ll_bio, srv_ll_rpn_obs)
     new_data$se_dom_ll_bio <- c(new_data$se_dom_ll_bio, srv_ll_rpn_ses)
 
-    srv_jpll_indic <- extend_vec_last_val(new_data$srv_jap_ll_bio_indicator, n=extra_years)
+    srv_jpll_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_ll_bio_indicator, n=extra_years)
     new_data$srv_jap_ll_bio_indicator <- srv_jpll_indic
 
     # Be careful here. The trawl survey technically only happens ever other
@@ -180,8 +180,8 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     new_data$obs_nmfs_trwl_bio <- c(new_data$obs_nmfs_trwl_bio, srv_tw_rpw_obs)
     new_data$se_nmfs_trwl_bio <- c(new_data$se_nmfs_trwl_bio, srv_tw_rpw_ses)
 
-    ll_cpue_indic <- extend_vec_last_val(new_data$ll_cpue_indicator, n=extra_years)
-    jp_ll_rpw_indic <- extend_vec_last_val(new_data$srv_jap_fishery_ll_bio_indicator, n=extra_years)
+    ll_cpue_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_cpue_indicator, n=extra_years)
+    jp_ll_rpw_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_fishery_ll_bio_indicator, n=extra_years)
 
     new_data$ll_cpue_indicator <- ll_cpue_indic
     new_data$srv_jap_fishery_ll_bio_indicator <- jp_ll_rpw_indic
@@ -190,8 +190,8 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
 
     new_parameters <- readRDS(param_file)
 
-    ln_M_year_devs <- extend_vec_last_val(new_parameters$ln_M_year_devs, n=extra_years)
-    ln_M_age_devs  <- extend_vec_last_val(new_parameters$ln_M_age_devs, n=extra_years)
+    ln_M_year_devs <- SpatialSablefishAssessment::extend_vec_last_val(new_parameters$ln_M_year_devs, n=extra_years)
+    ln_M_age_devs  <- SpatialSablefishAssessment::extend_vec_last_val(new_parameters$ln_M_age_devs, n=extra_years)
     ln_rec_dev <- c(new_parameters$ln_rec_dev, rep(0, extra_years))
     ln_ll_F <- c(new_parameters$ln_ll_F_devs, rep(0, extra_years))
     ln_tw_F <- c(new_parameters$ln_trwl_F_devs, rep(0, extra_years))
@@ -213,7 +213,7 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     saveRDS(new_data, "data/sablefish_em_data_curr.RDS")
     saveRDS(new_parameters, "data/sablefish_em_par_curr.RDS")
 
-    capture.output(valid <- validate_input_data_and_parameters(new_data, new_parameters))
+    capture.output(valid <- SpatialSablefishAssessment::validate_input_data_and_parameters(new_data, new_parameters))
 
     if(valid){
         return(afscOM::listN(new_data, new_parameters))
