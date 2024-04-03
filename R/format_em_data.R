@@ -21,7 +21,7 @@
 #'
 #' @example
 #'
-format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, ll_ac_obs, model_options, added_years=1){
+format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, ll_ac_obs, model_options, added_years=1, file_suffix=""){
 
     # Read the most current set of data from an RDS file
     # If those files don't exist, then default back to 
@@ -30,8 +30,8 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
         data_file <- "data/sablefish_em_data_2022.RDS"
         param_file <- "data/sablefish_em_par_2022.RDS"
     }else{
-        data_file <- "data/sablefish_em_data_curr.RDS"
-        param_file <- "data/sablefish_em_par_curr.RDS"
+        data_file <- paste0("data/sablefish_em_data_curr_",file_suffix,".RDS")
+        param_file <- paste0("data/sablefish_em_par_curr_",file_suffix,".RDS")
     }
 
     new_data <- readRDS(data_file)
@@ -233,8 +233,8 @@ if(is.null(dim(mortality))){
     # mle_report = my_model$report(mle_optim$par)  
     # assessment_ssb <- SpatialSablefishAssessment::get_SSB(mle_report) %>% filter(Year == max(Year)) %>% pull(SSB)
 
-    saveRDS(new_data, "data/sablefish_em_data_curr.RDS")
-    saveRDS(new_parameters, "data/sablefish_em_par_curr.RDS")
+    saveRDS(new_data, paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
+    saveRDS(new_parameters, paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
     capture.output(valid <- SpatialSablefishAssessment::validate_input_data_and_parameters(new_data, new_parameters))
 

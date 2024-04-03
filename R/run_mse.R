@@ -15,7 +15,7 @@
 #'
 #' @example
 #'
-run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120){
+run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
    
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -125,7 +125,8 @@ naa_proj <- out_vars$naa_tmp
                 fxfish_caa_obs = survey_obs$fxfish_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
                 ll_ac_obs = survey_obs$ll_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
                 model_options = model_options,
-                added_years = 1
+                added_years = 1,
+                    file_suffix = file_suffix
             )
 
             mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
@@ -177,7 +178,7 @@ naa_proj <- out_vars$naa_tmp
             #                 urp=1.0
             #             )
 
-            naa_est_tmp <- naa_est[y,,,, drop=FALSE]
+            #naa_est_tmp <- naa_est[y,,,, drop=FALSE]
 
             hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp.y, ...)
             #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)

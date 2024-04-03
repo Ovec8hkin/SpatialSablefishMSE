@@ -50,7 +50,7 @@ run_mse_multiple <- function(nsims, seeds, nyears, ...){
 
     for(s in 1:nsims){
         seed <- seeds[s]
-        mse <- run_mse(..., nyears_input=nyears, seed=seed)
+        mse <- run_mse(..., nyears_input=nyears, seed=seed, file_suffix = seed)
     
         land_caa[,,,,,s] <- mse$land_caa
         disc_caa[,,,,,s] <- mse$disc_caa
