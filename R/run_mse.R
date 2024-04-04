@@ -111,42 +111,48 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         
         if((y+1) > spinup_years){
 
-naa_proj <- out_vars$naa_tmp
+            naa_proj <- out_vars$naa_tmp
             rec <- recruitment[1:y]
 
             if(model_options$run_estimation){
-            # Do all of the data formatting and running
-            # of the TMB Sablefish model
-            assess_inputs <- format_em_data(
-                nyears = y,
-                dem_params = dp.y,
-                land_caa = out_vars$land_caa_tmp,
-                survey_indices = out_vars$surv_obs,
-                fxfish_caa_obs = survey_obs$fxfish_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
-                ll_ac_obs = survey_obs$ll_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
-                model_options = model_options,
-                added_years = 1,
+                # Do all of the data formatting and running
+                # of the TMB Sablefish model
+                assess_inputs <- format_em_data(
+                    nyears = y,
+                    dem_params = dp.y,
+                    land_caa = out_vars$land_caa_tmp,
+                    survey_indices = out_vars$surv_obs,
+                    fxfish_caa_obs = survey_obs$fxfish_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
+                    ll_ac_obs = survey_obs$ll_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
+                    model_options = model_options,
+                    added_years = 1,
                     file_suffix = file_suffix
-            )
+                )
 
-            mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
-            mod_report <- mod_out$report
+                mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
+                mod_report <- mod_out$report
                 ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
-            rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% pull(Recruitment)
+                rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% pull(Recruitment)
 
-            # Store assessment estimates of age composition
-            # for comparing EM and OM
-            if(y == spinup_years){
-                naaf <- t(mod_report$natage_f[,1:(spinup_years-1)])
-                naam <- t(mod_report$natage_m[,1:(spinup_years-1)])
-                naa_est[1:(spinup_years-1),,1,] <- naaf
-                naa_est[1:(spinup_years-1),,2,] <- naam
-            }
+                # Store assessment estimates of age composition
+                # for comparing EM and OM
+                if(y == spinup_years){
+                    naaf <- t(mod_report$natage_f[,1:(spinup_years-1)])
+                    naam <- t(mod_report$natage_m[,1:(spinup_years-1)])
+                    naa_est[1:(spinup_years-1),,1,] <- naaf
+                    naa_est[1:(spinup_years-1),,2,] <- naam
+                }
 
-            naa_est[y,,1,] <- mod_report$natage_f[,y]
-            naa_est[y,,2,] <- mod_report$natage_m[,y]
+                naa_est[y,,1,] <- mod_report$natage_f[,y]
+                naa_est[y,,2,] <- mod_report$natage_m[,y]
 
                 naa_proj <- naa_est[y,,,, drop=FALSE]
+
+                model_outs$mods[(y+1)-spinup_years] = mod_out$model
+                model_outs$fits[(y+1)-spinup_years] = mod_out$opt
+                model_outs$reps[(y+1)-spinup_years] = mod_out$report
+
+            }
 
             # Solve for reference points, F from the HCR,
             # and compute TAC for the next year.
