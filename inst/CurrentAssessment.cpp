@@ -844,53 +844,53 @@ Type objective_function<Type>::operator() () {
     }
 
     // Japanese longline survey relative index
-    if(srv_jap_ll_bio_indicator(year_ndx) == 1) {
-      if(obs_jap_ll_bio_is_numbers == 0) {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_jap_ll_bio(srv_jap_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
-      } else {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_jap_ll_bio(srv_jap_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx));
-      }
-      // account for catchability and times 2 ???
-      pred_jap_ll_bio(srv_jap_ll_bio_ndx)  *= 2 * srv_jap_ll_q(srv_jap_ll_q_by_year_indicator(year_ndx));
-      nll(4) += square((log(obs_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001) - log(pred_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001) ))/ (2.0 * square(se_jap_ll_bio(srv_jap_ll_bio_ndx) / obs_jap_ll_bio(srv_jap_ll_bio_ndx)));
-      // Simulate lognormal observations
-      // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
-      SIMULATE {
-        obs_jap_ll_bio(srv_jap_ll_bio_ndx) = exp(rnorm(log(pred_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001), (se_jap_ll_bio(srv_jap_ll_bio_ndx) / obs_jap_ll_bio(srv_jap_ll_bio_ndx))));
-      }
-      ++srv_jap_ll_bio_ndx;
-    }
+    // if(srv_jap_ll_bio_indicator(year_ndx) == 1) {
+    //   if(obs_jap_ll_bio_is_numbers == 0) {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_jap_ll_bio(srv_jap_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+    //   } else {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_jap_ll_bio(srv_jap_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx));
+    //   }
+    //   // account for catchability and times 2 ???
+    //   pred_jap_ll_bio(srv_jap_ll_bio_ndx)  *= 2 * srv_jap_ll_q(srv_jap_ll_q_by_year_indicator(year_ndx));
+    //   nll(4) += square((log(obs_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001) - log(pred_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001) ))/ (2.0 * square(se_jap_ll_bio(srv_jap_ll_bio_ndx) / obs_jap_ll_bio(srv_jap_ll_bio_ndx)));
+    //   // Simulate lognormal observations
+    //   // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
+    //   SIMULATE {
+    //     obs_jap_ll_bio(srv_jap_ll_bio_ndx) = exp(rnorm(log(pred_jap_ll_bio(srv_jap_ll_bio_ndx) + 0.0001), (se_jap_ll_bio(srv_jap_ll_bio_ndx) / obs_jap_ll_bio(srv_jap_ll_bio_ndx))));
+    //   }
+    //   ++srv_jap_ll_bio_ndx;
+    // }
 
     // longline Fishery CPUE
-    if(ll_cpue_indicator(year_ndx) == 1) {
-      if(obs_ll_cpue_is_numbers == 0) {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_ll_cpue(ll_cpue_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_ll_m(age_ndx, ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_ll_f(age_ndx, ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
-      } else {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_ll_cpue(ll_cpue_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_ll_m(age_ndx, ll_sel_by_year_indicator(year_ndx)) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_ll_f(age_ndx, ll_sel_by_year_indicator(year_ndx));
-      }
-      // account for catchability and times 2 ???
-      pred_ll_cpue(ll_cpue_ndx)  *= ll_cpue_q(ll_cpue_q_by_year_indicator(year_ndx));
-      //nll(5) += square((log(obs_ll_cpue(ll_cpue_ndx) + 0.0001) - log(pred_ll_cpue(ll_cpue_ndx) + 0.0001) ))/ (2.0 * square(se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx)));
-      if(ll_cpue_likelihood == 0) {
-        nll(5) += square((log(obs_ll_cpue(ll_cpue_ndx) + 0.0001) - log(pred_ll_cpue(ll_cpue_ndx) + 0.0001) ))/ (2.0 * square(se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx)));
-        // Simulate lognormal observations
-        // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
-        SIMULATE {
-          obs_ll_cpue(ll_cpue_ndx) = exp(rnorm(log(pred_ll_cpue(ll_cpue_ndx) + 0.0001), (se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx))));
-        }
-      } else {
-        nll(5) -= dlnorm(obs_ll_cpue(ll_cpue_ndx), log(pred_ll_cpue(ll_cpue_ndx)) - 0.5 * se_ll_cpue(ll_cpue_ndx) * se_ll_cpue(ll_cpue_ndx), se_ll_cpue(ll_cpue_ndx), true);
-        // Simulate lognormal observations
-        SIMULATE {
-          obs_ll_cpue(ll_cpue_ndx) = exp(rnorm(log(pred_ll_cpue(ll_cpue_ndx)) - 0.5 * se_ll_cpue(ll_cpue_ndx) * se_ll_cpue(ll_cpue_ndx), se_ll_cpue(ll_cpue_ndx)));
-        }
-      }
-      ++ll_cpue_ndx;
-    }
+    // if(ll_cpue_indicator(year_ndx) == 1) {
+    //   if(obs_ll_cpue_is_numbers == 0) {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_ll_cpue(ll_cpue_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_ll_m(age_ndx, ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_ll_f(age_ndx, ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+    //   } else {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_ll_cpue(ll_cpue_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_ll_m(age_ndx, ll_sel_by_year_indicator(year_ndx)) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_ll_f(age_ndx, ll_sel_by_year_indicator(year_ndx));
+    //   }
+    //   // account for catchability and times 2 ???
+    //   pred_ll_cpue(ll_cpue_ndx)  *= ll_cpue_q(ll_cpue_q_by_year_indicator(year_ndx));
+    //   //nll(5) += square((log(obs_ll_cpue(ll_cpue_ndx) + 0.0001) - log(pred_ll_cpue(ll_cpue_ndx) + 0.0001) ))/ (2.0 * square(se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx)));
+    //   if(ll_cpue_likelihood == 0) {
+    //     nll(5) += square((log(obs_ll_cpue(ll_cpue_ndx) + 0.0001) - log(pred_ll_cpue(ll_cpue_ndx) + 0.0001) ))/ (2.0 * square(se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx)));
+    //     // Simulate lognormal observations
+    //     // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
+    //     SIMULATE {
+    //       obs_ll_cpue(ll_cpue_ndx) = exp(rnorm(log(pred_ll_cpue(ll_cpue_ndx) + 0.0001), (se_ll_cpue(ll_cpue_ndx) / obs_ll_cpue(ll_cpue_ndx))));
+    //     }
+    //   } else {
+    //     nll(5) -= dlnorm(obs_ll_cpue(ll_cpue_ndx), log(pred_ll_cpue(ll_cpue_ndx)) - 0.5 * se_ll_cpue(ll_cpue_ndx) * se_ll_cpue(ll_cpue_ndx), se_ll_cpue(ll_cpue_ndx), true);
+    //     // Simulate lognormal observations
+    //     SIMULATE {
+    //       obs_ll_cpue(ll_cpue_ndx) = exp(rnorm(log(pred_ll_cpue(ll_cpue_ndx)) - 0.5 * se_ll_cpue(ll_cpue_ndx) * se_ll_cpue(ll_cpue_ndx), se_ll_cpue(ll_cpue_ndx)));
+    //     }
+    //   }
+    //   ++ll_cpue_ndx;
+    // }
 
     // Survey Domestic Longline age frequency
     if(srv_dom_ll_age_indicator(year_ndx) == 1) {
@@ -960,74 +960,74 @@ Type objective_function<Type>::operator() () {
       ++srv_dom_ll_lgth_ndx;
     }
     // Survey Japanese Longline age frequency
-    if(srv_jap_ll_age_indicator(year_ndx) == 1) {
-      for(age_ndx = 0; age_ndx < n_ages; age_ndx++) {
-        temp_numbers_at_age(age_ndx) = proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx));
-      }
-      temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
-      pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx) = temp_numbers_at_age_after_ageing_error / sum(temp_numbers_at_age_after_ageing_error);
-      // Log-likelihood contribution
-      if(srv_jap_ll_age_comp_likelihood == 0) {
-        // ADMB's multinomial method
-        Type sample_size = sum(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx));
-        temp_numbers_at_age = obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx) / sample_size;
-        nll(9) -= sample_size * sum(vector<Type>((temp_numbers_at_age + 0.001) * log(pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx) + 0.001)));
-      } else if(ll_catchatage_comp_likelihood == 1) {
-        // TMB's multinomial method
-        nll(9) -= dmultinom_upd(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), true);
-      }
-      // Simulate Multinomial observations. These will be integers i.e., numbers at age
-      // so will contain both proportions and N_eff
-      SIMULATE {
-        Type sample_size = sum(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx));
-        vector<Type> temp_observed_age = rmultinom(pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), sample_size);
-        obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx) = temp_observed_age;
-      }
-      ++srv_jap_ll_age_ndx;
-    }
+    // if(srv_jap_ll_age_indicator(year_ndx) == 1) {
+    //   for(age_ndx = 0; age_ndx < n_ages; age_ndx++) {
+    //     temp_numbers_at_age(age_ndx) = proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * sel_srv_jap_ll_m(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * sel_srv_jap_ll_f(age_ndx, srv_jap_ll_sel_by_year_indicator(year_ndx));
+    //   }
+    //   temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
+    //   pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx) = temp_numbers_at_age_after_ageing_error / sum(temp_numbers_at_age_after_ageing_error);
+    //   // Log-likelihood contribution
+    //   if(srv_jap_ll_age_comp_likelihood == 0) {
+    //     // ADMB's multinomial method
+    //     Type sample_size = sum(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx));
+    //     temp_numbers_at_age = obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx) / sample_size;
+    //     nll(9) -= sample_size * sum(vector<Type>((temp_numbers_at_age + 0.001) * log(pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx) + 0.001)));
+    //   } else if(ll_catchatage_comp_likelihood == 1) {
+    //     // TMB's multinomial method
+    //     nll(9) -= dmultinom_upd(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), true);
+    //   }
+    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
+    //   // so will contain both proportions and N_eff
+    //   SIMULATE {
+    //     Type sample_size = sum(obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx));
+    //     vector<Type> temp_observed_age = rmultinom(pred_srv_jap_ll_age.col(srv_jap_ll_age_ndx).vec(), sample_size);
+    //     obs_srv_jap_ll_age.col(srv_jap_ll_age_ndx) = temp_observed_age;
+    //   }
+    //   ++srv_jap_ll_age_ndx;
+    // }
 
     // Survey Domestic Longline Length frequency
-    if(srv_jap_ll_lgth_indicator(year_ndx) == 1) {
-      temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_jap_ll_m.col(srv_jap_ll_sel_by_year_indicator(year_ndx));
-      pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
-      temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_jap_ll_f.col(srv_jap_ll_sel_by_year_indicator(year_ndx));
-      pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+    // if(srv_jap_ll_lgth_indicator(year_ndx) == 1) {
+    //   temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_jap_ll_m.col(srv_jap_ll_sel_by_year_indicator(year_ndx));
+    //   pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+    //   temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_jap_ll_f.col(srv_jap_ll_sel_by_year_indicator(year_ndx));
+    //   pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
 
-      //pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_jap_ll_f.col(srv_jap_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
-      // normalise to sum = 1
-      pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) /= sum(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
-      pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) /= sum(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
-      // Log-likelihood contribution
-      if(srv_jap_ll_lgth_comp_likelihood == 0) {
-        // ADMB's multinomial method
-        // males
-        Type sample_size = sum(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
-        temp_numbers_at_lgth = obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) / sample_size;
-        nll(10) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) + 0.001)));
-        // females
-        sample_size = sum(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
-        temp_numbers_at_lgth = obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) / sample_size;
-        nll(11) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) + 0.001)));
+    //   //pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_jap_ll_f.col(srv_jap_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
+    //   // normalise to sum = 1
+    //   pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) /= sum(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
+    //   pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) /= sum(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
+    //   // Log-likelihood contribution
+    //   if(srv_jap_ll_lgth_comp_likelihood == 0) {
+    //     // ADMB's multinomial method
+    //     // males
+    //     Type sample_size = sum(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
+    //     temp_numbers_at_lgth = obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) / sample_size;
+    //     nll(10) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) + 0.001)));
+    //     // females
+    //     sample_size = sum(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
+    //     temp_numbers_at_lgth = obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) / sample_size;
+    //     nll(11) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) + 0.001)));
 
-      } else if(srv_jap_ll_lgth_comp_likelihood == 1) {
-        // TMB's multinomial method
-        nll(10) -= dmultinom_upd(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), true);
-        nll(11) -= dmultinom_upd(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), true);
-      }
-      // Simulate Multinomial observations. These will be integers i.e., numbers at age
-      // so will contain both proportions and N_eff
-      SIMULATE {
-        // Males first
-        Type sample_size = sum(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
-        vector<Type> temp_observed_lgth = rmultinom(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), sample_size);
-        obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) = temp_observed_lgth;
-        // Females second
-        sample_size = sum(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
-        temp_observed_lgth = rmultinom(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), sample_size);
-        obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = temp_observed_lgth;
-      }
-      ++srv_jap_ll_lgth_ndx;
-    }
+    //   } else if(srv_jap_ll_lgth_comp_likelihood == 1) {
+    //     // TMB's multinomial method
+    //     nll(10) -= dmultinom_upd(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), true);
+    //     nll(11) -= dmultinom_upd(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), true);
+    //   }
+    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
+    //   // so will contain both proportions and N_eff
+    //   SIMULATE {
+    //     // Males first
+    //     Type sample_size = sum(obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx));
+    //     vector<Type> temp_observed_lgth = rmultinom(pred_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx).vec(), sample_size);
+    //     obs_srv_jap_ll_lgth_m.col(srv_jap_ll_lgth_ndx) = temp_observed_lgth;
+    //     // Females second
+    //     sample_size = sum(obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx));
+    //     temp_observed_lgth = rmultinom(pred_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx).vec(), sample_size);
+    //     obs_srv_jap_ll_lgth_f.col(srv_jap_ll_lgth_ndx) = temp_observed_lgth;
+    //   }
+    //   ++srv_jap_ll_lgth_ndx;
+    // }
 
     // Survey GOA Trawl Age frequency
     if(srv_nmfs_trwl_age_indicator(year_ndx) == 1) {
@@ -1124,61 +1124,61 @@ Type objective_function<Type>::operator() () {
       ++srv_nmfs_trwl_bio_ndx;
     }
     // survey for the Japanese longline fishery CPUE
-    if(srv_jap_fishery_ll_bio_indicator(year_ndx) == 1) {
-      if(obs_jap_fishery_ll_bio_is_numbers == 0) {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
-      } else {
-        for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx));
-      }
-      // account for catchability and times 2 ???
-      pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)  *= srv_jap_fishery_ll_q(srv_jap_fishery_ll_q_by_year_indicator(year_ndx));
-      if(srv_jap_fishery_ll_bio_likelihood == 0) {
-        nll(18) += square((log(obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001) - log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001) ))/ (2.0 * square(se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) / obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)));
-        // Simulate lognormal observations
-        // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
-        SIMULATE {
-          obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) = exp(rnorm(log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001), (se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) / obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx))));
-        }
-      } else {
-        nll(18) -= dlnorm(obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)) - 0.5 * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), true);
-        // Simulate lognormal observations
-        SIMULATE {
-          obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) = exp(rnorm(log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)) - 0.5 * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)));
-        }
-      }
-      ++srv_jap_fishery_ll_bio_ndx;
-    }
+    // if(srv_jap_fishery_ll_bio_indicator(year_ndx) == 1) {
+    //   if(obs_jap_fishery_ll_bio_is_numbers == 0) {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+    //   } else {
+    //     for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //       pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) += natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) + natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx));
+    //   }
+    //   // account for catchability and times 2 ???
+    //   pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)  *= srv_jap_fishery_ll_q(srv_jap_fishery_ll_q_by_year_indicator(year_ndx));
+    //   if(srv_jap_fishery_ll_bio_likelihood == 0) {
+    //     nll(18) += square((log(obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001) - log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001) ))/ (2.0 * square(se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) / obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)));
+    //     // Simulate lognormal observations
+    //     // you may want include a bias correction for the mean of -0.5 sigma^2 so the distribution has expectation = predicted value.
+    //     SIMULATE {
+    //       obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) = exp(rnorm(log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) + 0.0001), (se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) / obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx))));
+    //     }
+    //   } else {
+    //     nll(18) -= dlnorm(obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)) - 0.5 * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), true);
+    //     // Simulate lognormal observations
+    //     SIMULATE {
+    //       obs_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) = exp(rnorm(log(pred_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)) - 0.5 * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx) * se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx), se_jap_fishery_ll_bio(srv_jap_fishery_ll_bio_ndx)));
+    //     }
+    //   }
+    //   ++srv_jap_fishery_ll_bio_ndx;
+    // }
 
     // Survey for the Japanese longline fishery Length frequency
-    if(srv_jap_fishery_ll_lgth_indicator(year_ndx) == 1) {
-      for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-        temp_numbers_at_age(age_ndx) = proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) *  sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx));
+    // if(srv_jap_fishery_ll_lgth_indicator(year_ndx) == 1) {
+    //   for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
+    //     temp_numbers_at_age(age_ndx) = proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) *  sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * sel_srv_jap_fishery_ll(age_ndx, srv_jap_fishery_ll_sel_by_year_indicator(year_ndx));
 
-      pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) = historical_jap_fishery_ll_age_length_transition.transpose() * temp_numbers_at_age.matrix();
-      //pred_srv_jap_fishery_ll_lgth_f.col(srv_jap_fishery_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_jap_fishery_ll_f.col(srv_jap_fishery_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
-      // normalise to sum = 1
-      pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) /= sum(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
-      // Log-likelihood contribution
-      if(srv_jap_fishery_ll_lgth_comp_likelihood == 0) {
-        // ADMB's multinomial method
-        // males
-        Type sample_size = sum(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
-        temp_numbers_at_lgth = obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) / sample_size;
-        nll(19) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) + 0.001)));
-      } else if(srv_jap_fishery_ll_lgth_comp_likelihood == 1) {
-        nll(19) -= dmultinom_upd(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), true);
-      }
-      // Simulate Multinomial observations. These will be integers i.e., numbers at age
-      // so will contain both proportions and N_eff
-      SIMULATE {
-        Type sample_size = sum(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
-        vector<Type> temp_observed_lgth = rmultinom(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), sample_size);
-        obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) = temp_observed_lgth;
-      }
-      ++srv_jap_fishery_ll_lgth_ndx;
-    }
+    //   pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) = historical_jap_fishery_ll_age_length_transition.transpose() * temp_numbers_at_age.matrix();
+    //   //pred_srv_jap_fishery_ll_lgth_f.col(srv_jap_fishery_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_jap_fishery_ll_f.col(srv_jap_fishery_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
+    //   // normalise to sum = 1
+    //   pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) /= sum(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
+    //   // Log-likelihood contribution
+    //   if(srv_jap_fishery_ll_lgth_comp_likelihood == 0) {
+    //     // ADMB's multinomial method
+    //     // males
+    //     Type sample_size = sum(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
+    //     temp_numbers_at_lgth = obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) / sample_size;
+    //     nll(19) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) + 0.001)));
+    //   } else if(srv_jap_fishery_ll_lgth_comp_likelihood == 1) {
+    //     nll(19) -= dmultinom_upd(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), true);
+    //   }
+    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
+    //   // so will contain both proportions and N_eff
+    //   SIMULATE {
+    //     Type sample_size = sum(obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx));
+    //     vector<Type> temp_observed_lgth = rmultinom(pred_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx).vec(), sample_size);
+    //     obs_srv_jap_fishery_ll_lgth.col(srv_jap_fishery_ll_lgth_ndx) = temp_observed_lgth;
+    //   }
+    //   ++srv_jap_fishery_ll_lgth_ndx;
+    // }
   }
 
   /*
@@ -1239,22 +1239,22 @@ Type objective_function<Type>::operator() () {
   // Formal prior calculations
   //-------------
 
-  if(cpue_q_prior_type == 1) {
-    for(int q_ndx = 0; q_ndx < ln_ll_cpue_q.size(); ++q_ndx)
-      nll(25) += square(ln_ll_cpue_q(q_ndx) - log(mu_cpue_q(q_ndx)))/(2.0* square(sd_cpue_q(q_ndx)));
-  }
-  if(srv_jap_fishery_ll_prior_type == 1) {
-    for(int q_ndx = 0; q_ndx < ln_srv_jap_fishery_ll_q.size(); ++q_ndx)
-      nll(25) += square(ln_srv_jap_fishery_ll_q(q_ndx) - log(mu_srv_jap_fishery_ll_q(q_ndx)))/(2.0* square(sd_srv_jap_fishery_ll_q(q_ndx)));
-  }
+  // if(cpue_q_prior_type == 1) {
+  //   for(int q_ndx = 0; q_ndx < ln_ll_cpue_q.size(); ++q_ndx)
+  //     nll(25) += square(ln_ll_cpue_q(q_ndx) - log(mu_cpue_q(q_ndx)))/(2.0* square(sd_cpue_q(q_ndx)));
+  // }
+  // if(srv_jap_fishery_ll_prior_type == 1) {
+  //   for(int q_ndx = 0; q_ndx < ln_srv_jap_fishery_ll_q.size(); ++q_ndx)
+  //     nll(25) += square(ln_srv_jap_fishery_ll_q(q_ndx) - log(mu_srv_jap_fishery_ll_q(q_ndx)))/(2.0* square(sd_srv_jap_fishery_ll_q(q_ndx)));
+  // }
   if(srv_nmfs_trwl_q_prior_type == 1) {
     for(int q_ndx = 0; q_ndx < ln_srv_nmfs_trwl_q.size(); ++q_ndx)
       nll(25) += square(ln_srv_nmfs_trwl_q(q_ndx) - log(mu_srv_nmfs_trwl_q(q_ndx)))/(2.0* square(sd_srv_nmfs_trwl_q(q_ndx)));
   }
-  if(srv_jap_ll_q_prior_type == 1) {
-    for(int q_ndx = 0; q_ndx < ln_srv_jap_ll_q.size(); ++q_ndx)
-      nll(25) += square(ln_srv_jap_ll_q(q_ndx) - log(mu_srv_jap_ll_q(q_ndx)))/(2.0* square(sd_srv_jap_ll_q(q_ndx)));
-  }
+  // if(srv_jap_ll_q_prior_type == 1) {
+  //   for(int q_ndx = 0; q_ndx < ln_srv_jap_ll_q.size(); ++q_ndx)
+  //     nll(25) += square(ln_srv_jap_ll_q(q_ndx) - log(mu_srv_jap_ll_q(q_ndx)))/(2.0* square(sd_srv_jap_ll_q(q_ndx)));
+  // }
   if(srv_dom_ll_q_prior_type == 1) {
     for(int q_ndx = 0; q_ndx < ln_srv_dom_ll_q.size(); ++q_ndx)
       nll(25) += square(ln_srv_dom_ll_q(q_ndx) - log(mu_srv_dom_ll_q(q_ndx)))/(2.0* square(sd_srv_dom_ll_q(q_ndx)));
