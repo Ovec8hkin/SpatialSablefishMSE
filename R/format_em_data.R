@@ -57,7 +57,7 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
 
     # extract mortality
     mortality <- dem_params$mort[,,1,1]
-if(is.null(dim(mortality))){
+    if(is.null(dim(mortality))){
         mortality <- matrix(mortality, ncol=1)
     }else{
         mortality <- t(mortality)
@@ -96,6 +96,9 @@ if(is.null(dim(mortality))){
     spawn_time <- rep(0, nyears)
     new_data$spawning_time_proportion <- spawn_time
 
+    # recruitment bias ramp
+    new_data$end_yr_rec_est_idx <- nyears-1
+
     # fishery catch vectors
     #landed_caa <- subset_matrix(land_caa[,,,,,drop=FALSE], 1, 6)
     ll_catch <- apply(land_caa[,,,,1, drop=FALSE], 1, sum, na.rm=TRUE)
@@ -105,7 +108,7 @@ if(is.null(dim(mortality))){
     new_data$trwl_fishery_catch <- c(new_data$trwl_fishery_catch, tw_catch)
 
     # fishery selectivity
-    ll_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_sel_by_year_indicator, n=extra_years)
+    ll_sel_yr_indic     <- SpatialSablefishAssessment::extend_vec_last_val(new_data$ll_sel_by_year_indicator, n=extra_years)
     tw_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$trwl_sel_by_year_indicator, n=extra_years)
     jp_sel_yr_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_jap_fishery_ll_sel_by_year_indicator, n=extra_years)
 
@@ -213,11 +216,53 @@ if(is.null(dim(mortality))){
 
     new_parameters <- readRDS(param_file)
 
+    # Update selectivity parameter start values to those used by the 
+    # production assessment
+    # rows = blocks, col1 = a50, col2 = delta (selex parameters), dim3 = sex (males then females...)
+    # LL fish selex logist
+    new_parameters$ln_ll_sel_pars <- array(c(1.9380e+000, 1.4919e+000, 1.0631e+000,
+                                            -6.9100e-001, -9.7358e-002, -3.7957e-001,
+                                            1.42565337612, 1.2222e+000, 6.5829e-001,
+                                            -6.9100e-001 , 5.3936e-001, 8.1499e-001), dim = c(3, 2, 2)) 
+
+    # trawl fish selex gamma
+    new_parameters$ln_trwl_sel_pars <- array(c(2.1048e+000, 2.3315e+000,
+                                                1.7701e+000, 2.3315e+000), dim = c(1,2,2)) 
+
+    # survey domestic selex logist
+    new_parameters$ln_srv_dom_ll_sel_pars <- array(c(9.6856e-001, 5.4886e-001,
+                                                    8.8394e-001, 8.8394e-001,
+                                                    1.0927e+000, 6.3434e-001,
+                                                    1.0046e+000, 1.0046e+000), dim = c(2,2,2))
+
+    # japanese ll fish selex logist
+    new_parameters$ln_srv_jap_ll_sel_pars <- array(c(1.42565337612, -6.9100e-001,
+                                                    1.42565337612, -6.9100e-001), dim = c(1,2,2))
+
+    # nmfs power function trawl survey
+    new_parameters$ln_srv_nmfs_trwl_sel_pars <- array(c(-1.31805743083, -0.393941625864), dim = c(1,1,2))
+  
+    # Update q parameter starting values to those used 
+    # by the production assessment
+    new_parameters$ln_srv_dom_ll_q <- 1.8582e+000
+    new_parameters$ln_srv_jap_ll_q <- 4.6027e+000
+    new_parameters$ln_ll_cpue_q <- rep(-6.5299e+000, 3)
+    new_parameters$ln_srv_nmfs_trwl_q <- -1.5314e-001
+    new_parameters$ln_srv_jap_fishery_ll_q <- 1.5737e+000
+    new_parameters$ln_M <- -2.1788e+000
+
+    # Update parameter start values to those used
+    # by the production assessment
+    new_parameters$ln_mean_rec <- 3.285214
+    new_parameters$ln_ll_F_avg <- -3.023593
+    new_parameters$ln_trwl_F_avg <- -4.48993
+
     ln_M_year_devs <- SpatialSablefishAssessment::extend_vec_last_val(new_parameters$ln_M_year_devs, n=extra_years)
     ln_M_age_devs  <- SpatialSablefishAssessment::extend_vec_last_val(new_parameters$ln_M_age_devs, n=extra_years)
+    
     ln_rec_dev <- c(new_parameters$ln_rec_dev, rep(0, extra_years))
-    ln_ll_F <- c(new_parameters$ln_ll_F_devs, rep(0, extra_years))
-    ln_tw_F <- c(new_parameters$ln_trwl_F_devs, rep(0, extra_years))
+    ln_ll_F <- c(new_parameters$ln_ll_F_devs, rep(mean(new_parameters$ln_ll_F_devs), extra_years))
+    ln_tw_F <- c(new_parameters$ln_trwl_F_devs, rep(mean(new_parameters$ln_trwl_F_devs), extra_years))
 
     new_parameters$ln_M_year_devs <- ln_M_year_devs
     new_parameters$ln_M_age_devs <- ln_M_age_devs
