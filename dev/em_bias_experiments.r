@@ -50,17 +50,6 @@ om_sexed_small$model_options$obs_pars$surv_ll$rpn_cv <- 0.05
 om_sexed_small$model_options$obs_pars$surv_ll$rpw_cv <- 0.05
 om_sexed_small$model_options$obs_pars$surv_tw$rpw_cv <- 0.05
 
-# OM with sex-aggregated selectivity and small amount of observation error
-om_unsexed_small <- sable_om
-om_unsexed_small$model_options$obs_pars$surv_ll$ac_samps <- 150
-om_unsexed_small$model_options$obs_pars$surv_tw$ac_samps <- 150
-om_unsexed_small$model_options$obs_pars$fish_fx$ac_samps <- 150
-om_unsexed_small$model_options$obs_pars$surv_ll$rpn_cv <- 0.05
-om_unsexed_small$model_options$obs_pars$surv_ll$rpw_cv <- 0.05
-om_unsexed_small$model_options$obs_pars$surv_tw$rpw_cv <- 0.05
-om_unsexed_small$dem_params$sel[,,2,,] <- om_unsexed_small$dem_params$sel[,,1,,]
-om_unsexed_small$dem_params$surv_sel[,,2,,] <- om_unsexed_small$dem_params$surv_sel[,,1,,]
-
 # OM with sex-spexific selectivity and small amount of observation error
 om_sexed_medium <- sable_om
 om_sexed_medium$model_options$obs_pars$surv_ll$ac_samps <- 100
@@ -70,17 +59,6 @@ om_sexed_medium$model_options$obs_pars$surv_ll$rpn_cv <- 0.1
 om_sexed_medium$model_options$obs_pars$surv_ll$rpw_cv <- 0.1
 om_sexed_medium$model_options$obs_pars$surv_tw$rpw_cv <- 0.1
 
-# OM with sex-aggregated selectivity and medium amount of observation error
-om_unsexed_medium <- sable_om
-om_unsexed_medium$model_options$obs_pars$surv_ll$ac_samps <- 100
-om_unsexed_medium$model_options$obs_pars$surv_tw$ac_samps <- 100
-om_unsexed_medium$model_options$obs_pars$fish_fx$ac_samps <- 100
-om_unsexed_medium$model_options$obs_pars$surv_ll$rpn_cv <- 0.1
-om_unsexed_medium$model_options$obs_pars$surv_ll$rpw_cv <- 0.1
-om_unsexed_medium$model_options$obs_pars$surv_tw$rpw_cv <- 0.1
-om_unsexed_medium$dem_params$sel[,,2,,] <- om_unsexed_medium$dem_params$sel[,,1,,]
-om_unsexed_medium$dem_params$surv_sel[,,2,,] <- om_unsexed_medium$dem_params$surv_sel[,,1,,]
-
 # OM with sex-spexific selectivity and large amount of observation error
 om_sexed_large <- sable_om
 om_sexed_large$model_options$obs_pars$surv_ll$ac_samps <- 50
@@ -89,19 +67,6 @@ om_sexed_large$model_options$obs_pars$fish_fx$ac_samps <- 50
 om_sexed_large$model_options$obs_pars$surv_ll$rpn_cv <- 0.20
 om_sexed_large$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
 om_sexed_large$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
-
-# OM with sex-aggregated selectivity and large amount of observation error
-om_unsexed_large <- sable_om
-om_unsexed_large$model_options$obs_pars$surv_ll$ac_samps <- 50
-om_unsexed_large$model_options$obs_pars$surv_tw$ac_samps <- 50
-om_unsexed_large$model_options$obs_pars$fish_fx$ac_samps <- 50
-om_unsexed_large$model_options$obs_pars$surv_ll$rpn_cv <- 0.20
-om_unsexed_large$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
-om_unsexed_large$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
-om_unsexed_large$dem_params$sel[,,2,,] <- om_unsexed_large$dem_params$sel[,,1,,]
-om_unsexed_large$dem_params$surv_sel[,,2,,] <- om_unsexed_large$dem_params$surv_sel[,,1,,]
-
-
 
 
 
@@ -136,11 +101,8 @@ seeds <- sample(1:(1000*nsims), nsims)  # Draw 50 random seeds
 
 
 mse_sexed_small     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_small, hcr=tier3)
-mse_unsexed_small   <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_unsexed_small, hcr=tier3)
 mse_sexed_medium    <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_medium, hcr=tier3)
-mse_unsexed_medium  <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_unsexed_medium, hcr=tier3)
 mse_sexed_large     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_large, hcr=tier3)
-mse_unsexed_large   <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_unsexed_large, hcr=tier3)
 
 ####
 
@@ -154,7 +116,7 @@ cores <- parallel::detectCores()-2
 cl <- parallel::makeCluster(cores, outfile="")
 registerDoParallel(cl)
 
-assess_ssb_agg_sxsm <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
+assess_ssb_agg_sxsm <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
     library(dplyr)
     source("R/run_em.r")
     assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
@@ -162,31 +124,7 @@ assess_ssb_agg_sxsm <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, 
 }, sable_om=om_sexed_small, mse_tier3=mse_sexed_small, om="sxsm", cl=cl)
 assess_ssb_agg_sxsm <- bind_rows(assess_ssb_agg_sxsm)
 
-assess_ssb_agg_usxsm <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
-    source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
-    return(assess_ssb)
-}, sable_om=om_unsexed_small, mse_tier3=mse_unsexed_small, om="usxsm", cl=cl)
-assess_ssb_agg_usxsm <- bind_rows(assess_ssb_agg_usxsm)
-
-assess_ssb_agg_sxlg <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
-    source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
-    return(assess_ssb)
-}, sable_om=om_sexed_large, mse_tier3=mse_sexed_large, om="sxlg", cl=cl)
-assess_ssb_agg_sxlg <- bind_rows(assess_ssb_agg_sxlg)
-
-assess_ssb_agg_usxlg <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
-    source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
-    return(assess_ssb)
-}, sable_om=om_unsexed_large, mse_tier3=mse_unsexed_large, om="usxlg", cl=cl)
-assess_ssb_agg_usxlg <- bind_rows(assess_ssb_agg_usxlg)
-
-assess_ssb_agg_sxmd <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
+assess_ssb_agg_sxmd <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
     library(dplyr)
     source("R/run_em.r")
     assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
@@ -194,138 +132,57 @@ assess_ssb_agg_sxmd <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, 
 }, sable_om=om_sexed_medium, mse_tier3=mse_sexed_medium, om="sxmd", cl=cl)
 assess_ssb_agg_sxmd <- bind_rows(assess_ssb_agg_sxmd)
 
-assess_ssb_agg_usxmd <- pbapply::pblapply(1:50, function(s, sable_om, mse_tier3, om){
+assess_ssb_agg_sxlg <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
     library(dplyr)
     source("R/run_em.r")
     assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
     return(assess_ssb)
-}, sable_om=om_unsexed_medium, mse_tier3=mse_unsexed_medium, om="usxmd", cl=cl)
-assess_ssb_agg_usxmd <- bind_rows(assess_ssb_agg_usxmd)
+}, sable_om=om_sexed_large, mse_tier3=mse_sexed_large, om="sxlg", cl=cl)
+assess_ssb_agg_sxlg <- bind_rows(assess_ssb_agg_sxlg)
+
 
 stopCluster(cl)
 
 #' 5. Process EM fits and compute relative error
-assess_ssb_agg <- bind_rows(assess_ssb_agg_sxsm, assess_ssb_agg_sxlg, assess_ssb_agg_usxlg, assess_ssb_agg_usxmd, assess_ssb_agg_sxmd, assess_ssb_agg_usxsm)
-
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (SSB-om_ssb)/om_ssb) %>%
-    group_by(Year, om) %>%
-    median_qi(SSB, om_ssb, .width=c(0.50, 0.95)) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=om_ssb, ymin=om_ssb.lower, ymax=om_ssb.upper))+
-        scale_fill_brewer(palette="Blues")+
-        geom_pointrange(aes(y=SSB, ymin=SSB.lower, ymax=SSB.upper), alpha=0.2, size=0., color="red")+
-        scale_y_continuous(limits=c(0, 300))+
-        facet_wrap(~om)+
-        theme_bw() 
-
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (rec-om_rec)/om_rec) %>%
-    group_by(Year, om) %>%
-    median_qi(rec, om_rec, .width=c(0.50, 0.95)) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=om_rec, ymin=om_rec.lower, ymax=om_rec.upper))+
-        scale_fill_brewer(palette="Blues")+
-        geom_pointrange(aes(y=rec, ymin=rec.lower, ymax=rec.upper), alpha=0.2, size=0., color="red")+
-        scale_y_continuous(limits=c(0, 100))+
-        facet_wrap(~om)+
-        theme_bw() 
-
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (f-om_f)/om_f) %>%
-    group_by(Year, om) %>%
-    median_qi(f, om_f, .width=c(0.50, 0.95)) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=om_f, ymin=om_f.lower, ymax=om_f.upper))+
-        scale_fill_brewer(palette="Blues")+
-        geom_pointrange(aes(y=f, ymin=f.lower, ymax=f.upper), alpha=0.2, size=0., color="red")+
-        scale_y_continuous(limits=c(0, 0.2))+
-        facet_wrap(~om)+
-        theme_bw() 
+assess_ssb_agg <- bind_rows(assess_ssb_agg_sxsm, assess_ssb_agg_sxlg, assess_ssb_agg_sxmd)
 
 mu_error <- assess_ssb_agg %>% as_tibble() %>%
     filter(Year > 2022, Year < 2022+100) %>%
-    mutate(rel_error = (SSB-om_ssb)/om_ssb) %>%
+    mutate(
+        ssb = (SSB-om_ssb)/om_ssb,
+        rec = (2*rec-om_rec)/om_rec,
+        F = (f-om_f)/om_f
+    ) %>%
     group_by(om) %>%
-    summarise(mu=median(rel_error))
+    summarise(
+        ssb = median(ssb),
+        rec = median(rec),
+        F = median(F)
+    ) %>%
+    pivot_longer(c("ssb", "rec", "F"), names_to="name", values_to="rel_error") %>%
+    mutate(
+        y = c(rep(c(0.50, 4.0, 0.45), 3))
+    )
+
 assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (SSB-om_ssb)/om_ssb) %>%
+    mutate(
+        ssb = (SSB-om_ssb)/om_ssb,
+        rec = (2*rec-om_rec)/om_rec,
+        F = (f-om_f)/om_f
+    ) %>%
     ungroup() %>%
     group_by(Year, om) %>%
-    #mutate(mu=mean(rel_error)) %>%
-    median_qi(rel_error, .width=c(0.50, 0.95)) %>%
+    median_qi(ssb, rec, F, .width=c(0.50, 0.95)) %>%
+    as_tibble() %>%
+    reformat_ggdist_long(2) %>%
 
     ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=rel_error, ymin=.lower, ymax=.upper))+
+        geom_lineribbon(aes(y=median, ymin=lower, ymax=upper))+
         geom_hline(yintercept = 0)+
-        geom_hline(data=mu_error, aes(yintercept = mu), color="red")+
+        geom_hline(data=mu_error, aes(yintercept = rel_error), color="red")+
         geom_vline(xintercept = 2023)+
-        geom_text(data=mu_error, aes(x=2075, y=0.22, label=round(mu, 3)))+
+        geom_text(data=mu_error, aes(x=2075, y=y, label=round(rel_error, 3)))+
         scale_fill_brewer(palette="Blues")+
-        facet_wrap(~om)+
-        #geom_pointrange(aes(y=SSB, ymin=SSB.lower, ymax=SSB.upper), color="red")+
-        #scale_y_continuous(limits=c(0, 300))+
+        scale_x_continuous(breaks=c(1960, 2000, 2040, 2080, 2110))+
+        facet_grid(vars(name), vars(om), scales="free")+
         theme_bw() 
-
-mu_error <- assess_ssb_agg %>% as_tibble() %>%
-    filter(Year > 2022, Year < 2022+100) %>%
-    mutate(rel_error = (2*rec-om_rec)/om_rec) %>%
-    group_by(om) %>%
-    summarise(mu=median(rel_error))
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (2*rec-om_rec)/om_rec) %>%
-    ungroup() %>%
-    group_by(Year, om) %>%
-    mutate(mu=mean(rel_error)) %>%
-    median_qi(rel_error, .width=c(0.50, 0.95)) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=rel_error, ymin=.lower, ymax=.upper))+
-        geom_hline(yintercept = 0)+
-        geom_hline(data=mu_error, aes(yintercept = mu), color="red")+
-        geom_vline(xintercept = 2023)+
-        geom_text(data=mu_error, aes(x=2075, y=0.22, label=round(mu, 3)))+
-        scale_fill_brewer(palette="Blues")+
-        facet_wrap(~om)+
-        #geom_pointrange(aes(y=SSB, ymin=SSB.lower, ymax=SSB.upper), color="red")+
-        #scale_y_continuous(limits=c(0, 300))+
-        theme_bw() 
-
-
-mu_error <- assess_ssb_agg %>% as_tibble() %>%
-    filter(Year > 2022, Year < 2022+100) %>%
-    mutate(rel_error = (f-om_f)/om_f) %>%
-    group_by(om) %>%
-    summarise(mu=median(rel_error))
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(rel_error = (f-om_f)/om_f) %>%
-    ungroup() %>%
-    group_by(Year, om) %>%
-    mutate(mu=mean(rel_error)) %>%
-    median_qi(rel_error, .width=c(0.50, 0.95)) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=rel_error, ymin=.lower, ymax=.upper))+
-        geom_hline(yintercept = 0)+
-        geom_hline(data=mu_error, aes(yintercept = mu), color="red")+
-        geom_vline(xintercept = 2023)+
-        geom_text(data=mu_error, aes(x=2075, y=0.22, label=round(mu, 3)))+
-        scale_fill_brewer(palette="Blues")+
-        facet_wrap(~om)+
-        #geom_pointrange(aes(y=SSB, ymin=SSB.lower, ymax=SSB.upper), color="red")+
-        #scale_y_continuous(limits=c(0, 300))+
-        theme_bw() 
-
-
-
-
-out <- run_EM(s=1, sable_om = sable_om, mse_tier3 = mse_tier3, om=om)
-
-out
-
-ggplot(out)+
-    geom_line(aes(x=Year, y=om_rec))+
-    geom_line(aes(x=Year, y=rec), color="red")
