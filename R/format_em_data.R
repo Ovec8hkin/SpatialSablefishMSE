@@ -26,7 +26,7 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     # Read the most current set of data from an RDS file
     # If those files don't exist, then default back to 
     # using data through 2022.
-    if(!file.exists("data/sablefish_em_data_curr.RDS")){
+    if(!file.exists(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))){
         data_file <- "data/sablefish_em_data_2022.RDS"
         param_file <- "data/sablefish_em_par_2022.RDS"
     }else{

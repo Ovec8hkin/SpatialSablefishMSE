@@ -11,7 +11,7 @@
 #'
 #' @example
 #'
-fit_TMB_model <- function(data, parameters, fix_pars=NA){
+fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
     
     par_map <- list(
         # Turn off japanese fishery/survey and CPUE parameters
@@ -46,15 +46,18 @@ fit_TMB_model <- function(data, parameters, fix_pars=NA){
                           silent = TRUE)
 
     mle_optim = nlminb(start = my_model$par, objective = my_model$fn, gradient  = my_model$gr, control = list(iter.max = 10000, eval.max = 10000))
+    
     #Try and improve the optimsation running the model for two additional Newton Raphson iterations
-    try_improve = tryCatch(expr =
-                            for(i in 1:2) {
-                                g = as.numeric(my_model$gr(mle_optim$par))
-                                h = optimHess(mle_optim$par, fn = my_model$fn, gr = my_model$gr)
-                                mle_optim$par = mle_optim$par - solve(h,g)
-                                mle_optim$objective = my_model$fn(mle_optim$par)
-                            }
-                        , error = function(e){e})
+    if(do_newton_steps){
+        tryCatch(expr =
+            for(i in 1:2) {
+                g = as.numeric(my_model$gr(mle_optim$par))
+                h = optimHess(mle_optim$par, fn = my_model$fn, gr = my_model$gr)
+                mle_optim$par = mle_optim$par - solve(h,g)
+                mle_optim$objective = my_model$fn(mle_optim$par)
+            }
+        , error = function(e){e})
+    }
     
     mle_report = my_model$report(my_model$env$last.par.best)
     return(list(report=mle_report, model=my_model, opt=mle_optim))
