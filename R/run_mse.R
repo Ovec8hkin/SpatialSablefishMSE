@@ -69,6 +69,12 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
     )
 
+    model_outs = list(
+        mods <- array(NA, dim=c(nyears-spinup_years)),
+        fits <- array(NA, dim=c(nyears-spinup_years)),
+        reps <- array(NA, dim=c(nyears-spinup_years))
+    )
+
     set.seed(seed)
     recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
@@ -113,6 +119,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
             naa_proj <- out_vars$naa_tmp
             rec <- recruitment[1:y]
+            sel <- dp.y$sel
 
             if(model_options$run_estimation){
                 # Do all of the data formatting and running
@@ -133,6 +140,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
                 mod_report <- mod_out$report
                 ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
                 rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% pull(Recruitment)
+                selex <- SpatialSablefishAssessment::get_selectivities(mod_report)
 
                 # Store assessment estimates of age composition
                 # for comparing EM and OM
@@ -148,16 +156,25 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
                 naa_proj <- naa_est[y,,,, drop=FALSE]
 
+                sel_est <- array(NA, dim=c(1, 30, 2, 1, 2))
+                sel_est[1,,1,1,1] <- selex %>% filter(gear == "fixed", sex == "female", time_block == 3) %>% pull(value)
+                sel_est[1,,1,1,2] <- selex %>% filter(gear == "trawl", sex == "female", time_block == 1) %>% pull(value)
+                sel_est[1,,2,1,1] <- selex %>% filter(gear == "fixed", sex == "male", time_block == 3) %>% pull(value)
+                sel_est[1,,2,1,2] <- selex %>% filter(gear == "trawl", sex == "male", time_block == 1) %>% pull(value)
+
+                sel <- sel_est
+
                 model_outs$mods[(y+1)-spinup_years] = mod_out$model
                 model_outs$fits[(y+1)-spinup_years] = mod_out$opt
                 model_outs$reps[(y+1)-spinup_years] = mod_out$report
 
             }
 
+
             # Solve for reference points, F from the HCR,
             # and compute TAC for the next year.
-            joint_self <- apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
-            joint_selm <- apply(dp.y$sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$sel[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_self <- apply(sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_selm <- apply(sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE], c(1, 2), sum))
             joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
             
             # reference points are all female based
@@ -197,9 +214,9 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         }   
     }
 
-    file.remove("data/sablefish_em_data_curr.RDS")
-    file.remove("data/sablefish_em_par_curr.RDS")
+    file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
+    file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs, model_outs))
 
 }
