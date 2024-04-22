@@ -38,10 +38,10 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         "fleet" = c("Fixed", "Trawl")
     )
 
-    TACs <- rep(0, nyears)
+    landings <- rep(0, nyears)
     hcr_F <- rep(0, nyears)
     out_f <- rep(0, nyears) # vector to store outputted F
-    TACs[1:64] <- (assessment$t.series[,"Catch_HAL"]+assessment$t.series[,"Catch_TWL"])
+    landings[1:64] <- (assessment$t.series[,"Catch_HAL"]+assessment$t.series[,"Catch_TWL"])
 
     #' 6. Setup empty array to collect derived quantities from the OM
     #' It is left to the user to decide what information to store, and
@@ -53,7 +53,9 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
-    tac         = array(NA, dim=c(nyears, 1, 1, 1), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska"))
+    abc         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
+    tac         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     hcr_f       = array(NA, dim=c(nyears, 1, 1, 1), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska"))
     out_f       = array(NA, dim=c(nyears, 1, 1, 1), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska"))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
@@ -85,7 +87,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
         dp.y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
-        removals_input <- TACs[y]
+        removals_input <- landings[y]
         fleet.props <- unlist(lapply(model_options$fleet_apportionment, \(x) x[y]))
 
         prev_naa <- naa[y,,,, drop = FALSE]
@@ -105,7 +107,6 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         faa[y,,,,] <- out_vars$faa_tmp
         naa[y+1,,,] <- out_vars$naa_tmp
         out_f[y,,,] <- sum(out_vars$F_f_tmp[1,1,1,1,])
-        tac[y,,,] <- TACs[y]
         hcr_f[y,,,] <- hcr_F[y]
 
         survey_obs$ll_rpn[y,,,] <- out_vars$surv_obs$ll_rpn
@@ -195,13 +196,17 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             joint_sel[,,1,] <- joint_self
             joint_sel[,,2,] <- joint_selm
 
-            TACs[y+1] <- simulate_TAC(hcr_F[y], naa_proj, mean(rec)/2, joint_sel, dp.y)
+            mgmt_out <- simulate_TAC(hcr_F[y], naa_proj, mean(rec)/2, joint_sel, dp.y, tac_land_reduction = 0.85)
+            abc[y+1,1,1,1] <- mgmt_out$abc
+            tac[y+1,1,1,1] <- mgmt_out$tac
+            exp_land[y+1,1,1,1] <- mgmt_out$land
+            landings[y+1] <- mgmt_out$land 
         }   
     }
 
     file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
     file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, survey_obs, model_outs))
 
 }

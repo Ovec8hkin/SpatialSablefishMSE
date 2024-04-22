@@ -12,15 +12,19 @@
 #' @param recruitment projected recruitment in next year
 #' @param join_sel joint fishery selectivity
 #' @param dem_params demographic parameter matrices subsetted to 1 year
+#' @param abc_tac_reduction proportional reduction from ABC to TAC
+#' @param tac_land_reduction proportional reduction from TAC to landings
 #'
 #' @export simulate_TAC
 #'
 #' @example
 #'
-simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params){
+simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, abc_tac_reduction=1, tac_land_reduction=1){
     proj_faa <- joint_sel*hcr_F
     proj_N_new <- afscOM::simulate_population(naa, proj_faa, recruitment, dem_params, options=list())
-    tac <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
+    abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
+    tac <- abc * abc_tac_reduction
+    land <- tac * tac_land_reduction
 
-    return(tac)
+    return(afscOM::listN(abc, tac, land))
 }

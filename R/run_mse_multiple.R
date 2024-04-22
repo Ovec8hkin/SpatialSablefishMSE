@@ -34,7 +34,9 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
-    tac         = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
+    abc         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
+    tac         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     hcr_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
     out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=seeds))
@@ -65,8 +67,10 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
         naa[,,,,s] <- mse$naa
         naa_est[,,,,s] <- mse$naa_est
         out_f[,,,,s] <- mse$out_f
-        tac[,,,,s] <- mse$tac
+        exp_land[,,,,s] <- mse$exp_land
         hcr_f[,,,,s] <- mse$hcr_f
+        abc[,,,,s] <- mse$abc
+        tac[,,,,s] <- mse$tac
 
         survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$ll_rpn
         survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$ll_rpw
@@ -80,6 +84,6 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
 
     }
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 
 }
