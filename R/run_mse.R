@@ -70,9 +70,9 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     )
 
     model_outs = list(
-        mods <- array(NA, dim=c(nyears-spinup_years)),
-        fits <- array(NA, dim=c(nyears-spinup_years)),
-        reps <- array(NA, dim=c(nyears-spinup_years))
+        mods = vector("list", length=c(nyears-spinup_years)),
+        fits = vector("list", length=c(nyears-spinup_years)),
+        reps = vector("list", length=c(nyears-spinup_years))
     )
 
     set.seed(seed)
@@ -164,9 +164,9 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
                 sel <- sel_est
 
-                model_outs$mods[(y+1)-spinup_years] = mod_out$model
-                model_outs$fits[(y+1)-spinup_years] = mod_out$opt
-                model_outs$reps[(y+1)-spinup_years] = mod_out$report
+                model_outs$mods[[(y+1)-spinup_years]] <- mod_out$model
+                model_outs$fits[[(y+1)-spinup_years]] <- mod_out$opt
+                model_outs$reps[[(y+1)-spinup_years]] <- mod_out$report
 
             }
 
@@ -187,21 +187,6 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
                 ret = joint_ret,
                 avg_rec = mean(rec)/2
             )
-
-            #ssb <- apply(out_vars$naa_tmp[,,1,]*dp.y$waa[,,1,,drop=FALSE]*dp.y$mat[,,1,,drop=FALSE], 1, sum)
-            # hcr_F[y] <- as_scalar_threshold_f(
-            #                 ssb/ref_pts$B40, 
-            #                 naa=out_vars$naa_tmp[,,1,], 
-            #                 ref_naa=ref_naa,
-            #                 as_func = shannon_diversity,
-            #                 #ages = 2:31,
-            #                 f_min=0,
-            #                 f_max=ref_pts$F40,
-            #                 lrp=0.05,
-            #                 urp=1.0
-            #             )
-
-            #naa_est_tmp <- naa_est[y,,,, drop=FALSE]
 
             hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp.y, ...)
             #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)

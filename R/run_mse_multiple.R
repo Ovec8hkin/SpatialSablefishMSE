@@ -14,7 +14,7 @@
 #' 
 #' @example
 #'
-run_mse_multiple <- function(nsims, seeds, nyears, ...){
+run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...){
 
     dimension_names <- list(
         "time" = 1:nyears,
@@ -48,10 +48,16 @@ run_mse_multiple <- function(nsims, seeds, nyears, ...){
         fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")])
     )
 
+    model_outs = list(
+        mods = array(list(), dim=c(nyears-spinup_years+1, nsims)),
+        fits = array(list(), dim=c(nyears-spinup_years+1, nsims)),
+        reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
+    )
+
     for(s in 1:nsims){
         seed <- seeds[s]
-        mse <- run_mse(..., nyears_input=nyears, seed=seed, file_suffix = seed)
-    
+        mse <- run_mse(om, hcr, ..., nyears_input=nyears, spinup_years=spinup_years, seed=seed, file_suffix = seed)
+
         land_caa[,,,,,s] <- mse$land_caa
         disc_caa[,,,,,s] <- mse$disc_caa
         caa[,,,,,s] <- mse$caa
@@ -68,8 +74,12 @@ run_mse_multiple <- function(nsims, seeds, nyears, ...){
         survey_obs$ll_acs[,,,,s] <- mse$survey_obs$ll_acs
         survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$fxfish_acs
 
+        model_outs$mods[,s] <- mse$model_outs$mods
+        model_outs$fits[,s] <- mse$model_outs$fits
+        model_outs$reps[,s] <- mse$model_outs$reps
+
     }
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, tac, hcr_f, survey_obs, model_outs))
 
 }
