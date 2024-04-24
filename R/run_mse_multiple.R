@@ -34,6 +34,7 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+    faa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
@@ -64,6 +65,7 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
         disc_caa[,,,,,s] <- mse$disc_caa
         caa[,,,,,s] <- mse$caa
         faa[,,,,,s] <- mse$faa
+        faa_est[,,,,,s] <- mse$faa_est
         naa[,,,,s] <- mse$naa
         naa_est[,,,,s] <- mse$naa_est
         out_f[,,,,s] <- mse$out_f
@@ -84,6 +86,6 @@ run_mse_multiple <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
 
     }
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 
 }

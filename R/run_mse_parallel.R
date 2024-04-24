@@ -30,6 +30,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
         outputs$disc_caa[,,,,,s] <- mse$disc_caa
         outputs$caa[,,,,,s] <- mse$caa
         outputs$faa[,,,,,s] <- mse$faa
+        outputs$faa_est[,,,,,s] <- mse$faa_est
         outputs$naa[,,,,s] <- mse$naa
         outputs$naa_est[,,,,s] <- mse$naa_est
         outputs$out_f[,,,,s] <- mse$out_f
@@ -44,9 +45,11 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
         outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$ll_acs
         outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$fxfish_acs
 
-        outputs$model_outs$mods[,s] <- mse$model_outs$mods
-        outputs$model_outs$fits[,s] <- mse$model_outs$fits
-        outputs$model_outs$reps[,s] <- mse$model_outs$reps
+        if(om$model_options$run_estimation){
+            outputs$model_outs$mods[,s] <- mse$model_outs$mods
+            outputs$model_outs$fits[,s] <- mse$model_outs$fits
+            outputs$model_outs$reps[,s] <- mse$model_outs$reps
+        }
 
     }
 
@@ -73,6 +76,7 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+    faa_est         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
@@ -95,6 +99,6 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
         reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
     )
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 
 }

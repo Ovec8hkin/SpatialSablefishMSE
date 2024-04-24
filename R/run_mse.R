@@ -62,6 +62,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     naa[1,,,] = init_naa
 
     naa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
+    faa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
 
     survey_obs <- list(
         ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions)),
@@ -150,10 +151,26 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
                     naam <- t(mod_report$natage_m[,1:(spinup_years-1)])
                     naa_est[1:(spinup_years-1),,1,] <- naaf
                     naa_est[1:(spinup_years-1),,2,] <- naam
+
+                    F_ll_f <- t(mod_report$F_ll_f[,1:(spinup_years-1)])
+                    F_ll_m <- t(mod_report$F_ll_m[,1:(spinup_years-1)])
+                    F_tw_f <- t(mod_report$F_trwl_f[,1:(spinup_years-1)])
+                    F_tw_m <- t(mod_report$F_trwl_m[,1:(spinup_years-1)])
+
+                    faa_est[1:(spinup_years-1),,1,,1] <- F_ll_f
+                    faa_est[1:(spinup_years-1),,2,,1] <- F_ll_m
+                    faa_est[1:(spinup_years-1),,1,,2] <- F_tw_f
+                    faa_est[1:(spinup_years-1),,2,,2] <- F_tw_m
+
                 }
 
                 naa_est[y,,1,] <- mod_report$natage_f[,y]
                 naa_est[y,,2,] <- mod_report$natage_m[,y]
+
+                faa_est[y,,1,,1] <- mod_report$F_ll_f[,y]
+                faa_est[y,,2,,1] <- mod_report$F_ll_m[,y]
+                faa_est[y,,1,,2] <- mod_report$F_trwl_f[,y]
+                faa_est[y,,2,,2] <- mod_report$F_trwl_m[,y]
 
                 naa_proj <- naa_est[y,,,, drop=FALSE]
 
@@ -207,6 +224,6 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
     file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, survey_obs, model_outs))
 
 }
