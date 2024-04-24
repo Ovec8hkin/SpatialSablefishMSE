@@ -4,6 +4,8 @@ library(ggdist)
 library(ggh4x)
 library(reshape2)
 library(SpatialSablefishAssessment)
+library(tictoc)
+library(doParallel)
 
 # library(afscOM) # may work but not certain
 
@@ -20,6 +22,7 @@ source("R/data_utils.R")
 source("R/data_processing.R")
 source("R/run_mse.R")
 source("R/run_mse_multiple.R")
+source("R/run_mse_parallel.R")
 source("R/format_em_data.R")
 source("R/fit_TMB_model.R")
 
@@ -37,6 +40,12 @@ sable_om$model_options$obs_pars$fish_fx$ac_samps <- 50
 sable_om$model_options$obs_pars$surv_ll$as_integers = TRUE
 sable_om$model_options$obs_pars$surv_tw$as_integers = TRUE
 sable_om$model_options$obs_pars$fish_fx$as_integers = TRUE
+# Decrease observation error
+sable_om$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
+sable_om$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
+sable_om$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
+# Turn on estimation model
+sable_om$model_options$run_estimation = TRUE
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
 #' in future years. Such function must take accept the following parameters:
@@ -62,11 +71,17 @@ tier3 <- function(ref_pts, naa, dem_params){
 #' 
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
-set.seed(1120)
+set.seed(1007)
 nsims <- 10
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
-mse_tier3     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=100, om=sable_om, hcr=tier3)
+tic()
+mse_tier3     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=100, om=sable_om, hcr=tier3)
+toc()
+
+# nsims <- 1
+# seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
+# ms_small <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=100, om=sable_om, hcr=tier3)
 
 # Example of running a single MSE simulation
 # mse_tier3     <- run_mse(om=sable_om, hcr=tier3, nyears_input=100)
@@ -77,14 +92,13 @@ mse_tier3     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=100, om=sable
 #' of spawning biomass.
 model_runs <- list(
     mse_tier3
+    # ms_small
 )
 extra_columns <- list(
-    hcr = c("tier3_3")
+    hcr = c("tier3")
 )
 
-# `bind_mse_outputs` creates a long-format tibble containing
-# the data from the `naa` and `naa_est` MSE output array for
-# each of the simulations.
+# Plot spawning biomass from OM and EM
 d <- bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
     as_tibble() %>%
     drop_na() %>%
@@ -117,9 +131,110 @@ d <- bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>%
 
 ggplot(d %>% filter(L1 == "naa")) + 
     geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-    geom_pointrange(data = d %>% filter(L1 == "naa_est", time > 63), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+    geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
     geom_vline(xintercept=64, linetype="dashed")+
     scale_fill_brewer(palette="Blues")+
     scale_y_continuous(limits=c(0, 300))+
     coord_cartesian(expand=0)+
     theme_bw()
+
+# Plot fishing mortality rates from OM and EM
+f <- bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
+    as_tibble() %>%
+    drop_na() %>%
+    group_by(time, fleet, sim, L1, hcr) %>%
+    # compute fleet-based F as the maximum F across age classes
+    summarise(
+        F = max(value)
+    ) %>%
+    ungroup() %>%
+    group_by(time, sim, L1, hcr) %>%
+    # total F is the sum of fleet-based Fs
+    mutate(
+        total_F = sum(F)
+    ) %>%
+    ungroup() %>%
+    group_by(time, fleet, L1, hcr) %>%
+    median_qi(F, total_F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+    reformat_ggdist_long(n=4) %>%
+    filter(name == "total_F")
+
+ggplot(f %>% filter(L1 == "faa")) + 
+    geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
+    geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+    geom_vline(xintercept=64, linetype="dashed")+
+    scale_fill_brewer(palette="Blues")+
+    scale_y_continuous(limits=c(0, 0.30))+
+    coord_cartesian(expand=0)+
+    theme_bw()
+
+
+# Plot ABC, TAC, and landings
+bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns = extra_columns) %>%
+    as_tibble() %>%
+    drop_na() %>%
+    group_by(time, L1) %>%
+    median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+    reformat_ggdist_long(n=2) %>%
+
+  ggplot()+
+    geom_pointrange(aes(x=time, y=median, ymin=lower, ymax=upper, color=L1))+
+    geom_line(aes(x=time, y=median, color=L1, group=L1))+
+    scale_y_continuous(limits=c(0, 50))+
+    theme_bw()
+
+
+# Plot recruitment from OM and EM
+bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
+    as_tibble() %>%
+    drop_na() %>%
+    filter(age == 2) %>%
+    group_by(time, L1, hcr, sim) %>%
+    summarise(rec=sum(value)) %>%
+    # summarise SSB across year and sim 
+    group_by(time, L1) %>%
+    median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+    reformat_ggdist_long(n=2) %>%
+
+    ggplot() + 
+      geom_line(aes(x=time, y=median, group=L1, color=L1), size=0.4)+
+      geom_vline(xintercept=64, linetype="dashed")+
+      scale_fill_brewer(palette="Blues")+
+      scale_y_continuous(limits=c(0, 100))+
+      coord_cartesian(expand=0)+
+      theme_bw()
+
+
+
+
+
+
+nmodels <- length(mse_tier3$model_outs$reps)
+o <- lapply(seq_along(1:nmodels), function(i){
+  y <- (i-1)%/%nsims+1
+  s <- (i-1)%%nsims+1
+  o <- SpatialSablefishAssessment::get_SSB(mse_tier3$model_outs$reps[y, s][[1]]) %>% filter(Year == max(Year))
+  o$sim <- seeds[s]
+  return(o)
+})
+
+est_ssb <- bind_rows(o)
+
+names(mse_tier3$model_outs$reps[1,1][[1]])
+
+
+derive_est_naa <- function(model_outs, nyears, nsims){
+    naa_out <- array(NA, dim=c(nyears, 30, 2, 1, nsims))
+    nmodels <- length(mse_tier3$model_outs$reps)
+    for(i in 1:nmodels){
+        y <- (i-1)%/%nsims+1
+        s <- (i-1)%%nsims+1
+        est_naa_f <- model_outs$reps[y, s][[1]]$natage_f
+        est_naa_m <- model_outs$reps[y, s][[1]]$natage_m
+        naa_out[63+y,,1,1,s] <- est_naa_f[,ncol(est_naa_f)]
+        naa_out[63+y,,2,1,s] <- est_naa_m[,ncol(est_naa_m)]
+    }
+    return(naa_out)
+}
+
+derive_est_naa(mse_tier3$model_outs, 160, nsims)
