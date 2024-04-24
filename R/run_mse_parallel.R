@@ -7,12 +7,14 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
     registerDoParallel(cl)
 
     out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, spinup_years, seeds){
-        library(tidyverse)
-        library(TMB)
-        library(devtools)
+        suppressMessages({
+            library(tidyverse)
+            library(TMB)
+            library(devtools)
 
-        lapply(list.files("R", full.names = TRUE), source)
-        devtools::load_all("~/Desktop/Projects/afscOM")
+            lapply(list.files("R", full.names = TRUE), source)
+            devtools::load_all("~/Desktop/Projects/afscOM")
+        })
         
         seed <- seeds[s]
         mse <- run_mse(om, hcr, nyears_input=nyears, spinup_years=spinup_years, seed=seed, file_suffix = seed)
