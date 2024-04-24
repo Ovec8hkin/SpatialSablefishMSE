@@ -28,8 +28,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     if(!is.na(nyears_input)){
         nyears <- nyears_input
     }
-    print(paste("NYEARS:", nyears))
-
+    
     dimension_names <- list(
         "time" = 1:nyears,
         "age"  = 2:31,
@@ -53,16 +52,15 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
+    faa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
+    naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
+    naa_est     = array(NA, dim=c(nyears,   nages, nsexes, nregions), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
+
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
-    hcr_f       = array(NA, dim=c(nyears, 1, 1, 1), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska"))
-    out_f       = array(NA, dim=c(nyears, 1, 1, 1), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska"))
-    naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
-    naa[1,,,] = init_naa
-
-    naa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
-    faa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
+    hcr_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
+    out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
     survey_obs <- list(
         ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions)),
@@ -78,13 +76,14 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         reps = vector("list", length=c(nyears-spinup_years))
     )
 
+    naa[1,,,] = init_naa
+
     set.seed(seed)
     recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
     recruitment <- c(recruitment, projected_recruitment)
 
     for(y in 1:nyears){
-        print(y)
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
         dp.y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
@@ -142,7 +141,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
                 mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
                 mod_report <- mod_out$report
                 ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
-                rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% pull(Recruitment)
+                rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% filter(Year != max(Year)) %>% pull(Recruitment)
                 selex <- SpatialSablefishAssessment::get_selectivities(mod_report)
 
                 # Store assessment estimates of age composition
@@ -221,6 +220,10 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             tac[y+1,1,1,1] <- mgmt_out$tac
             exp_land[y+1,1,1,1] <- mgmt_out$land
             landings[y+1] <- mgmt_out$land 
+        }
+
+        if(y %% 10 == 0){
+            print(paste0("Sim ", seed, ": ", y, "/", nyears_input, " complete."))
         }   
     }
 
