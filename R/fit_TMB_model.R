@@ -20,7 +20,7 @@ fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
         ln_srv_jap_ll_q                 = factor(rep(NA, length(parameters$ln_srv_jap_ll_q))),
         ln_srv_jap_fishery_ll_q         = factor(rep(NA, length(parameters$ln_srv_jap_fishery_ll_q))),
         ln_ll_cpue_q                    = factor(rep(NA, length(parameters$ln_ll_cpue_q))),
-    
+
         # Share selectivity parameters
         ln_trwl_sel_pars    = factor(c(1, 2, 3, 2)),
         ln_ll_sel_pars      = factor(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 10, 11)),
@@ -34,7 +34,7 @@ fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
     data$ages <- as.double(1:30)
 
     if(!all(is.na(fix_pars))){
-        parameters[names(fix_pars)] <- fix_pars
+        parameters[names(fix_pars)] <- lapply(seq_along(fix_pars), \(x) as.vector(fix_pars[[x]]))
         par_map[names(fix_pars)] <- lapply(seq_along(fix_pars), \(x) factor(rep(NA, length(fix_pars[[x]]))))
     }
     
