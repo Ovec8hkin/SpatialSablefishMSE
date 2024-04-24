@@ -122,6 +122,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             naa_proj <- out_vars$naa_tmp
             rec <- recruitment[1:y]
             sel <- dp.y$sel
+            prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
 
             if(model_options$run_estimation){
                 # Do all of the data formatting and running
@@ -166,13 +167,13 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
                 naa_est[y,,1,] <- mod_report$natage_f[,y]
                 naa_est[y,,2,] <- mod_report$natage_m[,y]
+                naa_proj <- naa_est[y,,,, drop=FALSE]
 
                 faa_est[y,,1,,1] <- mod_report$F_ll_f[,y]
                 faa_est[y,,2,,1] <- mod_report$F_ll_m[,y]
                 faa_est[y,,1,,2] <- mod_report$F_trwl_f[,y]
                 faa_est[y,,2,,2] <- mod_report$F_trwl_m[,y]
-
-                naa_proj <- naa_est[y,,,, drop=FALSE]
+                prop_fs <- apply(faa_est[y,,,1,, drop=FALSE], 5, max)/sum(apply(faa_est[y,,,1,, drop=FALSE], 5, max))
 
                 sel_est <- array(NA, dim=c(1, 30, 2, 1, 2))
                 sel_est[1,,1,1,1] <- selex %>% filter(gear == "fixed", sex == "female", time_block == 3) %>% pull(value)
@@ -190,9 +191,11 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
 
             # Solve for reference points, F from the HCR,
-            # and compute TAC for the next year.
-            joint_self <- apply(sel[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE], c(1, 2), sum))
-            joint_selm <- apply(sel[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE], c(1, 2), sum))
+            # and compute TAC for the next year. Note that
+            # selectivity for RP calculations is weighted
+            # by terminal year F.
+            joint_self <- apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
+            joint_selm <- apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum))
             joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
             
             # reference points are all female based
