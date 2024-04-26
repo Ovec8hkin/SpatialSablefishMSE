@@ -35,11 +35,13 @@ sable_om$model_options$simulate_observations <- TRUE # Enable simulating observa
 sable_om$model_options$obs_pars$surv_ll$ac_samps <- 50
 sable_om$model_options$obs_pars$surv_tw$ac_samps <- 50
 sable_om$model_options$obs_pars$fish_fx$ac_samps <- 50
+sable_om$model_options$obs_pars$fish_tw$ac_samps <- 50
 # Generate age comp samples as integers rather than proportions
 # (this is necesarry for the SpatialSablefishAssessment TMB model)
 sable_om$model_options$obs_pars$surv_ll$as_integers = TRUE
 sable_om$model_options$obs_pars$surv_tw$as_integers = TRUE
 sable_om$model_options$obs_pars$fish_fx$as_integers = TRUE
+sable_om$model_options$obs_pars$fish_tw$as_integers = TRUE
 # Decrease observation error
 sable_om$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
 sable_om$model_options$obs_pars$surv_ll$rpw_cv <- 0.10

@@ -67,7 +67,9 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         ll_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
         tw_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
         ll_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
-        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
+        tw_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
+        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
+        twfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
     )
 
     model_outs = list(
@@ -107,13 +109,14 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         faa[y,,,,] <- out_vars$faa_tmp
         naa[y+1,,,] <- out_vars$naa_tmp
         out_f[y,,,] <- sum(out_vars$F_f_tmp[1,1,1,1,])
-        hcr_f[y,,,] <- hcr_F[y]
 
         survey_obs$ll_rpn[y,,,] <- out_vars$surv_obs$ll_rpn
         survey_obs$ll_rpw[y,,,] <- out_vars$surv_obs$ll_rpw
         survey_obs$tw_rpw[y,,,] <- out_vars$surv_obs$tw_rpw
         survey_obs$ll_acs[y,,,] <- out_vars$surv_obs$ll_ac_obs
+        survey_obs$tw_acs[y,,,] <- out_vars$surv_obs$tw_ac_obs
         survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
+        survey_obs$twfish_acs[y,,,] <- out_vars$surv_obs$twfish_caa_obs
 
         
         if((y+1) > spinup_years){
@@ -219,7 +222,8 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             abc[y+1,1,1,1] <- mgmt_out$abc
             tac[y+1,1,1,1] <- mgmt_out$tac
             exp_land[y+1,1,1,1] <- mgmt_out$land
-            landings[y+1] <- mgmt_out$land 
+            landings[y+1] <- mgmt_out$land
+            hcr_f[y,,,] <- hcr_F[y] 
         }
 
         if(y %% 10 == 0){

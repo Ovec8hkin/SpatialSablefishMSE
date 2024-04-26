@@ -45,7 +45,9 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, nyears, spinup_years=64, ...
         outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$ll_rpw
         outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$tw_rpw
         outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$ll_acs
+        outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$tw_acs
         outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$fxfish_acs
+        outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$twfish_acs
 
         if(om$model_options$run_estimation){
             outputs$model_outs$mods[,s] <- mse$model_outs$mods
@@ -92,7 +94,9 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
         ll_rpw = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds)),
         tw_rpw = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds)),
         ll_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
-        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")])
+        tw_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
+        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
+        twfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")])
     )
 
     model_outs = list(
