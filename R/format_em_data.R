@@ -563,3 +563,14 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     }
 
 }
+
+simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, model_options, added_years=1, file_suffix=""){
+    out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs,  tw_ac_obs, model_options, added_years, file_suffix)
+
+    out$new_data$obs_ll_catchatage <- t(abind::abind(fxfish_caa_obs[,,2,], fxfish_caa_obs[,,1,], along=2))
+    out$new_data$obs_srv_dom_ll_age <- t(abind::abind(ll_ac_obs[,,2,], ll_ac_obs[,,1,], along=2))
+    out$new_data$obs_srv_nmfs_trwl_age <- t(abind::abind(tw_ac_obs[,,2,], tw_ac_obs[,,1,], along=2))
+    out$new_data$obs_trwl_catchatage <- t(abind::abind(twfish_caa_obs[,,2,], twfish_caa_obs[,,1,], along=2))
+    
+    return(out)
+}
