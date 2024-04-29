@@ -572,5 +572,23 @@ simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, surv
     out$new_data$obs_srv_nmfs_trwl_age <- t(abind::abind(tw_ac_obs[,,2,], tw_ac_obs[,,1,], along=2))
     out$new_data$obs_trwl_catchatage <- t(abind::abind(twfish_caa_obs[,,2,], twfish_caa_obs[,,1,], along=2))
     
+    # Need to do this for the selectivity estimation to not be weird
+    out$new_data$ages <- as.double(1:30)
+
+    # Not using japenese survey, so simulating ages from LL fishery
+    # in years where japenese LL survey data used to be 
+    out$new_data$ll_catchatage_indicator <- out$new_data$srv_jap_ll_lgth_indicator+out$new_data$srv_jap_ll_age_indicator+out$new_data$ll_catchatage_indicator
+    out$new_data$obs_ll_catchatage <- t(apply(out$new_data$obs_ll_catchatage, 1, as.double))
+    out$new_data$obs_ll_catchatage <- out$new_data$obs_ll_catchatage[,as.logical(out$new_data$ll_catchatage_indicator)]
+
+    out$new_data$obs_srv_dom_ll_age <- t(apply(out$new_data$obs_srv_dom_ll_age, 1, as.double))
+    out$new_data$obs_srv_dom_ll_age <- out$new_data$obs_srv_dom_ll_age[,as.logical(out$new_data$srv_dom_ll_age_indicator)]
+
+    # TODO: should remove this since there aren't actually
+    # ages from this survey...
+    out$new_data$srv_nmfs_trwl_age_indicator <- rep(1, ncol(out$new_data$obs_srv_nmfs_trwl_age))
+    out$new_data$obs_srv_nmfs_trwl_age <- t(apply(out$new_data$obs_srv_nmfs_trwl_age, 1, as.double))
+    out$new_data$obs_srv_nmfs_trwl_age <- out$new_data$obs_srv_nmfs_trwl_age[,as.logical(out$new_data$srv_nmfs_trwl_age_indicator)]
+
     return(out)
 }

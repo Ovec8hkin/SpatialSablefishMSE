@@ -11,8 +11,12 @@
 #'
 #' @example
 #'
-fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
+fit_TMB_model <- function(data, parameters, model_name="CurrentAssessment", do_newton_steps=FALSE, fix_pars=NA, recompile_model=FALSE){
     
+    if(!(model_name %in% c("CurrentAssessment", "CurrentAssessmentDisaggregated"))){
+        stop("Invalid model_name")
+    }
+
     par_map <- list(
         # Turn off japanese fishery/survey and CPUE parameters
         ln_srv_jap_ll_sel_pars          = factor(rep(NA, length(parameters$ln_srv_jap_ll_sel_pars))),
@@ -21,9 +25,8 @@ fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
         ln_srv_jap_fishery_ll_q         = factor(rep(NA, length(parameters$ln_srv_jap_fishery_ll_q))),
         ln_ll_cpue_q                    = factor(rep(NA, length(parameters$ln_ll_cpue_q))),
 
-        # Share selectivity parameters
+        # Selectivity parameter sharing
         ln_trwl_sel_pars    = factor(c(1, 2, 3, 2)),
-        ln_ll_sel_pars      = factor(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 10, 11)),
 
         # Turn off mortality related parameters
         ln_M_year_devs  = factor(rep(NA, length(parameters$ln_M_year_devs))),
@@ -37,12 +40,18 @@ fit_TMB_model <- function(data, parameters, do_newton_steps=FALSE, fix_pars=NA){
         parameters[names(fix_pars)] <- lapply(seq_along(fix_pars), \(x) as.vector(fix_pars[[x]]))
         par_map[names(fix_pars)] <- lapply(seq_along(fix_pars), \(x) factor(rep(NA, length(fix_pars[[x]]))))
     }
+
+    if(recompile_model){
+        file.remove(paste("inst/", model_name, ".o"))
+        file.remove(paste("inst/", model_name, ".so"))
+        TMB::compile(paste0("inst/", model_name, ".cpp"))
+    }
     
-    dyn.load(dynlib("inst/CurrentAssessment"))
+    dyn.load(dynlib(paste0("inst/", model_name)))
     my_model = TMB::MakeADFun(data = data,
                           parameters = parameters,
                           map = par_map,
-                          DLL = "CurrentAssessment",
+                          DLL = model_name,
                           silent = TRUE)
 
     mle_optim = nlminb(start = my_model$par, objective = my_model$fn, gradient  = my_model$gr, control = list(iter.max = 10000, eval.max = 10000))
