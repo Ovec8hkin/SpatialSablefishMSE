@@ -5,6 +5,7 @@
  * D. Hanselman:dana.hanselman@noaa.gov
  * UPDATED (and commented)  by D. Goethel: daniel.goethel@noaa.gov   (10/15/20)
  * Translated from ADMB to TMB by C.Marsh: craig.marsh10@gmail.com  (11/10/22)
+ * AC sex disaggregation by J. Zahner: joshuazahner@gmail.com       (04/28/24)
  * Tips
  * - TMB indicies start at 0 (i.e., like C++) where as ADMB starts at 1 (i.e., like R)
  * - Object labels should start with the transformation that is assumed for example natural log of F for longline should follow ln_F_ll
@@ -727,11 +728,11 @@ Type objective_function<Type>::operator() () {
     // Longline Fishery age comp
     if(ll_catchatage_indicator(year_ndx) == 1) {
       // Get catch at age for males and account for ageing error
-      temp_numbers_at_age = catchatage_ll_m.col(year_ndx);
+      temp_numbers_at_age = catchatage_ll_m.col(ll_catchatage_ndx);
       temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
       numbers_at_age_and_sex.segment(0,n_ages) = temp_numbers_at_age_after_ageing_error;
       // Now Get catch at age for females and account for ageing error
-      temp_numbers_at_age = catchatage_ll_f.col(year_ndx);
+      temp_numbers_at_age = catchatage_ll_f.col(ll_catchatage_ndx);
       temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
       numbers_at_age_and_sex.segment(n_ages,n_ages) = temp_numbers_at_age_after_ageing_error;
       // do posfun so no zero proportions
@@ -740,9 +741,9 @@ Type objective_function<Type>::operator() () {
       // normalise to sum = 1 across both sexes
       numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
       // Store in predicted container
-      pred_ll_catchatage.col(year_ndx) = numbers_at_age_and_sex;
+      pred_ll_catchatage.col(ll_catchatage_ndx) = numbers_at_age_and_sex;
       // Get obs for likelihood calculations
-      temp_observed_age_and_sex = obs_ll_catchatage.col(year_ndx);
+      temp_observed_age_and_sex = obs_ll_catchatage.col(ll_catchatage_ndx);
       // evaluate the likelihood
       if(ll_catchatage_comp_likelihood == 0) {
         nll(0) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
@@ -760,45 +761,46 @@ Type objective_function<Type>::operator() () {
         //   obs_ll_catchatage.col(year_ndx).col(region_ndx) = temp_observed_age_and_sex;
         // }
       }
+      ++ll_catchatage_ndx;
     }
 
     // Longline Fishery length frequency
-    // if(ll_catchatlgth_indicator(year_ndx) == 1) {
-    //   pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) = (male_age_length_transition.col(year_ndx).matrix().transpose() * catchatage_ll_m.col(year_ndx).matrix()).col(0);
-    //   pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * catchatage_ll_f.col(year_ndx).matrix()).col(0);
-    //   // normalise to sum = 1
-    //   pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) /= sum(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
-    //   pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) /= sum(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
-    //   // Log-likelihood contribution
-    //   if(ll_catchatlgth_comp_likelihood == 0) {
-    //     // ADMB's multinomial method
-    //     // males
-    //     Type sample_size = sum(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
-    //     temp_numbers_at_lgth = obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx) / sample_size;
-    //     nll(15) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) + 0.001)));
-    //     // females
-    //     sample_size = sum(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
-    //     temp_numbers_at_lgth = obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx) / sample_size;
-    //     nll(16) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) + 0.001)));
-    //   } else if(ll_catchatage_comp_likelihood == 1) {
-    //     // TMB's multinomial method
-    //     nll(15) -= dmultinom_upd(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), true);
-    //     nll(16) -= dmultinom_upd(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), true);
-    //   }
-    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
-    //   // so will contain both proportions and N_eff
-    //   SIMULATE {
-    //     // Males first
-    //     Type sample_size = sum(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
-    //     vector<Type> temp_observed_lgth = rmultinom(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), sample_size);
-    //     obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx) = temp_observed_lgth;
-    //     // Females second
-    //     sample_size = sum(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
-    //     temp_observed_lgth = rmultinom(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), sample_size);
-    //     obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx) = temp_observed_lgth;
-    //   }
-    //   ++ll_catchatlgth_ndx;
-    // }
+    if(ll_catchatlgth_indicator(year_ndx) == 1) {
+      pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) = (male_age_length_transition.col(year_ndx).matrix().transpose() * catchatage_ll_m.col(year_ndx).matrix()).col(0);
+      pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * catchatage_ll_f.col(year_ndx).matrix()).col(0);
+      // normalise to sum = 1
+      pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) /= sum(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
+      pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) /= sum(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
+      // Log-likelihood contribution
+      if(ll_catchatlgth_comp_likelihood == 0) {
+        // ADMB's multinomial method
+        // males
+        Type sample_size = sum(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
+        temp_numbers_at_lgth = obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx) / sample_size;
+        nll(15) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx) + 0.001)));
+        // females
+        sample_size = sum(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
+        temp_numbers_at_lgth = obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx) / sample_size;
+        nll(16) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx) + 0.001)));
+      } else if(ll_catchatage_comp_likelihood == 1) {
+        // TMB's multinomial method
+        nll(15) -= dmultinom_upd(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), true);
+        nll(16) -= dmultinom_upd(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), true);
+      }
+      // Simulate Multinomial observations. These will be integers i.e., numbers at age
+      // so will contain both proportions and N_eff
+      SIMULATE {
+        // Males first
+        Type sample_size = sum(obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx));
+        vector<Type> temp_observed_lgth = rmultinom(pred_ll_catchatlgth_m.col(ll_catchatlgth_ndx).vec(), sample_size);
+        obs_ll_catchatlgth_m.col(ll_catchatlgth_ndx) = temp_observed_lgth;
+        // Females second
+        sample_size = sum(obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx));
+        temp_observed_lgth = rmultinom(pred_ll_catchatlgth_f.col(ll_catchatlgth_ndx).vec(), sample_size);
+        obs_ll_catchatlgth_f.col(ll_catchatlgth_ndx) = temp_observed_lgth;
+      }
+      ++ll_catchatlgth_ndx;
+    }
 
     // Trawl Fishery age comp
     // if(trwl_catchatage_indicator(year_ndx) == 1) {
@@ -971,9 +973,9 @@ Type objective_function<Type>::operator() () {
       // normalise to sum = 1 across both sexes
       numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
       // Store in predicted container
-      pred_srv_dom_ll_age.col(year_ndx) = numbers_at_age_and_sex;
+      pred_srv_dom_ll_age.col(srv_dom_ll_age_ndx) = numbers_at_age_and_sex;
       // Get observaiton for LL evaluation
-      temp_observed_age_and_sex = obs_srv_dom_ll_age.col(year_ndx);
+      temp_observed_age_and_sex = obs_srv_dom_ll_age.col(srv_dom_ll_age_ndx);
       // evaluate the likelihood
       if(srv_dom_ll_age_comp_likelihood == 0) {
         nll(6) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
@@ -991,6 +993,7 @@ Type objective_function<Type>::operator() () {
         //   obs_srv_dom_ll_age.col(year_ndx) = temp_observed_age_and_sex;
         // }
       }
+      ++srv_dom_ll_age_ndx;
     }
     // if(srv_dom_ll_age_indicator(year_ndx) == 1) {
     //   for(age_ndx = 0; age_ndx < n_ages; age_ndx++) {
@@ -1017,47 +1020,47 @@ Type objective_function<Type>::operator() () {
     // }
 
     // Survey Domestic Longline Length frequency
-    // if(srv_dom_ll_lgth_indicator(year_ndx) == 1) {
-    //   temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_dom_ll_m.col(srv_dom_ll_sel_by_year_indicator(year_ndx));
-    //   pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
-    //   temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_dom_ll_f.col(srv_dom_ll_sel_by_year_indicator(year_ndx));
-    //   pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+    if(srv_dom_ll_lgth_indicator(year_ndx) == 1) {
+      temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_dom_ll_m.col(srv_dom_ll_sel_by_year_indicator(year_ndx));
+      pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+      temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_dom_ll_f.col(srv_dom_ll_sel_by_year_indicator(year_ndx));
+      pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
 
-    //   //pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_dom_ll_f.col(srv_dom_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
-    //   // normalise to sum = 1
-    //   pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) /= sum(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
-    //   pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) /= sum(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
-    //   // Log-likelihood contribution
-    //   if(srv_dom_ll_lgth_comp_likelihood == 0) {
-    //     // ADMB's multinomial method
-    //     // males
-    //     Type sample_size = sum(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
-    //     temp_numbers_at_lgth = obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) / sample_size;
-    //     nll(7) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) + 0.001)));
-    //     // females
-    //     sample_size = sum(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
-    //     temp_numbers_at_lgth = obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) / sample_size;
-    //     nll(8) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) + 0.001)));
+      //pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_dom_ll_f.col(srv_dom_ll_sel_by_year_indicator(year_ndx))).matrix()).col(0);
+      // normalise to sum = 1
+      pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) /= sum(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
+      pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) /= sum(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
+      // Log-likelihood contribution
+      if(srv_dom_ll_lgth_comp_likelihood == 0) {
+        // ADMB's multinomial method
+        // males
+        Type sample_size = sum(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
+        temp_numbers_at_lgth = obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) / sample_size;
+        nll(7) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) + 0.001)));
+        // females
+        sample_size = sum(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
+        temp_numbers_at_lgth = obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) / sample_size;
+        nll(8) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) + 0.001)));
 
-    //   } else if(srv_dom_ll_lgth_comp_likelihood == 1) {
-    //     // TMB's multinomial method
-    //     nll(7) -= dmultinom_upd(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), true);
-    //     nll(8) -= dmultinom_upd(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), true);
-    //   }
-    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
-    //   // so will contain both proportions and N_eff
-    //   SIMULATE {
-    //     // Males first
-    //     Type sample_size = sum(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
-    //     vector<Type> temp_observed_lgth = rmultinom(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), sample_size);
-    //     obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) = temp_observed_lgth;
-    //     // Females second
-    //     sample_size = sum(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
-    //     temp_observed_lgth = rmultinom(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), sample_size);
-    //     obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = temp_observed_lgth;
-    //   }
-    //   ++srv_dom_ll_lgth_ndx;
-    // }
+      } else if(srv_dom_ll_lgth_comp_likelihood == 1) {
+        // TMB's multinomial method
+        nll(7) -= dmultinom_upd(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), true);
+        nll(8) -= dmultinom_upd(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), true);
+      }
+      // Simulate Multinomial observations. These will be integers i.e., numbers at age
+      // so will contain both proportions and N_eff
+      SIMULATE {
+        // Males first
+        Type sample_size = sum(obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx));
+        vector<Type> temp_observed_lgth = rmultinom(pred_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx).vec(), sample_size);
+        obs_srv_dom_ll_lgth_m.col(srv_dom_ll_lgth_ndx) = temp_observed_lgth;
+        // Females second
+        sample_size = sum(obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx));
+        temp_observed_lgth = rmultinom(pred_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx).vec(), sample_size);
+        obs_srv_dom_ll_lgth_f.col(srv_dom_ll_lgth_ndx) = temp_observed_lgth;
+      }
+      ++srv_dom_ll_lgth_ndx;
+    }
     // Survey Japanese Longline age frequency
     // if(srv_jap_ll_age_indicator(year_ndx) == 1) {
     //   for(age_ndx = 0; age_ndx < n_ages; age_ndx++) {
@@ -1129,42 +1132,43 @@ Type objective_function<Type>::operator() () {
     // }
 
     // Survey GOA Trawl Age frequency
-    if(srv_nmfs_trwl_age_indicator(year_ndx) == 1) {
-      // Get catch at age for males and account for ageing error
-      temp_numbers_at_age = natage_m.col(year_ndx).vec() * sel_srv_nmfs_trwl_m.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx)).vec() * S_m_mid.col(year_ndx).vec();
-      temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
-      numbers_at_age_and_sex.segment(0,n_ages) = temp_numbers_at_age_after_ageing_error;
-      // Now Get catch at age for females and account for ageing error
-      temp_numbers_at_age = natage_f.col(year_ndx).vec() * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx)).vec() * S_f_mid.col(year_ndx).vec();
-      temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
-      numbers_at_age_and_sex.segment(n_ages,n_ages) = temp_numbers_at_age_after_ageing_error;
-      // do posfun so no zero proportions
-      for(int i = 0; i < numbers_at_age_and_sex.size(); ++i)
-        numbers_at_age_and_sex(i) = posfun(numbers_at_age_and_sex(i), eps_for_posfun, pen_posfun);
-      // normalise to sum = 1 across both sexes
-      numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
-      // Store in predicted container
-      pred_srv_nmfs_trwl_age.col(year_ndx) = numbers_at_age_and_sex;
-      // Get observaiton for LL evaluation
-      temp_observed_age_and_sex = obs_srv_nmfs_trwl_age.col(year_ndx);
-      // evaluate the likelihood
-      if(srv_nmfs_trwl_age_comp_likelihood == 0) {
-        nll(12) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
-        // SIMULATE {
-        //   effective_sample_size = temp_observed_age_and_sex.sum();
-        //   temp_observed_age_and_sex = rmultinom(numbers_at_age_and_sex, effective_sample_size);
-        //   obs_srv_dom_ll_age.col(year_ndx) = temp_observed_age_and_sex;
-        // }
-      } else if (srv_nmfs_trwl_age_comp_likelihood == 1) {
-        Type N_input = sum(temp_observed_age_and_sex);
-        temp_observed_age_and_sex /= N_input;
-        nll(12) -= ddirichletmulti(temp_observed_age_and_sex, numbers_at_age_and_sex, N_input, theta_fixed_catchatage, 1);
-        // SIMULATE {
-        //   temp_observed_age_and_sex = rdirichletmulti(numbers_at_age_and_sex, N_input, theta_fixed_catchatage);
-        //   obs_srv_dom_ll_age.col(year_ndx) = temp_observed_age_and_sex;
-        // }
-      }
-    }
+    // if(srv_nmfs_trwl_age_indicator(year_ndx) == 1) {
+    //   // Get catch at age for males and account for ageing error
+    //   temp_numbers_at_age = natage_m.col(year_ndx).vec() * sel_srv_nmfs_trwl_m.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx)).vec() * S_m_mid.col(year_ndx).vec();
+    //   temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
+    //   numbers_at_age_and_sex.segment(0,n_ages) = temp_numbers_at_age_after_ageing_error;
+    //   // Now Get catch at age for females and account for ageing error
+    //   temp_numbers_at_age = natage_f.col(year_ndx).vec() * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx)).vec() * S_f_mid.col(year_ndx).vec();
+    //   temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
+    //   numbers_at_age_and_sex.segment(n_ages,n_ages) = temp_numbers_at_age_after_ageing_error;
+    //   // do posfun so no zero proportions
+    //   for(int i = 0; i < numbers_at_age_and_sex.size(); ++i)
+    //     numbers_at_age_and_sex(i) = posfun(numbers_at_age_and_sex(i), eps_for_posfun, pen_posfun);
+    //   // normalise to sum = 1 across both sexes
+    //   numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
+    //   // Store in predicted container
+    //   pred_srv_nmfs_trwl_age.col(srv_nmfs_trwl_age_ndx) = numbers_at_age_and_sex;
+    //   // Get observaiton for LL evaluation
+    //   temp_observed_age_and_sex = obs_srv_nmfs_trwl_age.col(srv_nmfs_trwl_age_ndx);
+    //   // evaluate the likelihood
+    //   if(srv_nmfs_trwl_age_comp_likelihood == 0) {
+    //     nll(12) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
+    //     // SIMULATE {
+    //     //   effective_sample_size = temp_observed_age_and_sex.sum();
+    //     //   temp_observed_age_and_sex = rmultinom(numbers_at_age_and_sex, effective_sample_size);
+    //     //   obs_srv_dom_ll_age.col(year_ndx) = temp_observed_age_and_sex;
+    //     // }
+    //   } else if (srv_nmfs_trwl_age_comp_likelihood == 1) {
+    //     Type N_input = sum(temp_observed_age_and_sex);
+    //     temp_observed_age_and_sex /= N_input;
+    //     nll(12) -= ddirichletmulti(temp_observed_age_and_sex, numbers_at_age_and_sex, N_input, theta_fixed_catchatage, 1);
+    //     // SIMULATE {
+    //     //   temp_observed_age_and_sex = rdirichletmulti(numbers_at_age_and_sex, N_input, theta_fixed_catchatage);
+    //     //   obs_srv_dom_ll_age.col(year_ndx) = temp_observed_age_and_sex;
+    //     // }
+    //   }
+    //   ++srv_nmfs_trwl_age_ndx;
+    // }
     // if(srv_nmfs_trwl_age_indicator(year_ndx) == 1) {
     //   for(age_ndx = 0; age_ndx < n_ages; age_ndx++) {
     //     temp_numbers_at_age(age_ndx) = proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
@@ -1190,46 +1194,46 @@ Type objective_function<Type>::operator() () {
     //   ++srv_nmfs_trwl_age_ndx;
     // }
     // Survey GOA Trawl Length frequency
-    // if(srv_nmfs_trwl_lgth_indicator(year_ndx) == 1) {
-    //   temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_nmfs_trwl_m.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
-    //   pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
-    //   temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
-    //   pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+    if(srv_nmfs_trwl_lgth_indicator(year_ndx) == 1) {
+      temp_numbers_at_lgth = natage_m.col(year_ndx) * sel_srv_nmfs_trwl_m.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
+      pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) = male_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
+      temp_numbers_at_lgth = natage_f.col(year_ndx) * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
+      pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = female_age_length_transition.col(year_ndx).matrix().transpose() * temp_numbers_at_lgth.matrix();
 
-    //   //pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx))).matrix()).col(0);
-    //   // normalise to sum = 1
-    //   pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) /= sum(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
-    //   pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) /= sum(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
-    //   // Log-likelihood contribution
-    //   if(srv_nmfs_trwl_lgth_comp_likelihood == 0) {
-    //     // ADMB's multinomial method
-    //     // males
-    //     Type sample_size = sum(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
-    //     temp_numbers_at_lgth = obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) / sample_size;
-    //     nll(13) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) + 0.001)));
-    //     // females
-    //     sample_size = sum(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
-    //     temp_numbers_at_lgth = obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) / sample_size;
-    //     nll(14) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) + 0.001)));
+      //pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = (female_age_length_transition.col(year_ndx).matrix().transpose() * (natage_f.col(year_ndx) * sel_srv_nmfs_trwl_f.col(srv_nmfs_trwl_sel_by_year_indicator(year_ndx))).matrix()).col(0);
+      // normalise to sum = 1
+      pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) /= sum(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
+      pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) /= sum(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
+      // Log-likelihood contribution
+      if(srv_nmfs_trwl_lgth_comp_likelihood == 0) {
+        // ADMB's multinomial method
+        // males
+        Type sample_size = sum(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
+        temp_numbers_at_lgth = obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) / sample_size;
+        nll(13) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) + 0.001)));
+        // females
+        sample_size = sum(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
+        temp_numbers_at_lgth = obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) / sample_size;
+        nll(14) -= sample_size * sum(vector<Type>((temp_numbers_at_lgth + 0.001) * log(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) + 0.001)));
 
-    //   } else if(srv_nmfs_trwl_lgth_comp_likelihood == 1) {
-    //     nll(13) -= dmultinom_upd(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), true);
-    //     nll(14) -= dmultinom_upd(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), true);
-    //   }
-    //   // Simulate Multinomial observations. These will be integers i.e., numbers at age
-    //   // so will contain both proportions and N_eff
-    //   SIMULATE {
-    //     // Males first
-    //     Type sample_size = sum(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
-    //     vector<Type> temp_observed_lgth = rmultinom(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), sample_size);
-    //     obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) = temp_observed_lgth;
-    //     // Females second
-    //     sample_size = sum(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
-    //     temp_observed_lgth = rmultinom(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), sample_size);
-    //     obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = temp_observed_lgth;
-    //   }
-    //   ++srv_nmfs_trwl_lgth_ndx;
-    // }
+      } else if(srv_nmfs_trwl_lgth_comp_likelihood == 1) {
+        nll(13) -= dmultinom_upd(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), true);
+        nll(14) -= dmultinom_upd(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), true);
+      }
+      // Simulate Multinomial observations. These will be integers i.e., numbers at age
+      // so will contain both proportions and N_eff
+      SIMULATE {
+        // Males first
+        Type sample_size = sum(obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx));
+        vector<Type> temp_observed_lgth = rmultinom(pred_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx).vec(), sample_size);
+        obs_srv_nmfs_trwl_lgth_m.col(srv_nmfs_trwl_lgth_ndx) = temp_observed_lgth;
+        // Females second
+        sample_size = sum(obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx));
+        temp_observed_lgth = rmultinom(pred_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx).vec(), sample_size);
+        obs_srv_nmfs_trwl_lgth_f.col(srv_nmfs_trwl_lgth_ndx) = temp_observed_lgth;
+      }
+      ++srv_nmfs_trwl_lgth_ndx;
+    }
 
     // NMFS GOA trawl survey biomass
     if(srv_nmfs_trwl_bio_indicator(year_ndx) == 1) {
@@ -1409,22 +1413,22 @@ Type objective_function<Type>::operator() () {
   nll_weighted(1) *= loglik_wgt_trwl_catchatlgth_m;       // 1 - trwl-fishery length male comp
   nll_weighted(2) *= loglik_wgt_trwl_catchatlgth_f;       // 2 - trwl-fishery length female comp
   nll_weighted(3) *= loglik_wgt_srv_dom_ll_bio;           // 3 - srv Domestic ll Biomass
-  nll_weighted(4) *= loglik_wgt_srv_jap_ll_bio*0;           // 4 - srv Japanese ll Biomass
-  nll_weighted(5) *= loglik_wgt_ll_cpue*0;                  // 5 - LL Fishery CPUE
+  nll_weighted(4) *= loglik_wgt_srv_jap_ll_bio;           // 4 - srv Japanese ll Biomass
+  nll_weighted(5) *= loglik_wgt_ll_cpue;                  // 5 - LL Fishery CPUE
   nll_weighted(6) *= loglik_wgt_srv_dom_ll_age;           // 6 - srv Domestic ll Age
-  nll_weighted(7) *= loglik_wgt_srv_dom_ll_lgth_m*0;        // 7 - srv Domestic ll Length male
-  nll_weighted(8) *= loglik_wgt_srv_dom_ll_lgth_f*0;        // 8 - srv Domestic ll Length female
-  nll_weighted(9) *= loglik_wgt_srv_jap_ll_age*0;           // 9 - srv Japanese ll Age
-  nll_weighted(10) *= loglik_wgt_srv_jap_ll_lgth_m*0;       // 10 - srv Japanese ll Length male
-  nll_weighted(11) *= loglik_wgt_srv_jap_ll_lgth_f*0;       // 11 - srv Japanese ll Length female
+  nll_weighted(7) *= loglik_wgt_srv_dom_ll_lgth_m;        // 7 - srv Domestic ll Length male
+  nll_weighted(8) *= loglik_wgt_srv_dom_ll_lgth_f;        // 8 - srv Domestic ll Length female
+  nll_weighted(9) *= loglik_wgt_srv_jap_ll_age;           // 9 - srv Japanese ll Age
+  nll_weighted(10) *= loglik_wgt_srv_jap_ll_lgth_m;       // 10 - srv Japanese ll Length male
+  nll_weighted(11) *= loglik_wgt_srv_jap_ll_lgth_f;       // 11 - srv Japanese ll Length female
   nll_weighted(12) *= loglik_wgt_srv_nmfs_trwl_age;       // 12 - srv GOA trwl Age
-  nll_weighted(13) *= loglik_wgt_srv_nmfs_trwl_lgth_m*0;    // 13 - srv GOA trwl  Length male
-  nll_weighted(14) *= loglik_wgt_srv_nmfs_trwl_lgth_f*0;    // 14 - srv GOA trwl  Length female
-  nll_weighted(15) *= loglik_wgt_ll_catchatlgth_m*0;        // 15 - ll-fishery length male comp
-  nll_weighted(16) *= loglik_wgt_ll_catchatlgth_f*0;        // 16 - ll-fishery length female comp
+  nll_weighted(13) *= loglik_wgt_srv_nmfs_trwl_lgth_m;    // 13 - srv GOA trwl  Length male
+  nll_weighted(14) *= loglik_wgt_srv_nmfs_trwl_lgth_f;    // 14 - srv GOA trwl  Length female
+  nll_weighted(15) *= loglik_wgt_ll_catchatlgth_m;        // 15 - ll-fishery length male comp
+  nll_weighted(16) *= loglik_wgt_ll_catchatlgth_f;        // 16 - ll-fishery length female comp
   nll_weighted(17) *= loglik_wgt_srv_nmfs_trwl_bio;       // 17 - srv GOA trwl biomass index
-  nll_weighted(18) *= loglik_wgt_jap_fishery_ll_bio*0;      // 18 - srv Japanese Fishery longline biomass index
-  nll_weighted(19) *= loglik_wgt_srv_jap_fishery_ll_lgth*0; // 19 - srv Japanese Fishery longline Length Frequency
+  nll_weighted(18) *= loglik_wgt_jap_fishery_ll_bio;      // 18 - srv Japanese Fishery longline biomass index
+  nll_weighted(19) *= loglik_wgt_srv_jap_fishery_ll_lgth; // 19 - srv Japanese Fishery longline Length Frequency
   nll_weighted(20) *= loglik_wgt_ll_catch;                // 20 - Longline fishery catch Sum of squares
   nll_weighted(21) *= loglik_wgt_trwl_catch;              // 21 - Trawl fishery catch Sum of squares
   nll_weighted(22) *= 1.0;                                // 22 - Recruitment penalty/hyper prior if model is hierachical
