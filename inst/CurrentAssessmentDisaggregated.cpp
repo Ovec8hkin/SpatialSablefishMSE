@@ -898,7 +898,8 @@ Type objective_function<Type>::operator() () {
           obs_dom_ll_bio(srv_dom_ll_bio_ndx) = exp(rnorm(log(pred_dom_ll_bio(srv_dom_ll_bio_ndx) + 0.0001), (se_dom_ll_bio(srv_dom_ll_bio_ndx) / obs_dom_ll_bio(srv_dom_ll_bio_ndx))));
         }
       } else {
-        nll(3) -= dlnorm(obs_dom_ll_bio(srv_dom_ll_bio_ndx), log(pred_dom_ll_bio(srv_dom_ll_bio_ndx)) - 0.5 * se_dom_ll_bio(srv_dom_ll_bio_ndx) * se_dom_ll_bio(srv_dom_ll_bio_ndx), se_dom_ll_bio(srv_dom_ll_bio_ndx), true);
+        Type cv  = se_dom_ll_bio(srv_dom_ll_bio_ndx)/obs_dom_ll_bio(srv_dom_ll_bio_ndx);
+        nll(3) -= dlnorm(obs_dom_ll_bio(srv_dom_ll_bio_ndx), log(pred_dom_ll_bio(srv_dom_ll_bio_ndx)) - 0.5 * cv * cv, cv, true);
         // Simulate lognormal observations
         SIMULATE {
           obs_dom_ll_bio(srv_dom_ll_bio_ndx) = exp(rnorm(log(pred_dom_ll_bio(srv_dom_ll_bio_ndx)) - 0.5 * se_dom_ll_bio(srv_dom_ll_bio_ndx) * se_dom_ll_bio(srv_dom_ll_bio_ndx), se_dom_ll_bio(srv_dom_ll_bio_ndx)));
