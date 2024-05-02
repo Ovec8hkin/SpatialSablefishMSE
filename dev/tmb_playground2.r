@@ -17,6 +17,7 @@ library(ggdist)
 library(doParallel)
 library(patchwork)
 library(cowplot)
+library(ggh4x)
 
 #setwd("~/Desktop/Side projects/SablefishMSE")
 source("R/run_mse_parallel.R")
@@ -46,14 +47,14 @@ tier3 <- function(ref_pts, naa, dem_params){
   )
 }
 
-nsims <- 30
-set.seed(1120)
+nsims <- 100
+set.seed(1007)
 seeds <- sample(1:1e3, nsims)
 nyears <- 160
-sable_om$model_options$obs_pars$fish_fx$ac_samps <- 60
-sable_om$model_options$obs_pars$surv_ll$ac_samps <- 60
-sable_om$model_options$obs_pars$surv_tw$ac_samps <- 60
-sable_om$model_options$obs_pars$fish_tw$ac_samps <- 60
+sable_om$model_options$obs_pars$fish_fx$ac_samps <- 30
+sable_om$model_options$obs_pars$surv_ll$ac_samps <- 30
+sable_om$model_options$obs_pars$surv_tw$ac_samps <- 30
+sable_om$model_options$obs_pars$fish_tw$ac_samps <- 30
 sable_om$model_options$obs_pars$surv_ll$rpn_cv <- 0.1
 sable_om$model_options$obs_pars$surv_tw$rpw_cv <- 0.1
 sable_om$model_options$obs_pars$fish_tw$as_integers <- TRUE
@@ -94,10 +95,27 @@ out <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears){
         file_suffix = s
     )
 
-    
-    fix_pars = list(
-        ln_M = log(0.113179)
-    )
+    assess_inputs$new_data$ll_catchatlgth_indicator <- rep(0, length(assess_inputs$new_data$ll_catchatlgth_indicator))
+    assess_inputs$new_data$trwl_catchatlgth_indicator <- rep(0, length(assess_inputs$new_data$trwl_catchatlgth_indicator))
+    assess_inputs$new_data$srv_dom_ll_lgth_indicator <- rep(0, length(assess_inputs$new_data$srv_dom_ll_lgth_indicator))
+    assess_inputs$new_data$srv_nmfs_trwl_lgth_indicator <- rep(0, length(assess_inputs$new_data$srv_nmfs_trwl_lgth_indicator))
+
+    # assess_inputs$new_data$mu_srv_dom_ll_q <- 6.412379
+    # assess_inputs$new_data$sd_srv_dom_ll_q <- 0.05
+    # assess_inputs$new_data$mu_srv_nmfs_trwl_q <- 0.8580096
+    # assess_inputs$new_data$sd_srv_nmfs_trwl_q <- 0.05
+    # assess_inputs$new_data$loglik_wgt_q_priors <- 1
+
+    # assess_inputs$new_data$mu_M <- sable_om$dem_params$mort[1,1,1,1]
+    # assess_inputs$new_data$sd_M <- 8.5481e-002
+
+    # fix_pars = list(
+    #   # ln_M = log(sable_om$dem_params$mort[1,1,1,1]),
+    #   ln_srv_nmfs_trwl_q = -0.153144044674,
+    #   ln_srv_dom_ll_q = 1.85823035364
+    # )
+
+    fix_pars <- NULL
 
     mod_out <- fit_TMB_model(
         data = assess_inputs$new_data,
@@ -109,6 +127,8 @@ out <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears){
 
     mle_report = mod_out$report
     mle_optim = mod_out$opt
+
+    mle_optim$par
 
     est_rec <- SpatialSablefishAssessment::get_recruitment(mle_report)
     om_rec <- apply(mse_tier3$naa[1:nyears,1,,,s], 1, sum)
@@ -165,6 +185,8 @@ out <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears){
         om_F35 = rps_true$F35,
         om_B40 = rps_true$B40,
         M = exp(mle_optim$par["ln_M"]),
+        ll_q = exp(mle_optim$par["ln_srv_dom_ll_q"]),
+        tw_q = exp(mle_optim$par["ln_srv_nmfs_trwl_q"]),
         sim=s
     )
 
@@ -174,6 +196,8 @@ out <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears){
 data <- bind_rows(out)
 
 stopCluster(cl)
+
+summary(data[, c("ll_q", "tw_q", "M")])
 
 df <- data %>% group_by(Year) %>%
   ggdist::median_qi(est_rec, om_rec, est_ssb, om_ssb, est_F, 
@@ -262,39 +286,29 @@ a
 
 #' Plot reference points (F35 (F_OFL), F40 (F_ABC), and B40) to look for
 #' estimation bias.
-data %>% select(F40_est, F40_true, F35_est, F35_true, B40_est, B40_true, sim) %>%
-  median_qi(sim, F40_est, F40_true, F35_est, F35_true, B40_est, B40_true, .width=c(0.50, 0.95)) %>%
+data %>% select(contains("40"), contains("35"), sim) %>%
+  as_tibble() %>%
+  median_qi(sim, est_F40, om_F40, est_F35, om_F35, est_B40, om_B40, .width=c(0.50, 0.95)) %>%
   reformat_ggdist_long(1) %>%
-  separate(name, into=c("RP", "model"), sep="_") %>%
+  separate(name, into=c("model", "RP"), sep="_") %>%
 
   ggplot()+
-    geom_pointrange(aes(x=model, y=median, ymin=lower, ymax=upper, color="model"))+
+    geom_pointrange(aes(x=model, y=median, ymin=lower, ymax=upper, color=model))+
     facet_wrap(~RP, scales="free_y")+
     ggh4x::facetted_pos_scales(
       y = list(
-        scale_y_continuous(limits=c(50, 150)),
-        scale_y_continuous(limits=c(0.1, 0.15)),
-        scale_y_continuous(limits=c(0.09, 0.11))
+        scale_y_continuous(limits=c(75, 125)),
+        scale_y_continuous(limits=c(0.1, 0.12)),
+        scale_y_continuous(limits=c(0.09, 0.105))
       )
     )+
     theme_bw()
 
 
 #' Plot selectivity curves to evaluate fits to OM selectivity
-s <- 1
+s <- 5
 i <- nyears-63
 y <- 63+i
-# assess_inputs <- format_em_data(
-#   nyears = y,
-#   dem_params = afscOM::subset_dem_params(sable_om$dem_params, 64:y, d=1, drop=FALSE),
-#   land_caa = afscOM::subset_matrix(mse_tier3$land_caa[64:y,,,,,s,drop=FALSE], 1, d=6, drop=TRUE),
-#   survey_indices = afscOM::subset_dem_params(afscOM::subset_dem_params(mse_tier3$survey_obs, 64:y, d=1, drop=FALSE), s, d=5, drop=TRUE),
-#   fxfish_caa_obs = afscOM::subset_matrix(mse_tier3$survey_obs$fxfish_acs[63:(y-1),,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-#   ll_ac_obs = afscOM::subset_matrix(mse_tier3$survey_obs$ll_acs[63:(y-1),,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-#   model_options = sable_om$model_options,
-#   added_years = i,
-#   file_suffix = s
-# )
 assess_inputs <- simulate_em_data_sex_disaggregate(
     nyears = y,
     dem_params = afscOM::subset_dem_params(sable_om$dem_params, 1:y, d=1, drop=FALSE),
@@ -308,15 +322,27 @@ assess_inputs <- simulate_em_data_sex_disaggregate(
     added_years = i,
     file_suffix = s
 )
-file.remove(paste0("data/sablefish_em_data_curr_",s,".RDS"))
-file.remove(paste0("data/sablefish_em_par_curr_",s,".RDS"))
 
-# fix_pars <- list(ln_M=log(0.11))
+assess_inputs$new_data$ll_catchatlgth_indicator <- rep(0, length(assess_inputs$new_data$ll_catchatlgth_indicator))
+assess_inputs$new_data$trwl_catchatlgth_indicator <- rep(0, length(assess_inputs$new_data$trwl_catchatlgth_indicator))
+assess_inputs$new_data$srv_dom_ll_lgth_indicator <- rep(0, length(assess_inputs$new_data$srv_dom_ll_lgth_indicator))
+assess_inputs$new_data$srv_nmfs_trwl_lgth_indicator <- rep(0, length(assess_inputs$new_data$srv_nmfs_trwl_lgth_indicator))
 
-#' Fit the model
-mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters, model_name="CurrentAssessmentDisaggregated")
+fix_pars <- NULL
+
+mod_out <- fit_TMB_model(
+    data = assess_inputs$new_data,
+    parameters = assess_inputs$new_parameters,
+    model_name = "CurrentAssessmentDisaggregated",
+    fix_pars = fix_pars,
+    recompile_model = FALSE
+)
 mle_report = mod_out$report
 mle_optim = mod_out$opt
+
+mle_optim$par
+
+SpatialSablefishAssessment::plot_index_fit(mle_report)
 
 selex <- SpatialSablefishAssessment::get_selectivities(mle_report)
 om_selex <- reshape2::melt(sable_om$dem_params$sel) %>% as_tibble %>%
@@ -368,14 +394,121 @@ data %>% as_tibble() %>%
   select(Year, sim, quantity, rel_error) %>%
   pivot_wider(names_from="quantity", values_from="rel_error") %>%
   group_by(Year) %>%
-  median_qi(rec, ssb, F, .width=c(0.50, 0.80)) %>%
+  median_qi(rec, ssb, F, ll_f, tw_f, B40, F40, F35, .width=c(0.50, 0.80)) %>%
   reformat_ggdist_long(1) %>%
+  mutate(
+    name = factor(name, levels=c("ssb", "F", "rec", "ll_f", "tw_f", "F35", "F40", "B40"))
+  )  %>%
+  group_by(name) %>%
+  mutate(
+    avg = median(median[Year > 2022]),
+    text_y = case_when(
+      name == "ssb" ~ -0.185,
+      name == "F" ~ 0.30,
+      name == "rec" ~ 0.375,
+      name == "ll_f" ~ 0.30,
+      name == "tw_f" ~ 0.30,
+      name == "F35" ~ 0.07,
+      name == "F40" ~ 0.07,
+      name == "B40" ~ 0.025,
+    )
+  ) %>%
 
   ggplot()+
     geom_lineribbon(aes(x=Year, y=median, ymin=lower, ymax=upper), size=0.6)+
+    geom_vline(xintercept=2022)+
+    geom_hline(aes(yintercept=avg), linetype="solid", color="red", size=0.6) + 
     geom_hline(yintercept=0.0, size=1)+
+    geom_text(aes(x=2075, y=text_y, label=round(100*avg, 3)), color="red")+
     scale_fill_brewer()+
     facet_wrap(~name, scales="free_y")+
+    facetted_pos_scales(
+        y=list(
+            scale_y_continuous(limits=c(-0.20, 0.05)),
+            scale_y_continuous(limits=c(-0.05, 0.35)),
+            scale_y_continuous(limits=c(-0.5, 0.5)),
+            scale_y_continuous(limits=c(-0.05, 0.35)),
+            scale_y_continuous(limits=c(-0.05, 0.35)),
+            scale_y_continuous(limits=c(0.00, 0.08)),
+            scale_y_continuous(limits=c(0.00, 0.08)),
+            scale_y_continuous(limits=c(-0.05, 0.05))
+        )
+    )+
     theme_bw()
 
 
+########
+
+vars <- c(
+  "ll_catch",
+  "trwl_catch",
+  "ll_catchatage_indicator",
+  "ll_catchatlgth_indicator",
+  "trwl_catchatlgth_indicator",
+  "srv_dom_ll_bio_indicator",
+  "srv_jap_ll_bio_indicator",
+  "ll_cpue_indicator",
+  "srv_dom_ll_age_indicator",
+  "srv_dom_ll_lgth_indicator",
+  "srv_jap_ll_age_indicator",
+  "srv_jap_ll_lgth_indicator",
+  "srv_nmfs_trwl_age_indicator",
+  "srv_nmfs_trwl_lgth_indicator",
+  "srv_nmfs_trwl_bio_indicator",
+  "srv_jap_fishery_ll_bio_indicator",
+  "srv_jap_fishery_ll_lgth_indicator",
+  "trwl_catchatage_indicator"
+)
+
+data_df <- data.frame(Year=1960:(1960+nyears-1))
+for(v in vars){
+  if(v == "ll_catch" || v == "trwl_catch"){
+    data_df[,v] <- 1
+  }else{
+    data_df[,v] <- assess_inputs$new_data[v]
+  }
+}
+
+data_df %>% as_tibble() %>%
+  pivot_longer(-c("Year"), names_to="dataset", values_to="value") %>%
+  mutate(
+    datatype = case_when(
+        grepl("catch", dataset) ~ "Catches",
+        grepl("age", dataset) ~ "Age Composition",
+        grepl("lgth", dataset) ~ "Length Composition",
+        grepl("bio", dataset) ~ "Survey Index",
+        grepl("cpue", dataset) ~ "CPUE Index"
+    ),
+
+    fleet = case_when(
+      grepl("srv_nmfs_trwl", dataset) ~ "Trawl Survey",
+      grepl("srv_dom_ll", dataset) ~ "Longline Survey",
+      grepl("srv_jap", dataset) ~ "Japanese LL Fishery/Survey",
+      grepl("ll", dataset) ~ "Longline Fishery",
+      grepl("trwl", dataset) ~ "Trawl Fishery"
+    ),
+
+    value = ifelse(grepl("srv_jap", dataset), 0, value),
+    value = ifelse(grepl("cpue", dataset), 0, value),
+
+    value = na_if(value, 0)
+
+  ) %>%
+  drop_na() %>%
+  
+  ggplot(aes(x=Year))+
+    geom_point(aes(y=fleet, size=value/5, color=fleet))+
+    scale_size_continuous(limits=c(0, 1))+
+    ggforce::facet_col(~datatype, scales="free_y", space="free")+
+    scale_x_continuous(limits=c(1960, 1960+nyears-1), breaks=seq(1960, 1960+nyears, 20))+
+    theme_bw()+
+    guides(color=guide_none(), size=guide_none())+
+    theme(
+      strip.background = element_blank(),
+      strip.placement = "inside",
+      strip.text = element_text(size=14),
+      panel.grid.major.x = element_blank(),
+      panel.border = element_blank(),
+      axis.text = element_text(size=12),
+      axis.title.y = element_blank()
+    )
