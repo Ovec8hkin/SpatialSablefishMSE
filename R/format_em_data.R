@@ -492,6 +492,46 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     new_data$ll_cpue_indicator <- ll_cpue_indic
     new_data$srv_jap_fishery_ll_bio_indicator <- jp_ll_rpw_indic
 
+    # Turn off model weights and enable TMB estimation for all parameters 
+    new_data$catch_likelihood <- 0
+    new_data$ll_catchatage_comp_likelihood <- 0
+    new_data$trwl_catchatage_comp_likelihood <- 0
+    new_data$srv_dom_ll_age_comp_likelihood <- 0
+    new_data$srv_nmfs_trwl_age_comp_likelihood <- 0
+    new_data$srv_dom_ll_bio_likelihood <- 0
+    new_data$srv_nmfs_trwl_bio_likelihood <- 0
+    new_data$ll_catchatlgth_comp_likelihood <- 1
+    new_data$trwl_catchatlgth_comp_likelihood <- 1
+    new_data$srv_dom_ll_lgth_comp_likelihood <- 1
+    new_data$srv_nmfs_trwl_lgth_comp_likelihood <- 1
+
+    new_data$loglik_wgt_ll_catch <- 10
+    new_data$loglik_wgt_trwl_catch <- 10
+    new_data$loglik_wgt_ll_catchatage <- 1
+    new_data$loglik_wgt_ll_catchatlgth_m <- 1
+    new_data$loglik_wgt_ll_catchatlgth_f <- 1
+    new_data$loglik_wgt_trwl_catchatlgth_m <- 1
+    new_data$loglik_wgt_trwl_catchatlgth_f <- 1
+    new_data$loglik_wgt_srv_dom_ll_age <- 1
+    new_data$loglik_wgt_srv_dom_ll_lgth_m <- 1
+    new_data$loglik_wgt_srv_dom_ll_lgth_f <- 1
+    new_data$loglik_wgt_srv_nmfs_trwl_age <- 1
+    new_data$loglik_wgt_srv_nmfs_trwl_lgth_m <- 1
+    new_data$loglik_wgt_srv_nmfs_trwl_lgth_f <- 1
+    new_data$loglik_wgt_trwl_catchatage <- 1
+    new_data$loglik_wgt_srv_dom_ll_bio <- 1
+    new_data$loglik_wgt_srv_nmfs_trwl_bio <- 1
+
+    # Turn on priors for Q and M
+    new_data$mu_srv_dom_ll_q <- 6.412379        # This comes from the 2023 Sablefish assessment
+    new_data$sd_srv_dom_ll_q <- 0.05
+    new_data$mu_srv_nmfs_trwl_q <- 0.8580096    # This comes from the 2023 Sablefish assessment
+    new_data$sd_srv_nmfs_trwl_q <- 0.05
+    new_data$loglik_wgt_q_priors <- 1
+
+    new_data$mu_M <- dem_params$mort[1,1,1,1]
+    new_data$sd_M <- 8.5481e-002                # This comes from the 2023 Sablefish assessment
+
     # Parameters
 
     new_parameters <- readRDS(param_file)
@@ -530,6 +570,7 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     new_parameters$ln_srv_nmfs_trwl_q <- -1.5314e-001
     new_parameters$ln_srv_jap_fishery_ll_q <- 1.5737e+000
     new_parameters$ln_M <- -2.1788e+000
+    new_parameters$ln_rec_sex_ratio <- log(0.50)
 
     # Update parameter start values to those used
     # by the production assessment
@@ -549,9 +590,6 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     new_parameters$ln_rec_dev <- ln_rec_dev
     new_parameters$ln_ll_F_devs <- ln_ll_F
     new_parameters$ln_trwl_F_devs <- ln_tw_F
-
-    saveRDS(new_data, paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
-    saveRDS(new_parameters, paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
     capture.output(valid <- SpatialSablefishAssessment::validate_input_data_and_parameters(new_data, new_parameters))
 
@@ -577,7 +615,8 @@ simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, surv
 
     # Not using japenese survey, so simulating ages from LL fishery
     # in years where japenese LL survey data used to be 
-    out$new_data$ll_catchatage_indicator <- out$new_data$srv_jap_ll_lgth_indicator+out$new_data$srv_jap_ll_age_indicator+out$new_data$ll_catchatage_indicator
+    # out$new_data$ll_catchatage_indicator <- out$new_data$srv_jap_ll_lgth_indicator+out$new_data$srv_jap_ll_age_indicator+out$new_data$ll_catchatage_indicator
+    out$new_data$ll_catchatage_indicator <- rep(1, ncol(out$new_data$obs_ll_catchatage))
     out$new_data$obs_ll_catchatage <- t(apply(out$new_data$obs_ll_catchatage, 1, as.double))
     out$new_data$obs_ll_catchatage <- out$new_data$obs_ll_catchatage[,as.logical(out$new_data$ll_catchatage_indicator)]
 
@@ -586,9 +625,15 @@ simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, surv
 
     # TODO: should remove this since there aren't actually
     # ages from this survey...
-    out$new_data$srv_nmfs_trwl_age_indicator <- rep(1, ncol(out$new_data$obs_srv_nmfs_trwl_age))
+    # out$new_data$srv_nmfs_trwl_age_indicator <- rep(1, ncol(out$new_data$obs_srv_nmfs_trwl_age))
     out$new_data$obs_srv_nmfs_trwl_age <- t(apply(out$new_data$obs_srv_nmfs_trwl_age, 1, as.double))
     out$new_data$obs_srv_nmfs_trwl_age <- out$new_data$obs_srv_nmfs_trwl_age[,as.logical(out$new_data$srv_nmfs_trwl_age_indicator)]
+
+    out$new_data$trwl_catchatage_indicator <- rep(1, ncol(out$new_data$obs_trwl_catchatage))
+    out$new_data$obs_trwl_catchatage <- t(apply(out$new_data$obs_trwl_catchatage, 1, as.double))
+    out$new_data$obs_trwl_catchatage <- out$new_data$obs_trwl_catchatage[,as.logical(out$new_data$trwl_catchatage_indicator)]
+
+    out$new_data$trwl_catchatage_covar_structure <- 0
 
     return(out)
 }
