@@ -26,7 +26,7 @@ fit_TMB_model <- function(data, parameters, model_name="CurrentAssessment", do_n
         ln_ll_cpue_q                    = factor(rep(NA, length(parameters$ln_ll_cpue_q))),
 
         # Selectivity parameter sharing
-        ln_trwl_sel_pars    = factor(c(1, 2, 3, 2)),
+        # ln_trwl_sel_pars    = factor(c(1, 2, 3, 2)),
 
         # Turn off mortality related parameters
         ln_M_year_devs  = factor(rep(NA, length(parameters$ln_M_year_devs))),
@@ -42,8 +42,8 @@ fit_TMB_model <- function(data, parameters, model_name="CurrentAssessment", do_n
     }
 
     if(recompile_model){
-        file.remove(paste("inst/", model_name, ".o"))
-        file.remove(paste("inst/", model_name, ".so"))
+        file.remove(paste0("inst/", model_name, ".o"))
+        file.remove(paste0("inst/", model_name, ".so"))
         TMB::compile(paste0("inst/", model_name, ".cpp"))
     }
     

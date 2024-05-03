@@ -129,19 +129,26 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             if(model_options$run_estimation){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
-                assess_inputs <- format_em_data(
+                assess_inputs <- simulate_em_data_sex_disaggregate(
                     nyears = y,
-                    dem_params = dp.y,
-                    land_caa = out_vars$land_caa_tmp,
-                    survey_indices = out_vars$surv_obs,
-                    fxfish_caa_obs = survey_obs$fxfish_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
-                    ll_ac_obs = survey_obs$ll_acs[y-1,,,,drop=FALSE], # Age comp data is one year delayed
-                    model_options = model_options,
-                    added_years = 1,
-                    file_suffix = file_suffix
+                    dem_params = afscOM::subset_dem_params(om$dem_params, 1:y, d=1, drop=FALSE),
+                    land_caa = land_caa[1:y,,,,,drop=FALSE],
+                    survey_indices = afscOM::subset_dem_params(survey_obs, 1:y, d=1, drop=FALSE),
+                    fxfish_caa_obs = survey_obs$fxfish_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
+                    twfish_caa_obs = survey_obs$twfish_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
+                    ll_ac_obs = survey_obs$ll_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
+                    tw_ac_obs = survey_obs$tw_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
+                    model_options = om$model_options,
+                    added_years = y-spinup_years,
+                    file_suffix = y
                 )
 
-                mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters)  
+
+                mod_out <- fit_TMB_model(
+                    assess_inputs$new_data, 
+                    assess_inputs$new_parameters, 
+                    model_name = "CurrentAssessmentDisaggregated"
+                )  
                 mod_report <- mod_out$report
                 ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
                 rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% filter(Year != max(Year)) %>% pull(Recruitment)

@@ -163,13 +163,13 @@ Type objective_function<Type>::operator() () {
   array<Type> pred_ll_catchatlgth_f(n_length_bins, n_ll_catchatlgth); // Sex disaggregated predicted catch at age
 
   // Trawl fishery catch at age (sex dis aggregated)
-  // DATA_IVECTOR(trwl_catchatage_indicator);            // dim: n_regions x n_years.  1 = calculate catch at age in this year and region, 0 = don't calculate catch at age
-  // DATA_ARRAY(obs_trwl_catchatage);                   // Longline fishery composition observations dim = 2*n_ages x n_regions x n_years. NOTE: male first then female
-  // DATA_ARRAY_INDICATOR(keep_trwl_catchatage_comp, obs_trwl_catchatage); // Used for OSA residuals, when not using the multinomial likelihood
-  // DATA_INTEGER(trwl_catchatage_covar_structure);             // 0 = iid, 5 = AR(1), 2 = Unstructured.
-  // DATA_INTEGER(trwl_catchatage_comp_likelihood);             // 0 = old multinomial, 1 = TMB's multinomial. //0 = MVN (can be applied to both comp_type), 1 = Multinomial, 2 = dirichlet-multinomial
-  // array<Type> pred_trwl_catchatage(obs_trwl_catchatage.dim); // Sex disaggregated predicted catch at age
-  // DATA_SCALAR(loglik_wgt_trwl_catchatage);
+  DATA_IVECTOR(trwl_catchatage_indicator);            // dim: n_regions x n_years.  1 = calculate catch at age in this year and region, 0 = don't calculate catch at age
+  DATA_ARRAY(obs_trwl_catchatage);                   // Longline fishery composition observations dim = 2*n_ages x n_regions x n_years. NOTE: male first then female
+  DATA_ARRAY_INDICATOR(keep_trwl_catchatage_comp, obs_trwl_catchatage); // Used for OSA residuals, when not using the multinomial likelihood
+  DATA_INTEGER(trwl_catchatage_covar_structure);             // 0 = iid, 5 = AR(1), 2 = Unstructured.
+  DATA_INTEGER(trwl_catchatage_comp_likelihood);             // 0 = old multinomial, 1 = TMB's multinomial. //0 = MVN (can be applied to both comp_type), 1 = Multinomial, 2 = dirichlet-multinomial
+  array<Type> pred_trwl_catchatage(obs_trwl_catchatage.dim); // Sex disaggregated predicted catch at age
+  DATA_SCALAR(loglik_wgt_trwl_catchatage);
 
   // Trawl catch at length (sex disaggregated)
   DATA_IVECTOR(trwl_catchatlgth_indicator);            // length(trwl_catchatlgth_indicator) = n_years.  1 = calculate catch at age in this year, 0 = don't calculate catch at age
@@ -357,6 +357,7 @@ Type objective_function<Type>::operator() () {
   PARAMETER(ln_mean_rec);                           // Unfish equil recruitment (logged) (estimated)
   PARAMETER_VECTOR(ln_rec_dev);                     // Recruitment deviations they include years before the asssessment starts to final year: length = n_years
   PARAMETER_VECTOR(ln_init_rec_dev);                // Recruitment deviations to apply during initialization they include years before the assessment starts: length = n_init_rec_devs
+  PARAMETER(ln_rec_sex_ratio);
 
   // will be moved to the parameter section later
   PARAMETER_ARRAY(ln_ll_sel_pars);                       // log selectivity parameters for longline male, dim = time-blocks,  max(sel parameters), n_sex
@@ -388,6 +389,7 @@ Type objective_function<Type>::operator() () {
   // Untransform parameters
   Type mean_rec = exp(ln_mean_rec);
   vector<Type> rec_dev = exp(ln_rec_dev);
+  Type rec_sex_ratio = invlogit(ln_rec_sex_ratio);
   Type F_hist = exp(ln_ll_F_avg);
   Type init_F_hist = F_hist * prop_F_hist;
   array<Type> ll_sel_pars(ln_ll_sel_pars.dim);
@@ -541,8 +543,8 @@ Type objective_function<Type>::operator() () {
     S_m_mid.col(year_ndx) = exp(-0.5 * Z_m.col(year_ndx));
   }
 
-  vector<Type> nll(28); // slots
-  vector<Type> nll_weighted(28); // slots
+  vector<Type> nll(29); // slots
+  vector<Type> nll_weighted(29); // slots
   nll.setZero();
 
   /* nll components
@@ -602,8 +604,8 @@ Type objective_function<Type>::operator() () {
    * Initialise the partition (age structure)
    * at equilibrium only M and R0
    */
-  init_natage_m(0) = exp(ln_mean_rec)/2.0; //mean_rec * exp((sigma_R*sigma_R)/2)/2;
-  init_natage_f(0) = init_natage_m(0);
+  init_natage_m(0) = exp(ln_mean_rec)*(rec_sex_ratio); ///2.0; //mean_rec * exp((sigma_R*sigma_R)/2)/2;
+  init_natage_f(0) = exp(ln_mean_rec)*(1-rec_sex_ratio); //init_natage_m(0);
 
   for(age_ndx = 1; age_ndx < n_ages; age_ndx++) {
     // include recruitment variation in intial age-comp
@@ -665,8 +667,8 @@ Type objective_function<Type>::operator() () {
     }
 
     //fill in recruitment in current year - a slight ineffieciency as we have already done this for year year_ndx = 0 above but meh!
-    natage_m(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)/2; //
-    natage_f(0, year_ndx) = natage_m(0, year_ndx);
+    natage_m(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)*rec_sex_ratio; ///2; //
+    natage_f(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)*(1-rec_sex_ratio); //natage_m(0, year_ndx);
     annual_recruitment(year_ndx) = natage_m(0, year_ndx) + natage_f(0, year_ndx);
     // Fill in N in following year, Survival from prev since uses i and N used i+1
     m_plus_group = natage_m(n_ages - 1, year_ndx);
@@ -704,6 +706,7 @@ Type objective_function<Type>::operator() () {
   // Calculate Catch at age
   int ll_catchatage_ndx = 0;
   int ll_catchatlgth_ndx = 0;
+  int trwl_catchatage_ndx = 0;
   int trwl_catchatlgth_ndx = 0;
   int srv_dom_ll_bio_ndx = 0;
   int srv_jap_ll_bio_ndx = 0;
@@ -803,42 +806,43 @@ Type objective_function<Type>::operator() () {
     }
 
     // Trawl Fishery age comp
-    // if(trwl_catchatage_indicator(year_ndx) == 1) {
-    //   // Get catch at age for males and account for ageing error
-    //   temp_numbers_at_age = catchatage_trwl_m.col(year_ndx);
-    //   temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
-    //   numbers_at_age_and_sex.segment(0,n_ages) = temp_numbers_at_age_after_ageing_error;
-    //   // Now Get catch at age for females and account for ageing error
-    //   temp_numbers_at_age = catchatage_trwl_f.col(year_ndx);
-    //   temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
-    //   numbers_at_age_and_sex.segment(n_ages,n_ages) = temp_numbers_at_age_after_ageing_error;
-    //   // do posfun so no zero proportions
-    //   for(int i = 0; i < numbers_at_age_and_sex.size(); ++i)
-    //     numbers_at_age_and_sex(i) = posfun(numbers_at_age_and_sex(i), eps_for_posfun, pen_posfun);
-    //   // normalise to sum = 1 across both sexes
-    //   numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
-    //   // Store in predicted container
-    //   pred_trwl_catchatage.col(year_ndx) = numbers_at_age_and_sex;
-    //   // Get obs for likelihood calculations
-    //   temp_observed_age_and_sex = obs_trwl_catchatage.col(year_ndx);
-    //   // evaluate the likelihood
-    //   if(trwl_catchatage_comp_likelihood == 0) {
-    //     nll(28) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
-    //     // SIMULATE {
-    //     //   effective_sample_size = temp_observed_age_and_sex.sum();
-    //     //   temp_observed_age_and_sex = rmultinom(numbers_at_age_and_sex, effective_sample_size);
-    //     //   obs_ll_catchatage.col(year_ndx).col(region_ndx) = temp_observed_age_and_sex;
-    //     // }
-    //   } else if (trwl_catchatage_comp_likelihood == 1) {
-    //     Type N_input = sum(temp_observed_age_and_sex);
-    //     temp_observed_age_and_sex /= N_input;
-    //     nll(28) -= ddirichletmulti(temp_observed_age_and_sex, numbers_at_age_and_sex, N_input, theta_fixed_catchatage, 1);
-    //     // SIMULATE {
-    //     //   temp_observed_age_and_sex = rdirichletmulti(numbers_at_age_and_sex, N_input, theta_ll_catchatage);
-    //     //   obs_ll_catchatage.col(year_ndx).col(region_ndx) = temp_observed_age_and_sex;
-    //     // }
-    //   }
-    // }
+    if(trwl_catchatage_indicator(year_ndx) == 1) {
+      // Get catch at age for males and account for ageing error
+      temp_numbers_at_age = catchatage_trwl_m.col(trwl_catchatage_ndx);
+      temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
+      numbers_at_age_and_sex.segment(0,n_ages) = temp_numbers_at_age_after_ageing_error;
+      // Now Get catch at age for females and account for ageing error
+      temp_numbers_at_age = catchatage_trwl_f.col(trwl_catchatage_ndx);
+      temp_numbers_at_age_after_ageing_error = (temp_numbers_at_age.matrix().transpose()) * ageing_error_matrix;
+      numbers_at_age_and_sex.segment(n_ages,n_ages) = temp_numbers_at_age_after_ageing_error;
+      // do posfun so no zero proportions
+      for(int i = 0; i < numbers_at_age_and_sex.size(); ++i)
+        numbers_at_age_and_sex(i) = posfun(numbers_at_age_and_sex(i), eps_for_posfun, pen_posfun);
+      // normalise to sum = 1 across both sexes
+      numbers_at_age_and_sex /= numbers_at_age_and_sex.sum();
+      // Store in predicted container
+      pred_trwl_catchatage.col(trwl_catchatage_ndx) = numbers_at_age_and_sex;
+      // Get obs for likelihood calculations
+      temp_observed_age_and_sex = obs_trwl_catchatage.col(trwl_catchatage_ndx);
+      // evaluate the likelihood
+      if(trwl_catchatage_comp_likelihood == 0) {
+        nll(10) -= dmultinom(temp_observed_age_and_sex, numbers_at_age_and_sex, true);
+        // SIMULATE {
+        //   effective_sample_size = temp_observed_age_and_sex.sum();
+        //   temp_observed_age_and_sex = rmultinom(numbers_at_age_and_sex, effective_sample_size);
+        //   obs_ll_catchatage.col(year_ndx).col(region_ndx) = temp_observed_age_and_sex;
+        // }
+      } else if (trwl_catchatage_comp_likelihood == 1) {
+        Type N_input = sum(temp_observed_age_and_sex);
+        temp_observed_age_and_sex /= N_input;
+        nll(10) -= ddirichletmulti(temp_observed_age_and_sex, numbers_at_age_and_sex, N_input, theta_fixed_catchatage, 1);
+        // SIMULATE {
+        //   temp_observed_age_and_sex = rdirichletmulti(numbers_at_age_and_sex, N_input, theta_ll_catchatage);
+        //   obs_ll_catchatage.col(year_ndx).col(region_ndx) = temp_observed_age_and_sex;
+        // }
+      }
+      ++trwl_catchatage_ndx;
+    }
 
     // Trawl Fishery length frequency
     if(trwl_catchatlgth_indicator(year_ndx) == 1) {
@@ -883,11 +887,14 @@ Type objective_function<Type>::operator() () {
     if(srv_dom_ll_bio_indicator(year_ndx) == 1) {
       if(obs_dom_ll_bio_is_numbers == 0) {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          // pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
       } else {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
+          // pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
+          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
       }
+
       // account for catchability and times 2 ???
       pred_dom_ll_bio(srv_dom_ll_bio_ndx)  *= 2 * srv_dom_ll_q(srv_dom_ll_q_by_year_indicator(year_ndx));
       if(srv_dom_ll_bio_likelihood == 0) {
@@ -1240,10 +1247,12 @@ Type objective_function<Type>::operator() () {
     if(srv_nmfs_trwl_bio_indicator(year_ndx) == 1) {
       if(obs_nmfs_trwl_bio_is_numbers == 0) {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          // pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
       } else {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
-          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
+          // pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
+          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
       }
       // account for catchability and times 2 ???
       pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx)  *= 2 * srv_nmfs_trwl_q(srv_nmfs_trwl_q_by_year_indicator(year_ndx));
@@ -1439,7 +1448,7 @@ Type objective_function<Type>::operator() () {
   nll_weighted(25) *= loglik_wgt_q_priors;                // 25 - Q priors
   nll_weighted(26) *= loglik_wgt_M_priors;                // 26 - M priors
   nll_weighted(27) *= loglik_wgt_M_regulations;           // 27 - M age and or year regulations penalty constraints
-  // nll_weighted(28) *= loglik_wgt_trwl_catchatage;            // 0 - ll- fishery age comp
+  nll_weighted(10) *= loglik_wgt_trwl_catchatage;         // 0 - ll- fishery age comp
 
   vector<Type> depletion = SSB / Bzero * 100;
   /*
