@@ -81,10 +81,10 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     naa[1,,,] = init_naa
 
     set.seed(seed)
-    recruitment <- assessment$natage.female[,1]*2
-    projected_recruitment <- sample(recruitment, size=nyears-length(recruitment)+1, replace=TRUE)
-    recruitment <- c(recruitment, projected_recruitment)
-
+    hist_recruitment <- assessment$natage.female[,1]*2
+    projected_recruitment <- do.call(model_options$recruitment$func, c(model_options$recruitment$pars, list(seed=seed)))
+    recruitment <- c(hist_recruitment, projected_recruitment)
+    
     for(y in 1:nyears){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
