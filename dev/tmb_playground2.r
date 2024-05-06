@@ -47,8 +47,8 @@ tier3 <- function(ref_pts, naa, dem_params){
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 hist_recruits <- assessment$natage.female[,1]*2
 
-sable_om$model_options$recruitment$func <- resample_recruits
-sable_om$model_options$recruitment$pars <- list(
+sable_om$recruitment$func <- resample_recruits
+sable_om$recruitment$pars <- list(
     hist_recruits = hist_recruits,
     nyears = nyears - length(hist_recruits) + 1
 )

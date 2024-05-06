@@ -31,7 +31,7 @@ source("R/recruitment_utils.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 150
+nyears <- 180
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 # Turn on estimation model
@@ -40,16 +40,16 @@ sable_om$model_options$run_estimation = TRUE
 # Define recruitment to occur via historical resampling
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 hist_recruits <- assessment$natage.female[,1]*2
-sable_om$model_options$recruitment$func <- resample_regime_recruits
-sable_om$model_options$recruitment$pars <- list(
+sable_om$recruitment$func <- resample_regime_recruits
+sable_om$recruitment$pars <- list(
     regime1_recruits = hist_recruits[-c(20:24, 40:44, 57:63)],
     regime2_recruits = hist_recruits[c(20:24, 40:44, 57:63)],
     nyears = nyears - length(hist_recruits) + 1,
     regime_length = c(20, 5),
     starting_regime = 0
 )
-# sable_om$model_options$recruitment$func <- resample_recruits
-# sable_om$model_options$recruitment$pars <- list(
+# sable_om$recruitment$func <- resample_recruits
+# sable_om$recruitment$pars <- list(
 #     hist_recruits = hist_recruits,
 #     nyears = nyears - length(hist_recruits) + 1
 # )

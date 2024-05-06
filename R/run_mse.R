@@ -82,8 +82,8 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
 
     set.seed(seed)
     hist_recruitment <- assessment$natage.female[,1]*2
-    projected_recruitment <- do.call(model_options$recruitment$func, c(model_options$recruitment$pars, list(seed=seed)))
-    recruitment <- c(hist_recruitment, projected_recruitment)
+    projected_recruitment <- do.call(recruitment$func, c(recruitment$pars, list(seed=seed)))
+    full_recruitment <- c(hist_recruitment, projected_recruitment)
     
     for(y in 1:nyears){
         # Subset the demographic parameters list to only the current year
@@ -97,7 +97,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
             removals = removals_input,
             dem_params=dp.y,
             prev_naa=prev_naa,
-            recruitment=recruitment[y+1],
+            recruitment=full_recruitment[y+1],
             fleet.props = fleet.props,
             options=model_options
         )
@@ -122,7 +122,7 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         if((y+1) > spinup_years){
 
             naa_proj <- out_vars$naa_tmp
-            rec <- recruitment[1:y]
+            rec <- full_recruitment[1:y]
             sel <- dp.y$sel
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
 
