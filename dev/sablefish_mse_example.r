@@ -1,5 +1,6 @@
 rm(list=ls())
 
+library(tidyverse)
 library(ggdist)
 library(ggh4x)
 library(reshape2)
@@ -25,29 +26,33 @@ source("R/run_mse_multiple.R")
 source("R/run_mse_parallel.R")
 source("R/format_em_data.R")
 source("R/fit_TMB_model.R")
+source("R/recruitment_utils.R")
 
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-sable_om <- readRDS("data/sablefish_om.RDS") # Read this saved OM from a file
-sable_om$model_options$simulate_observations <- TRUE # Enable simulating observations
-# Generated 50 age composition samples from the LL survey and fixed gear fishery
-sable_om$model_options$obs_pars$surv_ll$ac_samps <- 50
-sable_om$model_options$obs_pars$surv_tw$ac_samps <- 50
-sable_om$model_options$obs_pars$fish_fx$ac_samps <- 50
-sable_om$model_options$obs_pars$fish_tw$ac_samps <- 50
-# Generate age comp samples as integers rather than proportions
-# (this is necesarry for the SpatialSablefishAssessment TMB model)
-sable_om$model_options$obs_pars$surv_ll$as_integers = TRUE
-sable_om$model_options$obs_pars$surv_tw$as_integers = TRUE
-sable_om$model_options$obs_pars$fish_fx$as_integers = TRUE
-sable_om$model_options$obs_pars$fish_tw$as_integers = TRUE
-# Decrease observation error
-sable_om$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
-sable_om$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
-sable_om$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
+nyears <- 150
+
+sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 # Turn on estimation model
 sable_om$model_options$run_estimation = TRUE
+
+# Define recruitment to occur via historical resampling
+assessment <- dget("data/sablefish_assessment_2023.rdat")
+hist_recruits <- assessment$natage.female[,1]*2
+sable_om$model_options$recruitment$func <- resample_regime_recruits
+sable_om$model_options$recruitment$pars <- list(
+    regime1_recruits = hist_recruits[-c(20:24, 40:44, 57:63)],
+    regime2_recruits = hist_recruits[c(20:24, 40:44, 57:63)],
+    nyears = nyears - length(hist_recruits) + 1,
+    regime_length = c(20, 5),
+    starting_regime = 0
+)
+# sable_om$model_options$recruitment$func <- resample_recruits
+# sable_om$model_options$recruitment$pars <- list(
+#     hist_recruits = hist_recruits,
+#     nyears = nyears - length(hist_recruits) + 1
+# )
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
 #' in future years. Such function must take accept the following parameters:
@@ -74,11 +79,12 @@ tier3 <- function(ref_pts, naa, dem_params){
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 10
+nsims <- 9
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 tic()
-mse_tier3     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=100, om=sable_om, hcr=tier3)
+# mse_tier3     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=150, om=sable_om, hcr=tier3)
+mse_small <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=nyears, om=sable_om, hcr=tier3)
 toc()
 
 # nsims <- 1
@@ -93,8 +99,8 @@ toc()
 #' aggregated over multiple simulations, alongside the EM estimate
 #' of spawning biomass.
 model_runs <- list(
-    mse_tier3
-    # ms_small
+    #mse_tier3
+    mse_small
 )
 extra_columns <- list(
     hcr = c("tier3")
@@ -118,6 +124,7 @@ ggplot(d %>% filter(L1 == "naa")) +
     geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
     geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
     geom_vline(xintercept=64, linetype="dashed")+
+    geom_hline(yintercept=121.4611, linetype="dashed")+
     scale_fill_brewer(palette="Blues")+
     scale_y_continuous(limits=c(0, 300))+
     coord_cartesian(expand=0)+
@@ -135,7 +142,7 @@ ggplot(f %>% filter(L1 == "faa")) +
     geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
     geom_vline(xintercept=64, linetype="dashed")+
     scale_fill_brewer(palette="Blues")+
-    scale_y_continuous(limits=c(0, 0.30))+
+    scale_y_continuous(limits=c(0, 0.20))+
     coord_cartesian(expand=0)+
     theme_bw()
 
@@ -171,6 +178,31 @@ get_recruits(model_runs, extra_columns) %>%
       theme_bw()
 
 
+prop_fs <- c(0.70, 0.30)
+joint_sel_f <- apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
+
+calculate_ref_points(
+    30,
+    sable_om$dem_params$mort[nyears,,1,1],
+    sable_om$dem_params$mat[nyears,,1,1],
+    sable_om$dem_params$waa[nyears,,1,1],
+    joint_sel_f,
+    sable_om$dem_params$ret[nyears,,1,1,1],
+    14
+)
+
+bind_mse_outputs(model_runs, c("out_f"), extra_columns) %>%
+    as_tibble() %>%
+    drop_na() %>%
+    group_by(time) %>%
+    median_qi(value, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+
+    ggplot()+
+        geom_lineribbon(aes(x=time, y=value, ymin=.lower, ymax=.upper))+
+        scale_fill_brewer(palette="Blues")+
+        scale_y_continuous(limits=c(0, 0.3))+
+        coord_cartesian(expand=0)+
+        theme_bw()
 
 
 
@@ -204,3 +236,44 @@ derive_est_naa <- function(model_outs, nyears, nsims){
 }
 
 derive_est_naa(mse_tier3$model_outs, 160, nsims)
+
+
+bind_mse_outputs(model_runs, c("naa", "abc"), extra_columns) %>% 
+    as_tibble() %>%
+    filter(time > 65) %>%
+    left_join(
+        melt(sable_om$dem_params$waa, value.name="weight"), 
+        by=c("time", "age", "sex")
+    ) %>%
+    left_join(
+        melt(sable_om$dem_params$mat, value.name="maturity"), 
+        by=c("time", "age", "sex")
+    ) %>%
+    # compute derived quantities
+    mutate(
+        biomass = value*weight,
+        spbio = value*weight*maturity
+    ) %>%
+    # SSB is females only
+    filter(sex == "F") %>%
+    # summarise SSB across year and sim 
+    group_by(time, hcr, sim, L1) %>%
+    summarise(spbio=sum(spbio)) %>%
+    select(time, sim, L1, spbio) %>%
+    left_join(
+        reshape2::melt(mse_small$abc) %>% drop_na() %>% select(time, sim, value),
+        by=c("time", "sim")
+    ) %>%
+    mutate(
+        h = value/spbio,
+        F = -log(1-h)
+    ) %>%
+    group_by(time) %>%
+    median_qi(F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+
+    ggplot()+
+        geom_lineribbon(aes(x=time, y=F, ymin=.lower, ymax=.upper))+
+        scale_fill_brewer(palette="Blues")+
+        scale_y_continuous(limits=c(0, 0.5))+
+        coord_cartesian(expand=0)+
+        theme_bw()

@@ -28,17 +28,14 @@ source("R/data_utils.R")
 source("R/format_em_data.R")
 source("R/fit_TMB_model.R")
 source("R/reference_points.R")
+source("R/recruitment_utils.R")
 
 library(devtools)
 devtools::load_all("~/Desktop/Projects/afscOM")
 
+nyears <- 165
 
-sable_om <- readRDS("data/sablefish_om.RDS") # Read this saved OM from a file
-sable_om$model_options$simulate_observations <- TRUE # Enable simulating observations
-sable_om$model_options$obs_pars$surv_ll$as_integers = TRUE
-sable_om$model_options$obs_pars$surv_tw$as_integers = TRUE
-sable_om$model_options$obs_pars$fish_fx$as_integers = TRUE
-sable_om$model_options$run_estimation = FALSE
+sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 
 tier3 <- function(ref_pts, naa, dem_params){
   ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
@@ -47,17 +44,18 @@ tier3 <- function(ref_pts, naa, dem_params){
   )
 }
 
-nsims <- 100
+assessment <- dget("data/sablefish_assessment_2023.rdat")
+hist_recruits <- assessment$natage.female[,1]*2
+
+sable_om$model_options$recruitment$func <- resample_recruits
+sable_om$model_options$recruitment$pars <- list(
+    hist_recruits = hist_recruits,
+    nyears = nyears - length(hist_recruits) + 1
+)
+
+nsims <- 20
 set.seed(94265)
 seeds <- sample(1:1e3, nsims)
-nyears <- 160
-sable_om$model_options$obs_pars$fish_fx$ac_samps <- 30
-sable_om$model_options$obs_pars$surv_ll$ac_samps <- 30
-sable_om$model_options$obs_pars$surv_tw$ac_samps <- 30
-sable_om$model_options$obs_pars$fish_tw$ac_samps <- 30
-sable_om$model_options$obs_pars$surv_ll$rpn_cv <- 0.1
-sable_om$model_options$obs_pars$surv_tw$rpw_cv <- 0.1
-sable_om$model_options$obs_pars$fish_tw$as_integers <- TRUE
 
 s <- 1
 mse_tier3 <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=nyears, om=sable_om, hcr=tier3)
@@ -122,8 +120,6 @@ out <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears){
 
     mle_report = mod_out$report
     mle_optim = mod_out$opt
-
-    mle_optim$par
 
     est_rec <- SpatialSablefishAssessment::get_recruitment(mle_report)
     om_rec <- apply(mse_tier3$naa[1:nyears,1,,,s], 1, sum)
@@ -415,9 +411,11 @@ rel_error_plot <- ggplot(rel_error)+
 
 summary_plot
 rel_error_plot
-ref_pts_plot
-selex_plot
+# ref_pts_plot
+# selex_plot
 
+
+a
 
 ########
 
