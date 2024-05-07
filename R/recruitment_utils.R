@@ -82,3 +82,36 @@ regime_recruits <- function(mus, cvs, nyears, regime_length, starting_regime, se
     }
     return(rec)
 }
+
+#' Beverton-Holt stock recruitment relationship
+#' #'
+#' Defines a function factory for yieding recruitment from a Bevrton-Holt
+#' stock recruitment relationship, parameterized using steepeness. Initial
+#' call to this function sets up a new function that takes the current SSB
+#' as input, and returns the predicted recruitment from the BH SRR defined
+#' by h, R0, and S0.
+#'
+#' @param h steepness (0.2 <= h <= 1.0)
+#' @param R0 unfished recruitment
+#' @param S0 unfished spawning biomass
+#'
+#' @export beverton_holt
+#'
+#' @examples
+#' \dontrun{
+#'  bevholt <- beverton_holt(0.7, 25, 300)
+#'  bevholt(ssb=185) # 23.43891
+#' }
+#'
+beverton_holt <- function(h, R0, S0, sigR, seed){
+    function(ssb){
+        set.seed(seed)
+        bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
+        return(
+            bh + rnorm(1, mean=0, sd=sigR)
+        )
+    }
+}
+
+# bevholt <- beverton_holt(0.7, 25, 300, 1120)
+# bevholt(200)

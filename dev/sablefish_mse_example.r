@@ -31,7 +31,7 @@ source("R/recruitment_utils.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 180
+nyears <- 120
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 # Turn on estimation model
@@ -40,18 +40,22 @@ sable_om$model_options$run_estimation = TRUE
 # Define recruitment to occur via historical resampling
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 hist_recruits <- assessment$natage.female[,1]*2
-sable_om$recruitment$func <- resample_regime_recruits
+
+sable_om$recruitment$func <- beverton_holt
 sable_om$recruitment$pars <- list(
-    regime1_recruits = hist_recruits[-c(20:24, 40:44, 57:63)],
-    regime2_recruits = hist_recruits[c(20:24, 40:44, 57:63)],
-    nyears = nyears - length(hist_recruits) + 1,
-    regime_length = c(20, 5),
-    starting_regime = 0
+    h = 0.7,
+    R0 = 20,
+    S0 = 282,
+    sigR = 1.04
 )
-# sable_om$recruitment$func <- resample_recruits
+
+# sable_om$recruitment$func <- resample_regime_recruits
 # sable_om$recruitment$pars <- list(
-#     hist_recruits = hist_recruits,
-#     nyears = nyears - length(hist_recruits) + 1
+#     regime1_recruits = hist_recruits[-c(20:24, 40:44, 57:63)],
+#     regime2_recruits = hist_recruits[c(20:24, 40:44, 57:63)],
+#     nyears = nyears - length(hist_recruits) + 1,
+#     regime_length = c(20, 5),
+#     starting_regime = 0
 # )
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
@@ -79,7 +83,7 @@ tier3 <- function(ref_pts, naa, dem_params){
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 9
+nsims <- 20
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 tic()
@@ -168,6 +172,7 @@ get_recruits(model_runs, extra_columns) %>%
     group_by(time, L1) %>%
     median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
     reformat_ggdist_long(n=2) %>%
+    print(n=500)
 
     ggplot() + 
       geom_line(aes(x=time, y=median, group=L1, color=L1), size=0.4)+
@@ -188,7 +193,7 @@ calculate_ref_points(
     sable_om$dem_params$waa[nyears,,1,1],
     joint_sel_f,
     sable_om$dem_params$ret[nyears,,1,1,1],
-    14
+    21
 )
 
 bind_mse_outputs(model_runs, c("out_f"), extra_columns) %>%

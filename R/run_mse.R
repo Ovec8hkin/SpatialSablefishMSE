@@ -83,7 +83,12 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
     set.seed(seed)
     hist_recruitment <- assessment$natage.female[,1]*2
     projected_recruitment <- do.call(recruitment$func, c(recruitment$pars, list(seed=seed)))
-    full_recruitment <- c(hist_recruitment, projected_recruitment)
+    if(!is.function(projected_recruitment)){
+        full_recruitment <- c(hist_recruitment, projected_recruitment)
+    }else{
+        full_recruitment <- rep(NA, nyears)
+        full_recruitment[1:length(hist_recruitment)] <- hist_recruitment
+    }
     
     for(y in 1:nyears){
         # Subset the demographic parameters list to only the current year
@@ -91,6 +96,13 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
         dp.y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
         removals_input <- landings[y]
         fleet.props <- unlist(lapply(model_options$fleet_apportionment, \(x) x[y]))
+
+        # will work for any recruitment function that only requires
+        # ssb as a yearly input (beverton holt and ricker should work fine)
+        if(is.na(full_recruitment[y+1])){
+            ssb <- sum(naa[y,,1,,drop=FALSE]*dp.y$waa[,,1,]*dp.y$mat[,,1,])
+            full_recruitment[y+1] <- projected_recruitment(ssb) 
+        }
 
         prev_naa <- naa[y,,,, drop = FALSE]
         out_vars <- project(
