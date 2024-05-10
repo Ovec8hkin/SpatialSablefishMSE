@@ -1,0 +1,155 @@
+---
+title: "Intro"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Intro}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The `SablefishMSE` package was developed to facilitate the evaluation of alternative harvest control rules, management policies (such as discarding), and TAC apportionment strategies for Alaska sablefish (_Anoplopoma fimbria_) under the jurisidiction of the United States North Pacific Fisheries Management Council (NPFMC). 
+
+---
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+The `SablefishMSE` package can be downloaded and installed using: 
+
+```{r setup}
+remotes::install_github("ovec8hkin/SablefishMSE")`
+library(afscOM)
+```
+
+### A Simple Example
+A simple runnable example is available at `dev/sablefish_mse_example.r`.
+
+The primary R function that runs the MSE simulation loop is:
+
+```{r, mse_func, echo=TRUE}
+run_mse(
+  om=sable_om,
+  hcr=tier3,
+  nyears_input = nyears
+)
+```
+
+Below, we break down the components that go into the `om` and `hcr` parameters.
+
+##### Setting up the Operating Model
+
+First, we start with defining the operating model. 
+```{r, echo=FALSE}
+nyears = 120
+sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
+
+# Define recruitment to occur via historical resampling
+assessment <- dget("data/sablefish_assessment_2023.rdat")
+hist_recruits <- assessment$natage.female[,1]*2
+
+sable_om$recruitment$func <- resample_recruits
+sable_om$recruitment$pars <- list(
+    hist_recruits = hist_recruits,
+    nyears = nyears
+)
+
+```
+This package relies on the `afscOM` package to run the forward OM projection component of the MSE, as well as to generate observation data. `afscOM` requires users to define two objects to control the behavior of the forward projection: a `dem_params` list and a `model_options` list. 
+
+The `dem_params` list is a named list of multi-dimensional arrays that define demographic parameters within the OM. The `model_options` list is a complex named list of various options that control, among other things, the details of the observation processes and how catches are apportioned between fleets. For more details on the proper construction of these objects, please see the `afscOM` repository.
+
+`SablefishMSE` requires users to pass a named list that defines all of the components of the OM to the MSE wrapper function, which includes two additional components beyond what is required by `afscOM`. The components are:
+
+```{r, om_components, echo=TRUE}
+names(sable_om)
+```
+
+* `dem_params` is exactly the `dem_params` list that is supplied to `afscOM`.
+* `model_options` is the same list supplied to `afscOM` but with some extra options appended.
+* `init_naa` is the the initial numbers-at-age (and sex) vector from which the OM should begin.
+* `recruitment` is a function and list of parameters that defines how annual recruitment should be generated (for more on how recruitment functions work withing the package see: ___).
+
+##### Setting up a Harvest Control Rule
+
+Second, users must define a harvest control rule (HCR) function that relates the current population state to a future fishing mortality rate. We provide several pre-built HCR functions, including the currently adopted Tier 3a rule (below) that is used to by the NPFMC to set ABCs for Alaska sablefish, but users can also define their own custom HCR functions (see ____ for more details on custom HCR functions).
+
+```{r, hcr}
+tier3 <- function(ref_pts, naa, dem_params){
+    # Compute SSB from the current numbers-at-age matrix
+    ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
+    # Compute F based on the NPFMC Tier 3a rule
+    return(
+        npfmc_tier3_F(ssb, ref_pts$B40, ref_pts$F40)
+    )
+}
+```
+
+The function object is provided directly to the `run_mse` function, and is evaluated within the MSE function itself. For this reason, defining HCR functions must be done carefully with respect to the parameter inputs and function outputs (see ___ for details).
+
+##### Running the MSE
+
+Once an OM object and HCR function have been correctly defined, running the MSE is as simple as:
+
+```{r, run_mse}
+mse <- run_mse(
+  om=sable_om,
+  hcr=tier3,
+  nyears_input = nyears
+)
+```
+
+The `nyears_input` parameter defined how many years for the MSE to project forward. There is also a parameter `spinup_years` which can be used to define how many years to run the OM forward for, before the estimation model starts being used to set future TACs via the HCR. By default, `spinup_years = 64` which is specific to Alaska sablefish. 
+
+_Tests have not been performed to verify the behavior of the MSE when the `spinup_years` parameter is different from 64._
+
+There is a wrapper function for performing many MSE runs across different random seeds in parallel. For more information on parallel MSE simulations, see _____.
+
+##### Processing MSE outputs
+
+The MSE function returns a large amount of data back to the user including numbers-at-age and sex for every year (both true and estimated), fishing-mortality-at-age (true and estimated), and the recommended F from the HCR in each year. To facilitate easier processing of these results, especially when MSEs with different OMs or different HCRs are being compared, a `bind_mse_outputs` function has been provided.
+
+```{r, bind_mse_outputs, echo=TRUE}
+model_runs <- list(
+    mse
+)
+extra_columns <- list(
+    hcr = c("tier3")
+)
+
+bind_mse_outputs(model_runs, var=c("naa", "naa_est"), extra_columns)
+```
+
+To use the `bind_mse_outputs` function, place the finished MSE objects into an unnamed list (`model_runs` in this case), create a named list of extra columns you want appended to the output data frame (`extra_columns` in this case; often this is going to just be the HCR and/or the OM that was used, but see ___ for more details on how this should be created), and determine the data you would like to pull from the MSE objects (`"naa"` and `"naa_est"` in this case). The resulting dataframe object with contain just the provided data the user asks for, in long format. From there, the user can manipulate the output data as necesarry for computing performance metrics or plotting results.
+
+Three wrapper functions, `get_ssb_biomass`, `get_fishing_mortalities`, and `get_recruits`, are provided to easily compute and return common quantities (spawning biomass and total biomass, fishing mortality, and recruitment respectively).
+
+Below is an example of one way how users may plot SSB.
+```{r, plot_ssb}
+# Plot spawning biomass from OM and EM
+d <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params) %>%
+    # SSB is females only
+    filter(sex == "F") %>%
+    # summarise SSB across year and sim 
+    group_by(time, hcr, sim, L1) %>%
+    summarise(spbio=sum(spbio)) %>%
+    # Compute quantiles of SSB distribution
+    group_by(time, hcr, L1) %>%
+    median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+    # Reformat ggdist tibble into long format
+    reformat_ggdist_long(n=3)
+
+
+ggplot(d %>% filter(L1 == "naa")) + 
+    geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
+    geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+    geom_vline(xintercept=64, linetype="dashed")+
+    geom_hline(yintercept=121.4611, linetype="dashed")+
+    scale_fill_brewer(palette="Blues")+
+    scale_y_continuous(limits=c(0, 300))+
+    coord_cartesian(expand=0)+
+    theme_bw()
+```
