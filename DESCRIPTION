@@ -1,6 +1,6 @@
 Package: SablefishMSE
-Title: Conduct Managemnt Strategy Evaluation for Alaska Sablefish
-Version: 0.0.0.9000
+Title: Conduct Management Strategy Evaluation for Alaska Sablefish
+Version: 0.1.0.0000
 Authors@R: c(
     person(given = "Joshua", 
             family = "Zahner",
@@ -40,3 +40,4 @@ DevPackage:
     Craig44/SpatialSablefishAssessment
     BenWilliams-NOAA/afscOM
 RoxygenNote: 7.2.3
+VignetteBuilder: knitr
