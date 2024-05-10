@@ -357,7 +357,6 @@ Type objective_function<Type>::operator() () {
   PARAMETER(ln_mean_rec);                           // Unfish equil recruitment (logged) (estimated)
   PARAMETER_VECTOR(ln_rec_dev);                     // Recruitment deviations they include years before the asssessment starts to final year: length = n_years
   PARAMETER_VECTOR(ln_init_rec_dev);                // Recruitment deviations to apply during initialization they include years before the assessment starts: length = n_init_rec_devs
-  PARAMETER(ln_rec_sex_ratio);
 
   // will be moved to the parameter section later
   PARAMETER_ARRAY(ln_ll_sel_pars);                       // log selectivity parameters for longline male, dim = time-blocks,  max(sel parameters), n_sex
@@ -389,7 +388,6 @@ Type objective_function<Type>::operator() () {
   // Untransform parameters
   Type mean_rec = exp(ln_mean_rec);
   vector<Type> rec_dev = exp(ln_rec_dev);
-  Type rec_sex_ratio = invlogit(ln_rec_sex_ratio);
   Type F_hist = exp(ln_ll_F_avg);
   Type init_F_hist = F_hist * prop_F_hist;
   array<Type> ll_sel_pars(ln_ll_sel_pars.dim);
@@ -604,8 +602,8 @@ Type objective_function<Type>::operator() () {
    * Initialise the partition (age structure)
    * at equilibrium only M and R0
    */
-  init_natage_m(0) = exp(ln_mean_rec)*(rec_sex_ratio); ///2.0; //mean_rec * exp((sigma_R*sigma_R)/2)/2;
-  init_natage_f(0) = exp(ln_mean_rec)*(1-rec_sex_ratio); //init_natage_m(0);
+  init_natage_m(0) = exp(ln_mean_rec)/2.0; //mean_rec * exp((sigma_R*sigma_R)/2)/2;
+  init_natage_f(0) = init_natage_m(0);
 
   for(age_ndx = 1; age_ndx < n_ages; age_ndx++) {
     // include recruitment variation in intial age-comp
@@ -667,8 +665,8 @@ Type objective_function<Type>::operator() () {
     }
 
     //fill in recruitment in current year - a slight ineffieciency as we have already done this for year year_ndx = 0 above but meh!
-    natage_m(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)*rec_sex_ratio; ///2; //
-    natage_f(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)*(1-rec_sex_ratio); //natage_m(0, year_ndx);
+    natage_m(0, year_ndx) = exp(ln_mean_rec + ln_rec_dev(year_ndx) - b(year_ndx)* sigRsq/2)/2; //
+    natage_f(0, year_ndx) = natage_m(0, year_ndx);
     annual_recruitment(year_ndx) = natage_m(0, year_ndx) + natage_f(0, year_ndx);
     // Fill in N in following year, Survival from prev since uses i and N used i+1
     m_plus_group = natage_m(n_ages - 1, year_ndx);
@@ -888,11 +886,11 @@ Type objective_function<Type>::operator() () {
       if(obs_dom_ll_bio_is_numbers == 0) {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
           // pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
-          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
       } else {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
           // pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
-          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
+          pred_dom_ll_bio(srv_dom_ll_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_dom_ll_m(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_dom_ll_f(age_ndx, srv_dom_ll_sel_by_year_indicator(year_ndx));
       }
 
       // account for catchability and times 2 ???
@@ -1248,11 +1246,11 @@ Type objective_function<Type>::operator() () {
       if(obs_nmfs_trwl_bio_is_numbers == 0) {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
           // pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
-          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
+          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * male_mean_weight_by_age(age_ndx, year_ndx) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) * female_mean_weight_by_age(age_ndx, year_ndx);
       } else {
         for(age_ndx = 0; age_ndx < n_ages; age_ndx++)
           // pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
-          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += rec_sex_ratio * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - rec_sex_ratio) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
+          pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx) += proportion_male(year_ndx) * natage_m(age_ndx, year_ndx) * S_m_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_m(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx)) + (1.0 - proportion_male(year_ndx)) * natage_f(age_ndx, year_ndx) * S_f_mid(age_ndx, year_ndx) * sel_srv_nmfs_trwl_f(age_ndx, srv_nmfs_trwl_sel_by_year_indicator(year_ndx));
       }
       // account for catchability and times 2 ???
       pred_nmfs_trwl_bio(srv_nmfs_trwl_bio_ndx)  *= 2 * srv_nmfs_trwl_q(srv_nmfs_trwl_q_by_year_indicator(year_ndx));
