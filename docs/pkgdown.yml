@@ -2,6 +2,12 @@ pandoc: 2.16.2
 pkgdown: 2.0.7
 pkgdown_sha: ~
 articles:
+  estimation_model: estimation_model.html
+  harvest_control_rule_function: harvest_control_rule_function.html
   intro: intro.html
-last_built: 2024-05-10T23:14Z
+  multiple_mse_simulations: multiple_mse_simulations.html
+  plotting_mse_results: plotting_mse_results.html
+  processing_mse_results: processing_mse_results.html
+  recruitment_functions: recruitment_functions.html
+last_built: 2024-05-13T20:44Z
 
