@@ -104,8 +104,11 @@ regime_recruits <- function(mus, cvs, nyears, regime_length, starting_regime, se
 #' }
 #'
 beverton_holt <- function(h, R0, S0, sigR, seed){
+    # note that the set.seed() call needs to happen
+    # outside of the returned function, or else there
+    # will be no random variability in recruitment draws
+    set.seed(seed)
     function(ssb){
-        set.seed(seed)
         bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
         return(
             bh + rnorm(1, mean=0, sd=sigR)
