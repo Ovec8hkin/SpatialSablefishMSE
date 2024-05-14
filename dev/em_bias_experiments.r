@@ -24,7 +24,7 @@ source("R/age_structure_stats.R")
 source("R/data_utils.R")
 source("R/data_processing.R")
 source("R/run_mse.R")
-source("R/run_mse_multiple.R")
+source("R/run_mse_parallel.R")
 source("R/format_em_data.R")
 source("R/fit_TMB_model.R")
 
@@ -33,38 +33,43 @@ source("R/fit_TMB_model.R")
 #' processes), and OM initial conditons
 sable_om <- readRDS("data/sablefish_om.RDS") # Read this saved OM from a file
 sable_om$model_options$simulate_observations <- TRUE # Enable simulating observations
+
 # Generate age comp samples as integers rather than proportions
 # (this is necesarry for the SpatialSablefishAssessment TMB model)
 sable_om$model_options$obs_pars$surv_ll$as_integers = TRUE
 sable_om$model_options$obs_pars$surv_tw$as_integers = TRUE
 sable_om$model_options$obs_pars$fish_fx$as_integers = TRUE
+sable_om$model_options$obs_pars$fish_tw$as_integers = TRUE
 # Turn off estimation model
 sable_om$model_options$run_estimation = FALSE
 
 # OM with sex-spexific selectivity and small amount of observation error
 om_sexed_small <- sable_om
-om_sexed_small$model_options$obs_pars$surv_ll$ac_samps <- 150
-om_sexed_small$model_options$obs_pars$surv_tw$ac_samps <- 150
-om_sexed_small$model_options$obs_pars$fish_fx$ac_samps <- 150
-om_sexed_small$model_options$obs_pars$surv_ll$rpn_cv <- 0.05
-om_sexed_small$model_options$obs_pars$surv_ll$rpw_cv <- 0.05
-om_sexed_small$model_options$obs_pars$surv_tw$rpw_cv <- 0.05
+om_sexed_small$model_options$obs_pars$surv_ll$ac_samps <- 100
+om_sexed_small$model_options$obs_pars$surv_tw$ac_samps <- 100
+om_sexed_small$model_options$obs_pars$fish_fx$ac_samps <- 100
+om_sexed_small$model_options$obs_pars$fish_tw$ac_samps <- 100
+om_sexed_small$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
+om_sexed_small$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
+om_sexed_small$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
 
 # OM with sex-spexific selectivity and small amount of observation error
 om_sexed_medium <- sable_om
-om_sexed_medium$model_options$obs_pars$surv_ll$ac_samps <- 100
-om_sexed_medium$model_options$obs_pars$surv_tw$ac_samps <- 100
-om_sexed_medium$model_options$obs_pars$fish_fx$ac_samps <- 100
-om_sexed_medium$model_options$obs_pars$surv_ll$rpn_cv <- 0.1
-om_sexed_medium$model_options$obs_pars$surv_ll$rpw_cv <- 0.1
-om_sexed_medium$model_options$obs_pars$surv_tw$rpw_cv <- 0.1
+om_sexed_medium$model_options$obs_pars$surv_ll$ac_samps <- 50
+om_sexed_medium$model_options$obs_pars$surv_tw$ac_samps <- 50
+om_sexed_medium$model_options$obs_pars$fish_fx$ac_samps <- 50
+om_sexed_medium$model_options$obs_pars$fish_tw$ac_samps <- 50
+om_sexed_medium$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
+om_sexed_medium$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
+om_sexed_medium$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
 
 # OM with sex-spexific selectivity and large amount of observation error
 om_sexed_large <- sable_om
-om_sexed_large$model_options$obs_pars$surv_ll$ac_samps <- 50
-om_sexed_large$model_options$obs_pars$surv_tw$ac_samps <- 50
-om_sexed_large$model_options$obs_pars$fish_fx$ac_samps <- 50
-om_sexed_large$model_options$obs_pars$surv_ll$rpn_cv <- 0.20
+om_sexed_large$model_options$obs_pars$surv_ll$ac_samps <- 30
+om_sexed_large$model_options$obs_pars$surv_tw$ac_samps <- 30
+om_sexed_large$model_options$obs_pars$fish_fx$ac_samps <- 30
+om_sexed_large$model_options$obs_pars$fish_tw$ac_samps <- 30
+om_sexed_large$model_options$obs_pars$surv_ll$rpn_cv <- 0.10
 om_sexed_large$model_options$obs_pars$surv_ll$rpw_cv <- 0.10
 om_sexed_large$model_options$obs_pars$surv_tw$rpw_cv <- 0.10
 
@@ -100,11 +105,12 @@ nsims <- 50
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 50 random seeds
 
 
-mse_sexed_small     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_small, hcr=tier3)
-mse_sexed_medium    <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_medium, hcr=tier3)
-mse_sexed_large     <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_large, hcr=tier3)
+mse_sexed_small     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_small,  hcr=tier3)
+mse_sexed_medium    <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_medium, hcr=tier3)
+mse_sexed_large     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=160, om=om_sexed_large,  hcr=tier3)
 
 ####
+nyears <- 160
 
 #' 4. Apply the TMB fitting procedure to the observation data
 #' Use fit_TMB_model(...) to fit the EM to the generated 
@@ -116,73 +122,118 @@ cores <- parallel::detectCores()-2
 cl <- parallel::makeCluster(cores, outfile="")
 registerDoParallel(cl)
 
-assess_ssb_agg_sxsm <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
+assess_ssb_agg_sxsm <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears, om){
+    library(devtools)
+    library(tidyverse)
+    library(TMB) 
+
+    afscOM_dir <- "~/Desktop/Projects/afscOM"
+    devtools::load_all(afscOM_dir)
+
+    source("R/format_em_data.R")
+    source("R/fit_TMB_model.R")
+    source("R/reference_points.R")
     source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
+    assess_ssb <- run_EM(s, sable_om, mse_tier3, nyears, om_name=om, model_name="CurrentAssessmentDisaggregated")
     return(assess_ssb)
-}, sable_om=om_sexed_small, mse_tier3=mse_sexed_small, om="sxsm", cl=cl)
+}, sable_om=om_sexed_small, mse_tier3=mse_sexed_small, nyears=nyears, om="sxsm", cl=cl)
 assess_ssb_agg_sxsm <- bind_rows(assess_ssb_agg_sxsm)
 
-assess_ssb_agg_sxmd <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
+assess_ssb_agg_sxmd <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears, om){
+    library(devtools)
+    library(tidyverse)
+    library(TMB) 
+
+    afscOM_dir <- "~/Desktop/Projects/afscOM"
+    devtools::load_all(afscOM_dir)
+
+    source("R/format_em_data.R")
+    source("R/fit_TMB_model.R")
+    source("R/reference_points.R")
     source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
+    assess_ssb <- run_EM(s, sable_om, mse_tier3, nyears, om_name=om, model_name="CurrentAssessmentDisaggregated")
+
     return(assess_ssb)
-}, sable_om=om_sexed_medium, mse_tier3=mse_sexed_medium, om="sxmd", cl=cl)
+}, sable_om=om_sexed_medium, mse_tier3=mse_sexed_medium, nyears=nyears, om="sxmd", cl=cl)
 assess_ssb_agg_sxmd <- bind_rows(assess_ssb_agg_sxmd)
 
-assess_ssb_agg_sxlg <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, om){
-    library(dplyr)
+assess_ssb_agg_sxlg <- pbapply::pblapply(1:nsims, function(s, sable_om, mse_tier3, nyears, om){
+    library(devtools)
+    library(tidyverse)
+    library(TMB) 
+
+    afscOM_dir <- "~/Desktop/Projects/afscOM"
+    devtools::load_all(afscOM_dir)
+
+    source("R/format_em_data.R")
+    source("R/fit_TMB_model.R")
+    source("R/reference_points.R")
     source("R/run_em.r")
-    assess_ssb <- run_EM(s, sable_om, mse_tier3, om)
+    assess_ssb <- run_EM(s, sable_om, mse_tier3, nyears, om_name=om, model_name="CurrentAssessmentDisaggregated")
+
     return(assess_ssb)
-}, sable_om=om_sexed_large, mse_tier3=mse_sexed_large, om="sxlg", cl=cl)
+}, sable_om=om_sexed_large, mse_tier3=mse_sexed_large, nyears=nyears, om="sxlg", cl=cl)
 assess_ssb_agg_sxlg <- bind_rows(assess_ssb_agg_sxlg)
 
 
 stopCluster(cl)
 
 #' 5. Process EM fits and compute relative error
-assess_ssb_agg <- bind_rows(assess_ssb_agg_sxsm, assess_ssb_agg_sxlg, assess_ssb_agg_sxmd)
+data <- bind_rows(assess_ssb_agg_sxsm, assess_ssb_agg_sxmd, assess_ssb_agg_sxlg)
 
-mu_error <- assess_ssb_agg %>% as_tibble() %>%
-    filter(Year > 2022, Year < 2022+100) %>%
-    mutate(
-        ssb = (SSB-om_ssb)/om_ssb,
-        rec = (2*rec-om_rec)/om_rec,
-        F = (f-om_f)/om_f
-    ) %>%
-    group_by(om) %>%
-    summarise(
-        ssb = median(ssb),
-        rec = median(rec),
-        F = median(F)
-    ) %>%
-    pivot_longer(c("ssb", "rec", "F"), names_to="name", values_to="rel_error") %>%
-    mutate(
-        y = c(rep(c(0.50, 4.0, 0.45), 3))
+rel_error <- data %>% as_tibble() %>%
+  pivot_longer(-c(Year, sim, om), values_to="value", names_to="quantity") %>%
+  rename(om_name=om) %>%
+  filter(!(quantity %in% c("M", "ll_q", "tw_q"))) %>%
+  separate(quantity, c("model", "quantity"), extra = "merge") %>%
+  pivot_wider(names_from="model", values_from="value") %>%
+  mutate(
+    rel_error = (est-om)/om
+  ) %>%
+  select(Year, sim, om_name, quantity, rel_error) %>%
+  pivot_wider(names_from="quantity", values_from="rel_error") %>%
+  group_by(Year, om_name) %>%
+  median_qi(rec, ssb, F, B40, F40, F35, .width=c(0.50, 0.80)) %>%
+  reformat_ggdist_long(2) %>%
+  mutate(
+    name = factor(name, levels=c("ssb", "F", "rec", "ll_f", "tw_f", "F35", "F40", "B40")),
+    om_name = factor(om_name, levels=c("sxsm", "sxmd", "sxlg"))
+  )
+
+avg_rel_error <- rel_error %>% 
+  group_by(om_name, name) %>% 
+  summarise(avg = median(median[Year > 2022])) %>%
+  mutate(
+    text_y = case_when(
+      name == "ssb" ~ 0.085,
+      name == "F" ~ 0.30,
+      name == "rec" ~ 0.375,
+      name == "ll_f" ~ 0.30,
+      name == "tw_f" ~ 0.30,
+      name == "F35" ~ 0.04,
+      name == "F40" ~ 0.04,
+      name == "B40" ~ 0.04,
     )
+  )
 
-assess_ssb_agg %>% as_tibble() %>%
-    mutate(
-        ssb = (SSB-om_ssb)/om_ssb,
-        rec = (2*rec-om_rec)/om_rec,
-        F = (f-om_f)/om_f
-    ) %>%
-    ungroup() %>%
-    group_by(Year, om) %>%
-    median_qi(ssb, rec, F, .width=c(0.50, 0.95)) %>%
-    as_tibble() %>%
-    reformat_ggdist_long(2) %>%
-
-    ggplot(aes(x=Year))+
-        geom_lineribbon(aes(y=median, ymin=lower, ymax=upper))+
-        geom_hline(yintercept = 0)+
-        geom_hline(data=mu_error, aes(yintercept = rel_error), color="red")+
-        geom_vline(xintercept = 2023)+
-        geom_text(data=mu_error, aes(x=2075, y=y, label=round(rel_error, 3)))+
-        scale_fill_brewer(palette="Blues")+
-        scale_x_continuous(breaks=c(1960, 2000, 2040, 2080, 2110))+
-        facet_grid(vars(name), vars(om), scales="free")+
-        theme_bw() 
+ggplot(rel_error)+
+  geom_lineribbon(aes(x=Year, y=median, ymin=lower, ymax=upper), size=0.6)+
+  geom_vline(xintercept=2022)+
+  geom_hline(data=avg_rel_error, aes(yintercept=avg), linetype="solid", color="red", size=0.6) + 
+  geom_hline(yintercept=0.0, size=1)+
+  geom_text(data=avg_rel_error, aes(x=2100, y=text_y, label=paste0(round(100*avg, 3), "%")), color="red")+
+  scale_fill_brewer()+
+  facet_grid(rows=vars(name), cols=vars(om_name), scales="free_y")+
+  facetted_pos_scales(
+      y=list(
+          scale_y_continuous(limits=c(-0.12, 0.12)),
+          scale_y_continuous(limits=c(-0.05, 0.35)),
+          scale_y_continuous(limits=c(-0.5, 0.5)),
+          scale_y_continuous(limits=c(-0.05, 0.35)),
+          scale_y_continuous(limits=c(-0.05, 0.35)),
+          scale_y_continuous(limits=c(-0.05, 0.05)),
+          scale_y_continuous(limits=c(-0.05, 0.05)),
+          scale_y_continuous(limits=c(-0.05, 0.05))
+      )
+  )+
+  theme_bw()

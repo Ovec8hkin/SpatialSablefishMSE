@@ -41,7 +41,7 @@ get_fishing_mortalities <- function(model_runs, extra_columns){
     )
 }
 
-get_reruitment <- function(model_runs, extra_columns){
+get_recruits <- function(model_runs, extra_columns){
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%

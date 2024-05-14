@@ -11,7 +11,7 @@
 npfmc_tier3_F <- function(ssb, B_ref, F_ref){
     x <- ssb/B_ref
     return(
-        threshold_f(x, f_min=0, f_max=F_ref, lrp=0.05, u=1)
+        threshold_f(x, f_min=0, f_max=F_ref, lrp=0.05, urp=1)
     )
 }
 

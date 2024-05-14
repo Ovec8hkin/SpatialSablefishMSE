@@ -12,53 +12,105 @@
 #'
 #' @example
 #'
-run_EM <- function(s, sable_om, mse_tier3, om, fix_pars=NA){
-    afscOM_dir <- "~/Desktop/Projects/afscOM"
-    
-    library(devtools)
-    library(TMB) 
-    devtools::load_all(afscOM_dir)
+run_EM <- function(s, sable_om, mse_tier3, nyears, om_name, model_name="CurrentAssessment", fix_pars=NA){
 
-    source("R/format_em_data.R")
-    source("R/fit_TMB_model.R")
-
-    i=160-63
+    i=nyears-63
     y <- 63+i
 
-    assess_inputs <- format_em_data(
-                        nyears = y,
-                        dem_params = afscOM::subset_dem_params(sable_om$dem_params, 64:y, d=1, drop=FALSE),
-                        land_caa = afscOM::subset_matrix(mse_tier3$land_caa[64:y,,,,,s,drop=FALSE], 1, d=6, drop=TRUE),
-                        survey_indices = afscOM::subset_dem_params(afscOM::subset_dem_params(mse_tier3$survey_obs, 64:y, d=1, drop=FALSE), s, d=5, drop=TRUE),
-                        fxfish_caa_obs = afscOM::subset_matrix(mse_tier3$survey_obs$fxfish_acs[63:(y-1),,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                        ll_ac_obs = afscOM::subset_matrix(mse_tier3$survey_obs$ll_acs[63:(y-1),,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                        model_options = sable_om$model_options,
-                        added_years = i,
-                        file_suffix = s
-                    )
-    file.remove(paste0("data/sablefish_em_data_curr_",s,".RDS"))
-    file.remove(paste0("data/sablefish_em_par_curr_",s,".RDS"))
-    mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters, fix_pars = fix_pars)
-    #mod_out$opt$par["ln_mean_rec"]
+    assess_inputs <- simulate_em_data_sex_disaggregate(
+        nyears = y,
+        dem_params = afscOM::subset_dem_params(sable_om$dem_params, 1:y, d=1, drop=FALSE),
+        land_caa = afscOM::subset_matrix(mse_tier3$land_caa[1:y,,,,,s,drop=FALSE], 1, d=6, drop=TRUE),
+        survey_indices = afscOM::subset_dem_params(afscOM::subset_dem_params(mse_tier3$survey_obs, 1:y, d=1, drop=FALSE), s, d=5, drop=TRUE),
+        fxfish_caa_obs = afscOM::subset_matrix(mse_tier3$survey_obs$fxfish_acs[1:y,,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+        twfish_caa_obs = afscOM::subset_matrix(mse_tier3$survey_obs$twfish_acs[1:y,,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+        ll_ac_obs = afscOM::subset_matrix(mse_tier3$survey_obs$ll_acs[1:y,,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+        tw_ac_obs = afscOM::subset_matrix(mse_tier3$survey_obs$tw_acs[1:y,,,,s,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+        model_options = sable_om$model_options,
+        added_years = i,
+        file_suffix = s
+    )
 
-    om_ssb <- apply(mse_tier3$naa[1:y,,1,1,s]*sable_om$dem_params$mat[1:y,,1,1]*sable_om$dem_params$waa[1:y,,1,1], 1, sum)
-    om_rec <- apply(mse_tier3$naa[1:y, 1, ,1,s], 1, sum)
-    om_f <- mse_tier3$out_f[1:y,1,1,1,s]
+    mod_out <- fit_TMB_model(assess_inputs$new_data, assess_inputs$new_parameters, model_name=model_name, fix_pars = fix_pars)
 
-    assess_df <- SpatialSablefishAssessment::get_SSB(mod_out$report)
-    assess_rec <- mod_out$report$natage_f[1,]#SpatialSablefishAssessment::get_recruitment(mod_out$report)
-    assess_f <- SpatialSablefishAssessment::get_fishing_mortalities(mod_out$report) %>% group_by(Year) %>% dplyr::summarise(F=sum(F))
+    mle_report = mod_out$report
+    mle_optim = mod_out$opt
 
-    #assess_df <- data.frame(Year=1960:(1960+160-1))
-    #assess_df$ssb <- assess_ssb
-    assess_df$om_ssb <- om_ssb
-    assess_df$sim <- s
-    assess_df$om <- om
-    assess_df$rec <- assess_rec[-length(assess_rec)]
-    assess_df$om_rec <- om_rec
-    assess_df$f <- assess_f$F
-    assess_df$om_f <- om_f
-    return(assess_df)
+    est_rec <- SpatialSablefishAssessment::get_recruitment(mle_report)
+    om_rec <- apply(mse_tier3$naa[1:nyears,1,,,s], 1, sum)
+    
+    est_ssb <- SpatialSablefishAssessment::get_SSB(mle_report)
+    om_ssb <- apply(mse_tier3$naa[1:nyears,,1,1,s]*sable_om$dem_params$mat[1:nyears,,1,1]*sable_om$dem_params$waa[1:nyears,,1,1], 1, sum)
+    
+    est_Fs <- SpatialSablefishAssessment::get_fishing_mortalities(mle_report) %>% as_tibble() %>% group_by(Year) %>% summarise(F = sum(F))
+    om_Fs <- mse_tier3$out_f[1:nyears,1, 1, 1, s]
+    
+    est_fish_Fs <- SpatialSablefishAssessment::get_fishing_mortalities(mle_report) %>% as_tibble() %>%
+        mutate(
+            true_Fs = c(apply(mse_tier3$faa[1:nyears,,,1,1,s], 1, max), apply(mse_tier3$faa[1:nyears,,,1,2,s], 1, max)),
+            avg_F = c(rep(exp(mle_optim$par["ln_ll_F_avg"]), nyears), rep(exp(mle_optim$par["ln_trwl_F_avg"]), nyears)),
+            true_avg_F = c(rep(exp(NA), nyears), rep(exp(NA), nyears))
+            )
+    
+    est_catches <- SpatialSablefishAssessment::get_catches(mle_report) %>% as_tibble() %>%
+        pivot_wider(names_from=type, values_from=Catch)
+    
+    selex <- SpatialSablefishAssessment::get_selectivities(mle_report) %>% mutate(sim=s)
+
+    sel_est <- array(NA, dim=c(1, 30, 1, 1, 2))
+    sel_est[1,,1,1,1] <- selex %>% filter(gear == "fixed", sex == "female", time_block == 3) %>% pull(value)
+    sel_est[1,,1,1,2] <- selex %>% filter(gear == "trawl", sex == "female", time_block == 1) %>% pull(value)
+
+    prop_fs <- apply(mse_tier3$faa[y,,,1,,s, drop=FALSE], 5, max)/sum(apply(mse_tier3$faa[y,,,1,,s, drop=FALSE], 5, max))
+    joint_self_true <- apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
+    
+    spinup_years <- 63
+    F_ll_f <- t(mle_report$F_ll_f[,y])
+    F_ll_m <- t(mle_report$F_ll_m[,y])
+    F_tw_f <- t(mle_report$F_trwl_f[,y])
+    F_tw_m <- t(mle_report$F_trwl_m[,y])
+    faa_est <- array(NA, dim=c(1, 30, 2, 1, 2))
+    faa_est[1,,1,,1] <- F_ll_f
+    faa_est[1,,2,,1] <- F_ll_m
+    faa_est[1,,1,,2] <- F_tw_f
+    faa_est[1,,2,,2] <- F_tw_m
+    prop_fs <- apply(faa_est[1,,,1,, drop=FALSE], 5, max)/sum(apply(faa_est[1,,,1,, drop=FALSE], 5, max))
+    joint_self_est <- apply(sel_est*prop_fs, c(1, 2), sum)/max(apply(sel_est*prop_fs, c(1, 2), sum))
+    
+    rps_est <-  calculate_ref_points(30, mle_report$M[1,1], sable_om$dem_params$mat[nyears,,1,1], sable_om$dem_params$waa[nyears,,1,1], joint_self_est, rep(1, 30), avg_rec=mean(est_rec$Recruitment[17:nyears]/2))
+    rps_true <- calculate_ref_points(30, sable_om$dem_params$mort[1,1,1,1], sable_om$dem_params$mat[nyears,,1,1], sable_om$dem_params$waa[nyears,,1,1], joint_self_true, rep(1, 30), avg_rec=mean(mse_tier3$naa[17:nyears, 1, 1, 1, s]))
+
+    tmp <- data.frame(
+        Year=1960:(1960+nyears-1), 
+        est_rec=est_rec$Recruitment, 
+        om_rec=om_rec, 
+        est_ssb=est_ssb$SSB, 
+        om_ssb=om_ssb, 
+        est_F=est_Fs$F, 
+        om_F=om_Fs, 
+        est_ll_f=est_fish_Fs %>% filter(Fishery == "Fixed gear") %>% pull(F),
+        om_ll_f=est_fish_Fs %>% filter(Fishery == "Fixed gear") %>% pull(true_Fs),
+        est_tw_f=est_fish_Fs %>% filter(Fishery == "Trawl gear") %>% pull(F),
+        om_tw_f=est_fish_Fs %>% filter(Fishery == "Trawl gear") %>% pull(true_Fs),
+        est_ll_catch = est_catches %>% filter(Fishery == "Fixed gear") %>% pull(Predicted),
+        om_ll_catch = est_catches %>% filter(Fishery == "Fixed gear") %>% pull(Observed),
+        est_tw_catch = est_catches %>% filter(Fishery == "Trawl") %>% pull(Predicted),
+        om_tw_catch = est_catches %>% filter(Fishery == "Trawl") %>% pull(Observed),
+        # B0 = mle_report$Bzero,
+        # R0 = mle_report$mean_rec/2,
+        est_F40 = rps_est$F40,
+        est_F35 = rps_est$F35,
+        est_B40 = rps_est$B40,
+        om_F40 = rps_true$F40,
+        om_F35 = rps_true$F35,
+        om_B40 = rps_true$B40,
+        M = exp(mle_optim$par["ln_M"]),
+        ll_q = exp(mle_optim$par["ln_srv_dom_ll_q"]),
+        tw_q = exp(mle_optim$par["ln_srv_nmfs_trwl_q"]),
+        sim=s,
+        om = om_name
+    )
+    return(tmp)
 }
 
 # s <- 1

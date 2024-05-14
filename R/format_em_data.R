@@ -524,9 +524,9 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
 
     # Turn on priors for Q and M
     new_data$mu_srv_dom_ll_q <- 6.412379        # This comes from the 2023 Sablefish assessment
-    new_data$sd_srv_dom_ll_q <- 0.05
+    new_data$sd_srv_dom_ll_q <- 0.01
     new_data$mu_srv_nmfs_trwl_q <- 0.8580096    # This comes from the 2023 Sablefish assessment
-    new_data$sd_srv_nmfs_trwl_q <- 0.05
+    new_data$sd_srv_nmfs_trwl_q <- 0.01
     new_data$loglik_wgt_q_priors <- 1
 
     new_data$mu_M <- dem_params$mort[1,1,1,1]
