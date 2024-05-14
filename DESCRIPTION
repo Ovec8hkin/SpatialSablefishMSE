@@ -21,7 +21,7 @@ Authors@R: c(
             role = "ctb"),
     person(given = "Matt", 
             family = "Cheng",
-            role = "auth")
+            role = "aut")
     )
 Maintainer: Joshua A. Zahner <joshuazahner@gmail.com>
 Description: Conduct a management strategy evaluation (MSE) for Alaska Sablefish.

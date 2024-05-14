@@ -5,13 +5,13 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> • SablefishMSE</title>
+<title>Harvest Control Rules • SablefishMSE</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Harvest Control Rules">
 <meta property="og:description" content="SablefishMSE">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -53,7 +53,7 @@
       <a href="../articles/estimation_model.html">UNKNOWN TITLE</a>
     </li>
     <li>
-      <a href="../articles/harvest_control_rule_function.html">UNKNOWN TITLE</a>
+      <a href="../articles/harvest_control_rule_function.html">Harvest Control Rules</a>
     </li>
     <li>
       <a href="../articles/intro.html">Intro</a>
@@ -86,7 +86,7 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip></h1>
+      <h1 data-toc-skip>Harvest Control Rules</h1>
             
       
       
@@ -96,7 +96,102 @@
 
     
     
-
+<p>Users must provide as input to the MSE function a reference to a function that defines the harvest control rule (HCR) to apply to the population in each timestep. HCRs can take many forms including constant catch, constant fishing mortality, threshold, etc. Several HCR functions are provided as part of the package, including the current Tier 3a HCR used by the North Pacific Fisheries Management Council for Alaska sablefish, but users can also define their custom HCR functions for their own purposes.</p>
+<p>A simple example of an HCR function is as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">npfmc_tier3_F</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ssb</span>, <span class="va">B_ref</span>, <span class="va">F_ref</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">ssb</span><span class="op">/</span><span class="va">B_ref</span></span>
+<span>    <span class="va">f_min</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">f_max</span> <span class="op">=</span> <span class="va">F_ref</span></span>
+<span>    <span class="va">lrp</span> <span class="op">=</span> <span class="fl">0.05</span></span>
+<span>    <span class="va">urp</span> <span class="op">=</span> <span class="fl">1</span> </span>
+<span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;=</span> <span class="va">urp</span><span class="op">)</span>  <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_max</span> <span class="co"># if stock status &gt;= 1</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="va">lrp</span> <span class="op">&amp;&amp;</span> <span class="va">x</span> <span class="op">&lt;</span> <span class="va">urp</span><span class="op">)</span> <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_max</span> <span class="op">*</span> <span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">-</span><span class="va">lrp</span><span class="op">)</span><span class="op">/</span><span class="op">(</span><span class="va">urp</span><span class="op">-</span><span class="va">lrp</span><span class="op">)</span><span class="op">)</span> <span class="co"># if stock status &gt; alpha &amp; stock status &lt; 1</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&lt;=</span> <span class="va">lrp</span><span class="op">)</span> <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_min</span></span>
+<span>    </span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">F</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">tier3</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ref_pts</span>, <span class="va">naa</span>, <span class="va">dem_params</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="co"># Calculate ssb as naa*waa*mat (female only)</span></span>
+<span>    <span class="va">ssb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">naa</span><span class="op">[</span>,,<span class="fl">1</span>,<span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">waa</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">mat</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span></span>
+<span>        <span class="fu"><a href="../reference/npfmc_tier3_F.html">npfmc_tier3_F</a></span><span class="op">(</span><span class="va">ssb</span>, <span class="va">ref_pts</span><span class="op">$</span><span class="va">B40</span>, <span class="va">ref_pts</span><span class="op">$</span><span class="va">F40</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>The function <code>npfmc_tier3_F</code> defines the NPFMC Tier 3a HCR that is currently used for sablefish management in Alaska. The HCR is a threshold rule that converts annual SSB into an allowable fishing mortality rate (see ____) based on a maximum reference level of F and a biomass reference level. The wrapper function <code>tier3()</code> encapsulates converting from numbers-at-age (<code>naa</code>, the unit of output from the OM) into SSB for the <code>npfmc_tier3_F</code> function.</p>
+<p>In order for an HCR function to be compatible with the MSE framework, it must take, at minimum, three parameters: <code>ref_pts</code>, <code>naa</code>, and <code>dem_params</code>. The <code>ref_pts</code> input parameter expects an object generate via the <code><a href="../reference/calculate_ref_points.html">calculate_ref_points()</a></code> function that the MSE runs internally. The <code>naa</code> input parameter is a four dimensional array (dims [1, nages, nsexes, 1]) of numbers-at-age as output by either the OM or the EM. Finally, the <code>dem_params</code> input parameter is the demographic parameter matrix that is supplied as part of the OM definition.</p>
+<p>All three of these parameters are rquired even for HCRs that may not make direct use of one or more of such parametrs (such as a constant catch rule, which doesn’t require any of them). More complex HCR functions may optionally take additional parameters. Constrution of such HCRs is discussed later.</p>
+<p>Once an appropriate HCR function has been defined, a reference to the function is provided as a parameter to the <code>run_mse</code> function (or its associated wrapper functions) like <code>run_mse(..., hcr=tier3, ...)</code>.</p>
+<div class="section level4">
+<h4 id="constructing-a-new-hcr-function">Constructing a New HCR Function<a class="anchor" aria-label="anchor" href="#constructing-a-new-hcr-function"></a>
+</h4>
+<p>Here, we describe how to construct a new step-wise harvest control rule function, where F=0.10 when SSB &gt; 100,000 tons, and where F=0.01 when SSB &lt;= 100,000 tons.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stepwise_hcr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ssb</span>, <span class="va">F_high</span>, <span class="va">F_low</span>, <span class="va">step_point</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">ssb</span> <span class="op">&gt;</span> <span class="va">step_point</span>, <span class="va">F_high</span>, <span class="va">F_low</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">step_hcr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ref_pts</span>, <span class="va">naa</span>, <span class="va">dem_params</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="co"># Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons</span></span>
+<span>    <span class="va">ssb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">naa</span><span class="op">[</span>,,<span class="fl">1</span>,<span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">waa</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">mat</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span></span>
+<span>        <span class="fu">stepwise_hcr</span><span class="op">(</span><span class="va">ssb</span>, F_high<span class="op">=</span><span class="fl">0.10</span>, F_low<span class="op">=</span><span class="fl">0.01</span>, step_point <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">mse</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_mse.html">run_mse</a></span><span class="op">(</span>om<span class="op">=</span><span class="va">om</span>, hcr<span class="op">=</span><span class="va">step_hcr</span>, nyears_input<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span></code></pre></div>
+<p>The HCR function above (<code>step_hcr</code>) takes the three required parameters as inputs, though only makes use of <code>naa</code> and <code>dem_params</code> (if users write a function that does not take all three parameters as inputs, the MSE function will fail when attempting to evaluate the HCR function). Note that the two functions above could be simplified into a single function at the user’s behest.</p>
+</div>
+<div class="section level4">
+<h4 id="constructing-more-complex-hcr-functions">Constructing More Complex HCR Functions<a class="anchor" aria-label="anchor" href="#constructing-more-complex-hcr-functions"></a>
+</h4>
+<p>Some HCRs require more information than just the three required parameters to be defined. For example, consider an HCR that wants to dynamically reduce the maximum F applied by a threshold HCR based on the average age of the population in a given year. Such an HCR can be defined like below:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">average_age</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">naa</span>, <span class="va">ages</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">ages</span>, <span class="va">naa</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">avgage_threshold_f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ref_pts</span>, <span class="va">naa</span>, <span class="va">dem_params</span>, <span class="va">ref_naa</span>, <span class="va">ages</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="co"># Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons</span></span>
+<span>    <span class="va">ssb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">naa</span><span class="op">[</span>,,<span class="fl">1</span>,<span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">waa</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">mat</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span>    <span class="va">as_stat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/average_age.html">average_age</a></span><span class="op">(</span><span class="va">naa</span>, <span class="va">ages</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="../reference/average_age.html">average_age</a></span><span class="op">(</span><span class="va">ref_naa</span>, <span class="va">ages</span><span class="op">)</span></span>
+<span>    <span class="va">as_scalar</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/threshold_f.html">threshold_f</a></span><span class="op">(</span><span class="va">as_stat</span>, f_min<span class="op">=</span><span class="fl">0</span>, f_max<span class="op">=</span><span class="fl">1</span>, lrp<span class="op">=</span><span class="fl">0</span>, urp<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">ssb</span><span class="op">/</span><span class="va">ref_pts</span><span class="op">$</span><span class="va">B40</span></span>
+<span>    <span class="va">f_max</span> <span class="op">&lt;-</span> <span class="va">ref_pts</span><span class="op">$</span><span class="va">F40</span><span class="op">*</span><span class="va">as_scalar</span></span>
+<span>    <span class="va">f_min</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">lrp</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">urp</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;=</span> <span class="va">urp</span><span class="op">)</span>  <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_max</span> <span class="co"># if stock status &gt;= 1</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="va">lrp</span> <span class="op">&amp;&amp;</span> <span class="va">x</span> <span class="op">&lt;</span> <span class="va">urp</span><span class="op">)</span> <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_max</span> <span class="op">*</span> <span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">-</span><span class="va">lrp</span><span class="op">)</span><span class="op">/</span><span class="op">(</span><span class="va">urp</span><span class="op">-</span><span class="va">lrp</span><span class="op">)</span><span class="op">)</span> <span class="co"># if stock status &gt; alpha &amp; stock status &lt; 1</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">x</span> <span class="op">&lt;=</span> <span class="va">lrp</span><span class="op">)</span> <span class="cn">F</span> <span class="op">&lt;-</span> <span class="va">f_min</span></span>
+<span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>The <code>avgeage_threshold_f</code> HCR function accepts two more parameters (<code>ref_naa</code> and <code>ages</code>) than are required by all HCR functions. In order to dynamcically handle an HCR function that takes an indeterminate number of additional parameters, the <code><a href="../reference/run_mse.html">run_mse()</a></code> function makes use the special <code>...</code> argument. This argument allows users to supply as many additional named parameters as needed, and all of such parameters will be passed along to the HCR function when it is called within the HCR loop. So, for this example, the final MSE call would look something like:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ages</span> <span class="op">&lt;-</span> <span class="fl">2</span><span class="op">:</span><span class="fl">31</span></span>
+<span><span class="va">ref_naa</span> <span class="op">&lt;-</span> <span class="fl">25</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">30</span>, \<span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fl">1</span><span class="op">*</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.1</span><span class="op">)</span><span class="op">)</span><span class="op">^</span><span class="va">i</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mse</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_mse.html">run_mse</a></span><span class="op">(</span>om<span class="op">=</span><span class="va">om</span>, hcr<span class="op">=</span><span class="va">avgage_threshold_f</span>, ref_naa<span class="op">=</span><span class="va">ref_naa</span>, ages<span class="op">=</span><span class="va">ages</span>, nyears_input<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span></code></pre></div>
+<p>This pattern extends to any HCR function, even ones that require dozens of additional parameters (parameter names still need to be unique, so paramaters cannot have names likes <code>om</code>, <code>hcr</code>, <code>ref_pts</code>, <code>naa</code>, etc. as they are already used by either the calling MSE function or are default parameters alredy supplued to the HCR function.</p>
+</div>
+<div class="section level4">
+<h4 id="additional-hcr-complexity">Additional HCR Complexity<a class="anchor" aria-label="anchor" href="#additional-hcr-complexity"></a>
+</h4>
+<p>HCRs can also have additional “meta-rules” that further define their behavior. A common example are stability constraints, which limit how much annual catch levels are allowed to change between years. These constraints are not directly part of the HCR, but rather are a function of the management process. As such, they are defined separately from the HCR functions.</p>
+<p>To supply additional management rules, such as stability constraints or harvest caps, a named list <code>management_rules</code> must be added to the larger <code>model_options</code> list. The <code>management_rules</code> list object, can, presently, define three parameters:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model_options</span><span class="op">$</span><span class="va">management_rules</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    stability_increase <span class="op">=</span> <span class="fl">0.15</span>,   <span class="co"># maximum allowed percent increase in TAC between successive years</span></span>
+<span>    stability_decrease <span class="op">=</span> <span class="fl">0.15</span>,   <span class="co"># maximum allowed percent decrease in TAC between successive years</span></span>
+<span>    tac_cap <span class="op">=</span> <span class="fl">100000</span>             <span class="co"># maximum allowed TAC</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><em>NOTE: The interface for defining complex HCR functions and for defining additional management meta-rules is subject to change (05/13/2024).</em></p>
+</div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
@@ -109,7 +204,7 @@
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Joshua Zahner, Benjamin Williams, Dan Goethel, Curry Cunningham.</p>
+<p>Developed by Joshua Zahner, Benjamin Williams, Dan Goethel, Curry Cunningham, Matt Cheng.</p>
 </div>
 
 <div class="pkgdown">
