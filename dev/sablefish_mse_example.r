@@ -82,10 +82,6 @@ mse_options$ref_points <- list(
     spr_target = 0.40
 )
 
-mse_options$hcr <- list(
-    func = tier3
-)
-
 mse_options$management <- list(
     abc_tac_reduction = 1,
     tac_land_reduction = 0.80,

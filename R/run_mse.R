@@ -93,21 +93,21 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
     for(y in 1:nyears){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
-        dp.y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
+        dp_y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
         removals_input <- landings[y]
         fleet.props <- unlist(lapply(model_options$fleet_apportionment, \(x) x[y]))
 
         # will work for any recruitment function that only requires
         # ssb as a yearly input (beverton holt and ricker should work fine)
         if(is.na(full_recruitment[y+1])){
-            ssb <- sum(naa[y,,1,,drop=FALSE]*dp.y$waa[,,1,]*dp.y$mat[,,1,])
+            ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
             full_recruitment[y+1] <- projected_recruitment(ssb) 
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
         out_vars <- project(
             removals = removals_input,
-            dem_params=dp.y,
+            dem_params=dp_y,
             prev_naa=prev_naa,
             recruitment=full_recruitment[y+1],
             fleet.props = fleet.props,
@@ -135,10 +135,10 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
 
             naa_proj <- out_vars$naa_tmp
             rec <- full_recruitment[1:y]
-            sel <- dp.y$sel
+            sel <- dp_y$sel
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
 
-            if(model_options$run_estimation){
+            if(mse_options$run_estimation){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
                 assess_inputs <- simulate_em_data_sex_disaggregate(
@@ -217,28 +217,37 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
             # by terminal year F.
             joint_self <- apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
             joint_selm <- apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-            joint_ret <- apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp.y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_ret <- apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
             
             # reference points are all female based
             ref_pts <- calculate_ref_points(
                 nages=nages,
-                mort = dp.y$mort[,,1,],
-                mat = dp.y$mat[,,1,],
-                waa = dp.y$waa[,,1,],
+                mort = dp_y$mort[,,1,],
+                mat = dp_y$mat[,,1,],
+                waa = dp_y$waa[,,1,],
                 sel =  joint_self,
                 ret = joint_ret,
                 avg_rec = mean(rec)/2,
                 spr_target = mse_options$ref_points$spr_target
             )
 
-            hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp.y, ...)
+            hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp_y, ...)
             #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
             joint_sel[,,1,] <- joint_self
             joint_sel[,,2,] <- joint_selm
 
-            mgmt_out <- simulate_TAC(hcr_F[y], naa_proj, mean(rec)/2, joint_sel, dp.y, tac_land_reduction = 0.85)
+            mgmt_out <- simulate_TAC(
+                hcr_F = hcr_F[y], 
+                naa = naa_proj, 
+                recruitment = mean(rec)/2, 
+                joint_sel = joint_sel, 
+                dem_params = dp_y, 
+                abc_tac_reduction = mse_options$management$abc_tac_reduction,
+                tac_land_reduction = mse_options$management$tac_land_reduction
+            )
+
             abc[y+1,1,1,1] <- mgmt_out$abc
             tac[y+1,1,1,1] <- mgmt_out$tac
             exp_land[y+1,1,1,1] <- mgmt_out$land
