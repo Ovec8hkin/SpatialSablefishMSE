@@ -31,7 +31,7 @@ source("R/recruitment_utils.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 90
+nyears <- 120
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 # Turn on estimation model
@@ -41,13 +41,13 @@ sable_om$model_options$run_estimation = TRUE
 assessment <- dget("data/sablefish_assessment_2023.rdat")
 hist_recruits <- assessment$natage.female[,1]*2
 
-sable_om$recruitment$func <- beverton_holt
-sable_om$recruitment$pars <- list(
-    h = 0.7,
-    R0 = 20,
-    S0 = 282,
-    sigR = 1.04
-)
+# sable_om$recruitment$func <- beverton_holt
+# sable_om$recruitment$pars <- list(
+#     h = 0.7,
+#     R0 = 20,
+#     S0 = 282,
+#     sigR = 1.04
+# )
 
 # sable_om$recruitment$func <- resample_regime_recruits
 # sable_om$recruitment$pars <- list(
@@ -57,6 +57,21 @@ sable_om$recruitment$pars <- list(
 #     regime_length = c(20, 5),
 #     starting_regime = 0
 # )
+
+# sable_om$recruitment$func <- resample_recruits
+# sable_om$recruitment$pars <- list(
+#     hist_recruits = hist_recruits,
+#     nyears = nyears - length(hist_recruits) + 1
+# )
+
+sable_om$recruitment$func <- regime_recruits
+sable_om$recruitment$pars <- list(
+    mus = c(25, 10),
+    cvs = c(0.40, 0.40),
+    nyears = nyears - length(hist_recruits) + 1,
+    regime_length = c(20, 20),
+    starting_regime = 0
+)
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
 #' in future years. Such function must take accept the following parameters:
@@ -97,7 +112,7 @@ mse_options$management <- list(
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 1
+nsims <- 20
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 tic()
@@ -125,46 +140,17 @@ extra_columns <- list(
     om = c("om1")
 )
 
-# Plot spawning biomass from OM and EM
-d <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params) %>%
-    # SSB is females only
-    filter(sex == "F") %>%
-    # summarise SSB across year and sim 
-    group_by(time, hcr, sim, L1) %>%
-    summarise(spbio=sum(spbio)) %>%
-    # Compute quantiles of SSB distribution
-    group_by(time, hcr, L1) %>%
-    median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-    # Reformat ggdist tibble into long format
-    reformat_ggdist_long(n=3)
-
-
-ggplot(d %>% filter(L1 == "naa")) + 
-    geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-    geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
-    geom_vline(xintercept=64, linetype="dashed")+
-    geom_hline(yintercept=121.4611, linetype="dashed")+
-    scale_fill_brewer(palette="Blues")+
-    scale_y_continuous(limits=c(0, 300))+
-    coord_cartesian(expand=0)+
-    theme_bw()
+ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params)
+plot_ssb(ssb_data)
 
 # Plot fishing mortality rates from OM and EM
-f <- get_fishing_mortalities(model_runs, extra_columns) %>%
-    group_by(time, fleet, L1, hcr) %>%
-    median_qi(F, total_F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-    reformat_ggdist_long(n=4) %>%
-    filter(name == "total_F")
+f_data <- get_fishing_mortalities(model_runs, extra_columns)
+plot_fishing_mortalities(f_data)
 
-ggplot(f %>% filter(L1 == "faa")) + 
-    geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-    geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
-    geom_vline(xintercept=64, linetype="dashed")+
-    scale_fill_brewer(palette="Blues")+
-    scale_y_continuous(limits=c(0, 0.20))+
-    coord_cartesian(expand=0)+
-    theme_bw()
-
+plot_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
+plot_hcr_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
+  
+get_reference_points(model_runs, extra_columns, sable_om$dem_params, nyears)
 
 # Plot ABC, TAC, and landings
 bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns = extra_columns) %>%
@@ -179,122 +165,3 @@ bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns = extra_
     geom_line(aes(x=time, y=median, color=L1, group=L1))+
     scale_y_continuous(limits=c(0, 50))+
     theme_bw()
-
-
-# Plot recruitment from OM and EM
-get_recruits(model_runs, extra_columns) %>%
-    # summarise SSB across year and sim 
-    group_by(time, L1) %>%
-    median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-    reformat_ggdist_long(n=2) %>%
-    print(n=500) %>%
-
-    ggplot() + 
-      geom_line(aes(x=time, y=median, group=L1, color=L1), size=0.4)+
-      geom_vline(xintercept=64, linetype="dashed")+
-      scale_fill_brewer(palette="Blues")+
-      scale_y_continuous(limits=c(0, 100))+
-      coord_cartesian(expand=0)+
-      theme_bw()
-
-
-prop_fs <- c(0.70, 0.30)
-joint_sel_f <- apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sable_om$dem_params$sel[nyears,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-
-calculate_ref_points(
-    30,
-    sable_om$dem_params$mort[nyears,,1,1],
-    sable_om$dem_params$mat[nyears,,1,1],
-    sable_om$dem_params$waa[nyears,,1,1],
-    joint_sel_f,
-    sable_om$dem_params$ret[nyears,,1,1,1],
-    12.5,
-    spr_target = 0.40
-)
-
-bind_mse_outputs(model_runs, c("out_f"), extra_columns) %>%
-    as_tibble() %>%
-    drop_na() %>%
-    group_by(time) %>%
-    median_qi(value, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-
-    ggplot()+
-        geom_lineribbon(aes(x=time, y=value, ymin=.lower, ymax=.upper))+
-        scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 0.3))+
-        coord_cartesian(expand=0)+
-        theme_bw()
-
-
-
-
-nmodels <- length(mse_tier3$model_outs$reps)
-o <- lapply(seq_along(1:nmodels), function(i){
-  y <- (i-1)%/%nsims+1
-  s <- (i-1)%%nsims+1
-  o <- SpatialSablefishAssessment::get_SSB(mse_tier3$model_outs$reps[y, s][[1]]) %>% filter(Year == max(Year))
-  o$sim <- seeds[s]
-  return(o)
-})
-
-est_ssb <- bind_rows(o)
-
-names(mse_tier3$model_outs$reps[1,1][[1]])
-
-
-derive_est_naa <- function(model_outs, nyears, nsims){
-    naa_out <- array(NA, dim=c(nyears, 30, 2, 1, nsims))
-    nmodels <- length(mse_tier3$model_outs$reps)
-    for(i in 1:nmodels){
-        y <- (i-1)%/%nsims+1
-        s <- (i-1)%%nsims+1
-        est_naa_f <- model_outs$reps[y, s][[1]]$natage_f
-        est_naa_m <- model_outs$reps[y, s][[1]]$natage_m
-        naa_out[63+y,,1,1,s] <- est_naa_f[,ncol(est_naa_f)]
-        naa_out[63+y,,2,1,s] <- est_naa_m[,ncol(est_naa_m)]
-    }
-    return(naa_out)
-}
-
-derive_est_naa(mse_tier3$model_outs, 160, nsims)
-
-
-bind_mse_outputs(model_runs, c("naa", "abc"), extra_columns) %>% 
-    as_tibble() %>%
-    filter(time > 65) %>%
-    left_join(
-        melt(sable_om$dem_params$waa, value.name="weight"), 
-        by=c("time", "age", "sex")
-    ) %>%
-    left_join(
-        melt(sable_om$dem_params$mat, value.name="maturity"), 
-        by=c("time", "age", "sex")
-    ) %>%
-    # compute derived quantities
-    mutate(
-        biomass = value*weight,
-        spbio = value*weight*maturity
-    ) %>%
-    # SSB is females only
-    filter(sex == "F") %>%
-    # summarise SSB across year and sim 
-    group_by(time, hcr, sim, L1) %>%
-    summarise(spbio=sum(spbio)) %>%
-    select(time, sim, L1, spbio) %>%
-    left_join(
-        reshape2::melt(mse_small$abc) %>% drop_na() %>% select(time, sim, value),
-        by=c("time", "sim")
-    ) %>%
-    mutate(
-        h = value/spbio,
-        F = -log(1-h)
-    ) %>%
-    group_by(time) %>%
-    median_qi(F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-
-    ggplot()+
-        geom_lineribbon(aes(x=time, y=F, ymin=.lower, ymax=.upper))+
-        scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 0.5))+
-        coord_cartesian(expand=0)+
-        theme_bw()
