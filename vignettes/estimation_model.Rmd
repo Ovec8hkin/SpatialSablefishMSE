@@ -1,0 +1,25 @@
+---
+title: "Sablefish MSE Estimation Method"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Estimation Method}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The estimation method (EM) used by the `SablefishMSE` package is an adapted version of the TMB model built by Craig Marsh and available as part of the [`SpatialSablefishAssessment` package](https://github.com/Craig44/SpatialSablefishAssessment). It is an single-region, two fleet, two survey, age-sex structured assessment model, that closesly mimics the dynamics of the operational Alaska sablefish assessment, build and run annually by Dr. Dan Goethel of NOAA Alaska Fisheries Science Center. The EM diverges from the `SpatialSablefishAssessment` model and the operational model in two key ways:
+
+1. A recruitment bias correction ramp (Methot and Taylor, 2013) is implemented (the bias ramp is also implemented in the 2023 operational assessment)
+2. Age composition observations are fit in a sex-disaggregated fashion so as to allow for better estimation of sex-specific selectivity curves
+
+#### Recruitment Bias Ramp
+The 2023 operational stock assessment model was updated to include the Methot and Taylor (2013) recruitment bias correction ramp in October/November 2023. In order to bring the EM for the MSE in line with the operational model, the bias correction ramp was integrated into the TMB model provided as part of the `SpatialSablefishAssessment` package. Despite the inclusion of the bias correction ramp, recruitment variation ($\sigma_R$) remains a fixed parameter in the EM (at its maximum level, $\sigma_R = 1.04$).
+
+#### Sex-disaggregated Age Compositions
+In order to better fit sex-specific selectivity curves within the EM, the model was updated to fit to sex-disaggregated age composition data in a "proportions across approach". This is different from the both the `SpatialSablefishAssessment` model and the operational assessment model, both of which fit to sex-aggregated age composition data. 
+
+#### Additional Notes About the EM
+The EM is known to struggle with accurately identifying population scale, often having trouble correctly re-estimating survey catchability coefficients. To counter this problem, a strong prior is placed on the coefficient for both the Alaska longline and the NOAA trawl survey indices of abundance. The estimate of each catchability coefficient from the operational assessment is used as the mean of their respective priors. Prior standard deviations are constrained to 2% of the mean.
+
+While the EM is minimally biased with regards to SSB and fully-selected F, there persists an ~7% negative bias in average recruitment estimates. This is believed to be due to the fact that the EM does not constrain recriutment deviations to sum to zero across the timeseries (a sum-to-zero constraint), as is done in the operational assessment which is used to parameterize the OM.
+
