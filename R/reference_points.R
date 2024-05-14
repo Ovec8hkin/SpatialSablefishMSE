@@ -120,17 +120,41 @@ compute_bx <- function(nages, mort, mat, waa, sel, ret, F, avg_rec){
 #' @param waa weight-at-age vector
 #' @param sel total selectivity-at-age vector
 #' @param ret total retention-at-age vector
-#' @param F instantenous fishing mortality rate
 #' @param avg_rec average recruitment
 #'
 #' @return list of F40, F35, and B40
+#' @export calculate_npfmc_ref_points
+#'
+#' @example
+#'
+calculate_npfmc_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec){
+  F35 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.35)
+  F40 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.40)
+  B40 <- compute_bx(nages, mort, mat, waa, sel, ret, F=F40, avg_rec=avg_rec)
+  return(list(F40=F40, F35=F35, B40=B40))
+}
+
+#' Calculate SPR Based Reference Points
+#'
+#' Generalized function for computing and F and biomass based reference point
+#' for a given SPR level
+#'
+#' @param nages number of ages in age structure
+#' @param mort instantaneous natural mortality rate
+#' @param mat maturity-at-age vector
+#' @param waa weight-at-age vector
+#' @param sel total selectivity-at-age vector
+#' @param ret total retention-at-age vector
+#' @param avg_rec average recruitment
+#' @param spr_target target SPR level
+#'
+#' @return list of F reference point and biomass reference point
 #' @export calculate_ref_points
 #'
 #' @example
 #'
-calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec){
-  F35 <- spr_x(nages, mort, mat, waa, sel, ret ,target_x=0.35)
-  F40 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.40)
-  B40 <- compute_bx(nages, mort, mat, waa, sel, ret, F=F40, avg_rec=avg_rec)
-  return(list(F40=F40, F35=F35, B40=B40))
+calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec, spr_target){
+  Fref <- spr_x(nages, mort, mat, waa, sel, ret, target_x=spr_target)
+  Bref <- compute_bx(nages, mort, mat, waa, sel, ret, F=Fref, avg_rec=avg_rec)
+  return(list(Fref=Fref, Bref=Bref))
 }

@@ -15,7 +15,7 @@
 #'
 #' @example
 #'
-run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
+run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
    
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -227,7 +227,8 @@ run_mse <- function(om, hcr, ..., nyears_input=NA, spinup_years=64, seed=1120, f
                 waa = dp.y$waa[,,1,],
                 sel =  joint_self,
                 ret = joint_ret,
-                avg_rec = mean(rec)/2
+                avg_rec = mean(rec)/2,
+                spr_target = mse_options$ref_points$spr_target
             )
 
             hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp.y, ...)
