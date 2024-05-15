@@ -1,3 +1,22 @@
+#' Get Spawning Biomass and Total Biomass
+#' 
+#' Process MSE simulations for spawning biomass,
+#' and total stock biomass.
+#'
+#' @param model_runs list of completed MSE simualtion objects
+#' @param extra_columns additional columns to append to output
+#'
+#' @export get_ssb_biomass
+#'
+#' @example \dontrun{
+#'      mse1 <- run_mse(om, hcr1, ...)
+#'      mse2 <- run_mse(om, hcr2, ...)
+#' 
+#'      model_runs <- list(mse1, mse2)
+#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
+#'      get_ssb_biomass(model_runs, extra_columns)
+#' }
+#'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
@@ -21,6 +40,25 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
     )
 }
 
+#' Get Annual Fishing Mortality
+#' 
+#' Process MSE simulations for fishing mortality by fleet.
+#' Total fishing mortality across fleets is alsoc computed.
+#'
+#' @param model_runs list of completed MSE simualtion objects
+#' @param extra_columns additional columns to append to output
+#'
+#' @export get_fishing_mortalities
+#'
+#' @example \dontrun{
+#'      mse1 <- run_mse(om, hcr1, ...)
+#'      mse2 <- run_mse(om, hcr2, ...)
+#' 
+#'      model_runs <- list(mse1, mse2)
+#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
+#'      get_fishing_mortalities(model_runs, extra_columns)
+#' }
+#'
 get_fishing_mortalities <- function(model_runs, extra_columns){
     return(
         bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
@@ -41,6 +79,24 @@ get_fishing_mortalities <- function(model_runs, extra_columns){
     )
 }
 
+#' Get Annual Recruits
+#' 
+#' Process MSE simulations for annual recruits.
+#'
+#' @param model_runs list of completed MSE simualtion objects
+#' @param extra_columns additional columns to append to output
+#'
+#' @export get_recruits
+#'
+#' @example \dontrun{
+#'      mse1 <- run_mse(om, hcr1, ...)
+#'      mse2 <- run_mse(om, hcr2, ...)
+#' 
+#'      model_runs <- list(mse1, mse2)
+#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
+#'      get_recruits(model_runs, extra_columns)
+#' }
+#'
 get_recruits <- function(model_runs, extra_columns){
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
