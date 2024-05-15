@@ -68,6 +68,50 @@ plot_recruitment <- function(data){
     return(plot)
 }
 
+plot_landed_catch <- function(data, by_fleet = FALSE){
+    c <- data %>%
+        group_by(time, fleet, L1, hcr) %>%
+        median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        reformat_ggdist_long(n=4)
+    
+    if(by_fleet){
+        c <- c %>% filter(name == "catch")
+    }else{
+        c <- c %>% filter(name == "total_catch")
+    }
+
+    plot <- ggplot(c, aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr))+
+        geom_lineribbon()+
+        geom_vline(xintercept=64, linetype="dashed")+
+        scale_fill_brewer(palette="Blues")+
+        scale_y_continuous(limits=c(0, 35))+
+        coord_cartesian(expand=0)+
+        theme_bw()
+    
+    if(by_fleet){
+        plot <- plot + facet_wrap(~fleet)
+    }
+
+    return(plot)
+
+}
+
+plot_abc_tac <- function(data){
+    q <- data %>%
+        group_by(time, L1, hcr) %>%
+        median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        reformat_ggdist_long(n=3)
+    
+    plot <- ggplot(q)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr, group=interaction(hcr, L1)))+
+        scale_y_continuous(limits=c(0, 50))+
+        scale_fill_brewer(palette="Blues")+
+        theme_bw()+
+        facet_wrap(~L1)
+
+    return(plot)
+}
+
 plot_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears){
     d <- get_ssb_biomass(model_runs, extra_columns, dem_params = ) %>%
         # SSB is females only

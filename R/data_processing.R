@@ -52,6 +52,72 @@ get_recruits <- function(model_runs, extra_columns){
     )
 }
 
+#' Get Landed Catches
+#' 
+#' Process MSE simulations for landed catches by fleet.
+#' Total landed catch across fleets is alsoc computed.
+#'
+#' @param model_runs list of completed MSE simualtion objects
+#' @param extra_columns additional columns to append to output
+#'
+#' @export get_landed_catch
+#'
+#' @example \dontrun{
+#'      mse1 <- run_mse(om, hcr1, ...)
+#'      mse2 <- run_mse(om, hcr2, ...)
+#' 
+#'      model_runs <- list(mse1, mse2)
+#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
+#'      get_landed_catch(model_runs, extra_columns)
+#' }
+#'
+get_landed_catch <- function(model_runs, extra_columns){
+    return(
+        bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
+            as_tibble() %>%
+            drop_na() %>%
+            group_by(time, fleet, sim, L1, hcr) %>%
+            # compute fleet-based F as the maximum F across age classes
+            summarise(
+                catch = sum(value)
+            ) %>%
+            ungroup() %>%
+            group_by(time, sim, L1, hcr) %>%
+            # total F is the sum of fleet-based Fs
+            mutate(
+                total_catch = sum(catch)
+            ) %>%
+            ungroup()
+    )
+}
+
+#' Get ABC, TAC, and Expected Landings
+#' 
+#' Process MSE simulations for ABC, TAC, and expected 
+#' landings quantities
+#'
+#' @param model_runs list of completed MSE simualtion objects
+#' @param extra_columns additional columns to append to output
+#'
+#' @export get_management_quantities
+#'
+#' @example \dontrun{
+#'      mse1 <- run_mse(om, hcr1, ...)
+#'      mse2 <- run_mse(om, hcr2, ...)
+#' 
+#'      model_runs <- list(mse1, mse2)
+#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
+#'      get_management_quantities(model_runs, extra_columns)
+#' }
+#'
+get_management_quantities <- function(model_runs, extra_columns){
+    return(
+        bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
+            as_tibble() %>%
+            drop_na()
+    )
+}
+
 #' Get Reference Points from MSE Simulations
 #' 
 #' Derive fishing mortality and biomass reference points
