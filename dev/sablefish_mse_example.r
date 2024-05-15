@@ -100,7 +100,7 @@ mse_options$ref_points <- list(
 mse_options$management <- list(
     abc_tac_reduction = 1,
     tac_land_reduction = 0.80,
-    max_stabililty = NA,
+    max_stability = 0.05,
     harvest_cap = NA
 )
 
@@ -112,12 +112,31 @@ mse_options$management <- list(
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 20
+nsims <- 1
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 tic()
 # mse_tier3     <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=150, om=sable_om, hcr=tier3)
-mse_small <- run_mse_parallel(nsims=nsims, seeds=seeds, nyears=nyears, om=sable_om, hcr=tier3, mse_options=mse_options)
+mse_small_1 <- run_mse_parallel(
+    nsims=nsims, 
+    seeds=seeds, 
+    nyears=nyears, 
+    om=sable_om, 
+    hcr=tier3, 
+    mse_options=mse_options
+)
+
+mse_options$management$max_stability <- 1e5
+
+mse_small_2 <- run_mse_parallel(
+    nsims=nsims, 
+    seeds=seeds, 
+    nyears=nyears, 
+    om=sable_om, 
+    hcr=tier3, 
+    mse_options=mse_options
+)
+
 toc()
 
 # nsims <- 1
@@ -133,11 +152,11 @@ toc()
 #' of spawning biomass.
 model_runs <- list(
     #mse_tier3
-    mse_small
+    mse_small_1,
+    mse_small_2
 )
 extra_columns <- list(
-    hcr = c("tier3"),
-    om = c("om1")
+    hcr = c("5% stability", "No stability")
 )
 
 ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params)
@@ -146,6 +165,9 @@ plot_ssb(ssb_data)
 # Plot fishing mortality rates from OM and EM
 f_data <- get_fishing_mortalities(model_runs, extra_columns)
 plot_fishing_mortalities(f_data)
+
+r_data <- get_recruits(model_runs, extra_columns)
+plot_recruitment(r_data)
 
 plot_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
 plot_hcr_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)

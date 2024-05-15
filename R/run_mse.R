@@ -244,8 +244,8 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                 recruitment = mean(rec)/2, 
                 joint_sel = joint_sel, 
                 dem_params = dp_y, 
-                abc_tac_reduction = mse_options$management$abc_tac_reduction,
-                tac_land_reduction = mse_options$management$tac_land_reduction
+                hist_tac = tac[y,1,1,1],
+                options = mse_options$management
             )
 
             abc[y+1,1,1,1] <- mgmt_out$abc

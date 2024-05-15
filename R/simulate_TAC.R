@@ -19,12 +19,24 @@
 #'
 #' @example
 #'
-simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, abc_tac_reduction=1, tac_land_reduction=1){
+simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_tac, options){
     proj_faa <- joint_sel*hcr_F
     proj_N_new <- afscOM::simulate_population(naa, proj_faa, recruitment, dem_params, options=list())
     abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
-    tac <- abc * abc_tac_reduction
-    land <- tac * tac_land_reduction
+    tac <- abc * options$abc_tac_reduction
+
+    # Implements symmetric stability constraints
+    if(!is.na(options$max_stability) & !is.na(hist_tac)){
+        max_tac <- hist_tac*(1+options$max_stability)
+        min_tac <- hist_tac*(1-options$max_stability)
+        if(tac > max_tac){
+            tac <- max_tac
+        }else if(tac < min_tac){
+            tac <- min_tac
+        }
+    }
+
+    land <- tac * options$tac_land_reduction
 
     return(afscOM::listN(abc, tac, land))
 }
