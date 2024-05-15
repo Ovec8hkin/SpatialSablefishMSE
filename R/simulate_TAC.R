@@ -1,5 +1,5 @@
 #' Simulate Total Allowable Catch Projections
-#' #'
+#' 
 #' Determine the total allowable catch (TAC) in the next simulation
 #' year based on the fishing mortality rate identified by a harvest
 #' control rule (HCR). TAC is computed by projecting the population
@@ -34,6 +34,11 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ta
         }else if(tac < min_tac){
             tac <- min_tac
         }
+    }
+
+    # Implements a maximum tac cap
+    if(!is.na(options$harvest_cap)){
+        tac <- ifelse(tac > options$harvest_cap, options$harvest_cap, tac)
     }
 
     land <- tac * options$tac_land_reduction

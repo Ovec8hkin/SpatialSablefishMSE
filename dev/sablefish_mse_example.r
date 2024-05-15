@@ -100,7 +100,7 @@ mse_options$ref_points <- list(
 mse_options$management <- list(
     abc_tac_reduction = 1,
     tac_land_reduction = 0.80,
-    max_stability = 0.05,
+    max_stability = NA,
     harvest_cap = NA
 )
 
@@ -126,7 +126,7 @@ mse_small_1 <- run_mse_parallel(
     mse_options=mse_options
 )
 
-mse_options$management$max_stability <- 1e5
+mse_options$management$harvest_cap <- 20
 
 mse_small_2 <- run_mse_parallel(
     nsims=nsims, 
@@ -156,7 +156,7 @@ model_runs <- list(
     mse_small_2
 )
 extra_columns <- list(
-    hcr = c("5% stability", "No stability")
+    hcr = c("No Harvest Cap", "12,000mt Harvest Cap")
 )
 
 ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params)
@@ -178,12 +178,43 @@ get_reference_points(model_runs, extra_columns, sable_om$dem_params, nyears)
 bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns = extra_columns) %>%
     as_tibble() %>%
     drop_na() %>%
-    group_by(time, L1) %>%
+    group_by(time, L1, hcr) %>%
     median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-    reformat_ggdist_long(n=2) %>%
+    reformat_ggdist_long(n=3) %>%
 
   ggplot()+
-    geom_pointrange(aes(x=time, y=median, ymin=lower, ymax=upper, color=L1))+
-    geom_line(aes(x=time, y=median, color=L1, group=L1))+
+    geom_pointrange(aes(x=time, y=median, ymin=lower, ymax=upper, color=L1, group=hcr))+
+    geom_line(aes(x=time, y=median, color=L1, group=interaction(hcr, L1)))+
     scale_y_continuous(limits=c(0, 50))+
-    theme_bw()
+    theme_bw()+
+    facet_wrap(~hcr)
+
+
+bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
+    as_tibble() %>%
+    drop_na() %>%
+    group_by(time, fleet, sim, L1, hcr) %>%
+    # compute fleet-based F as the maximum F across age classes
+    summarise(
+        catch = sum(value)
+    ) %>%
+    ungroup() %>%
+    group_by(time, sim, L1, hcr) %>%
+    # total F is the sum of fleet-based Fs
+    mutate(
+        total_catch = sum(catch)
+    ) %>%
+    ungroup() %>%
+    group_by(time, fleet, L1, hcr) %>%
+    median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+    reformat_ggdist_long(n=4) %>%
+    filter(name == "catch") %>%
+
+    ggplot(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr))+
+        geom_lineribbon()+
+        geom_vline(xintercept=64, linetype="dashed")+
+        scale_fill_brewer(palette="Blues")+
+        scale_y_continuous(limits=c(0, 35))+
+        coord_cartesian(expand=0)+
+        theme_bw()+
+        facet_wrap(~fleet)
