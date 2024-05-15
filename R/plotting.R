@@ -14,8 +14,8 @@ plot_ssb <- function(data){
 
 
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-        geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_vline(xintercept=64, linetype="dashed")+
         geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
@@ -35,8 +35,8 @@ plot_fishing_mortalities <- function(data){
         filter(name == "total_F")
 
     plot <- ggplot(f %>% filter(L1 == "faa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-        geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 0.20))+
@@ -57,8 +57,8 @@ plot_recruitment <- function(data){
     mean_rec <- r %>% pull(median) %>% mean
 
     plot <- ggplot(r %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr), size=0.4)+
-        geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper), alpha=0.35, color="red")+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_hline(yintercept = mean_rec, linetype="dashed") + 
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 120))+
