@@ -113,26 +113,39 @@ plot_abc_tac <- function(data){
 }
 
 plot_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears){
-    d <- get_ssb_biomass(model_runs, extra_columns, dem_params = ) %>%
+    d <- get_ssb_biomass(model_runs, extra_columns) %>%
         # SSB is females only
         filter(sex == "F", L1 == "naa") %>%
         # summarise SSB across year and sim 
         group_by(time, hcr, sim, L1) %>%
         summarise(spbio=sum(spbio)) %>%
         left_join(
-            reshape2::melt(mse_small$out_f),
-            by = c("time", "sim"),
+            bind_mse_outputs(model_runs, "out_f", extra_columns),
+            by = c("time", "sim", "hcr"),
         ) %>%
         group_by(time, hcr) %>%
         median_qi(spbio, value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        filter(.width == 0.50)
+
+    ref_pts <- get_reference_points(model_runs[1], list(hcr="test"), dem_params, year=nyears)
+
+    segments <- d %>% as_tibble() %>% 
+        select(spbio, value, hcr) %>% 
+        rename(x=spbio, y=value) %>%
+        group_by(hcr) %>%
+        mutate(
+            xend = lead(x, 1),
+            yend = lead(y, 1)
+        ) %>%
+        ungroup() %>%
+        arrange(hcr) %>%
         drop_na()
 
-    ref_pts <- get_reference_points(model_runs, extra_columns, dem_params, year=nyears)
-
-    plot <- ggplot(d)+
-        geom_point(aes(x=spbio, y=value, color=time), size=1.5)+
+    plot <- ggplot(d, aes(x=spbio, y=value, color=hcr, group=hcr))+
+        geom_point(size=1.5)+
         geom_segment(
-            aes(x=spbio, y=value, xend=after_stat(lead(x)), yend=after_stat(lead(y)), color=time), 
+            data = segments, 
+            aes(x=x, y=y, xend=xend, yend=yend, group=hcr),
             arrow=arrow(length = unit(3, "mm"))
         )+
         geom_hline(yintercept=ref_pts$Fref, linetype="dashed")+
@@ -154,22 +167,36 @@ plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears
         group_by(time, hcr, sim, L1) %>%
         summarise(spbio=sum(spbio)) %>%
         left_join(
-            reshape2::melt(mse_small$hcr_f),
-            by = c("time", "sim"),
+            bind_mse_outputs(model_runs, "hcr_f", extra_columns),
+            by = c("time", "sim", "hcr"),
         ) %>%
         group_by(time, hcr) %>%
         median_qi(spbio, value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        drop_na() %>%
+        filter(.width == 0.50)
+
+    segments <- d %>% as_tibble() %>% 
+        select(spbio, value, hcr) %>% 
+        rename(x=spbio, y=value) %>%
+        group_by(hcr) %>%
+        mutate(
+            xend = lead(x, 1),
+            yend = lead(y, 1)
+        ) %>%
+        ungroup() %>%
+        arrange(hcr) %>%
         drop_na()
 
-    ref_pts <- get_reference_points(model_runs, extra_columns, dem_params, year=nyears)
+    ref_pts <- get_reference_points(model_runs[1], list(hcr="test"), dem_params, year=nyears)
 
     ssbs <- seq(0, 300, 1)
     ssbs_df <- data.frame(spbio=ssbs, Fs=sapply(ssbs, \(x) npfmc_tier3_F(x, ref_pts$Bref, ref_pts$Fref)))
 
     plot <- ggplot(d)+
-        geom_point(aes(x=spbio, y=value, color=time), size=1.5)+
+        geom_point(aes(x=spbio, y=value, color=hcr, group=hcr), size=1.5)+
         geom_segment(
-            aes(x=spbio, y=value, xend=after_stat(lead(x)), yend=after_stat(lead(y)), color=time), 
+            data = segments, 
+            aes(x=x, y=y, xend=xend, yend=yend, color=hcr, group=hcr),
             arrow=arrow(length = unit(3, "mm"))
         )+
         geom_line(data=ssbs_df, aes(x=spbio, y=Fs), size=0.75)+
