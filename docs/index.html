@@ -50,7 +50,7 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="articles/estimation_model.html">UNKNOWN TITLE</a>
+      <a href="articles/estimation_model.html">Sablefish MSE Estimation Method</a>
     </li>
     <li>
       <a href="articles/harvest_control_rule_function.html">Harvest Control Rules</a>
@@ -59,13 +59,13 @@
       <a href="articles/intro.html">Intro</a>
     </li>
     <li>
-      <a href="articles/multiple_mse_simulations.html">UNKNOWN TITLE</a>
+      <a href="articles/multiple_mse_simulations.html">Multiple MSE Simulations</a>
     </li>
     <li>
       <a href="articles/plotting_mse_results.html">UNKNOWN TITLE</a>
     </li>
     <li>
-      <a href="articles/processing_mse_results.html">UNKNOWN TITLE</a>
+      <a href="articles/processing_mse_results.html">Processing MSE Results</a>
     </li>
     <li>
       <a href="articles/recruitment_functions.html">Specifying Recruitment</a>
@@ -93,9 +93,9 @@
 <p>The MSE operating model (OM) is built using the <a href="https://github.com/BenWilliams-NOAA/afscOM" class="external-link"><code>afscOM</code> R package</a>, a generalized fisheries operating model implementation. The OM is an age-structured, multi-sex, single region model, with two active fisheries and two scientific surveys, built with the same demographic parameters as are used/estimated by the <a href="https://github.com/dgoethel/2023-Sablefish-SAFE/" class="external-link">2023 Alaska sablefish stock assessment</a>. The MSE estimation model (EM) is a modified version of the <a href="https://github.com/Craig44/SpatialSablefishAssessment" class="external-link"><code>SpatialSablefishAssessment</code> TMB model</a> built in 2022, that was updated to include a recruitment bias ramp and to fit to sex-disaggregated age composition data.</p>
 <p>A range of recruitment models and harvest control rules (HCRs) are implemented to allow for testing the efficacy of many different management strategies across a range of reasonable future recruitment scenarios.</p>
 <p>Examples of how to run the full MSE simulation loop is available at <code>dev/sablefish_mse_example.r</code></p>
-<div class="section level2">
-<h2 id="-project-background-and-objectives">### Project background and objectives<a class="anchor" aria-label="anchor" href="#-project-background-and-objectives"></a>
-</h2>
+<div class="section level3">
+<h3 id="project-background-and-objectives">Project background and objectives<a class="anchor" aria-label="anchor" href="#project-background-and-objectives"></a>
+</h3>
 <p>Alaskan sablefish (<em>Anoplopoma fimbria</em>) are currently managed using the North Pacific Fishery Management Council’s (NPFMC) <span class="math inline"><em>F</em><sub>40</sub></span> harvest control rule (HCR). However, sablefish are a long-lived, relatively slow growing species and generic HCRs aimed at maximizing yearly harvest (e.g., spawner-per-recruit, SPR, based maximum sustainable yield proxies) may not perform adequately for achieving key conservation and fishery performance metrics (e.g., maintaining a robust age structure and maximizing long-term fishery yield). To address scientific and stakeholder concerns regarding the robustness of the current HCR for sablefish, a closed loop simulation tool will be developed and implemented to test the efficacy and robustness of current and alternate HCRs as well as spawning metrics through management strategy evaluation (MSE; Punt et al. 2016). The aim of the study will be to identify HCRs that can achieve both conservation and economic priorities, while also exploring how assumptions regarding calculation of spawning potential impact HCR robustness.</p>
 </div>
 </div>

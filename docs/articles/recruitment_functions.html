@@ -50,7 +50,7 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/estimation_model.html">UNKNOWN TITLE</a>
+      <a href="../articles/estimation_model.html">Sablefish MSE Estimation Method</a>
     </li>
     <li>
       <a href="../articles/harvest_control_rule_function.html">Harvest Control Rules</a>
@@ -59,13 +59,13 @@
       <a href="../articles/intro.html">Intro</a>
     </li>
     <li>
-      <a href="../articles/multiple_mse_simulations.html">UNKNOWN TITLE</a>
+      <a href="../articles/multiple_mse_simulations.html">Multiple MSE Simulations</a>
     </li>
     <li>
       <a href="../articles/plotting_mse_results.html">UNKNOWN TITLE</a>
     </li>
     <li>
-      <a href="../articles/processing_mse_results.html">UNKNOWN TITLE</a>
+      <a href="../articles/processing_mse_results.html">Processing MSE Results</a>
     </li>
     <li>
       <a href="../articles/recruitment_functions.html">Specifying Recruitment</a>
@@ -128,8 +128,11 @@
 <p>The <code>beverton_holt</code> function works differently however, due to it specifying a state-dependent recruitment function. This function is an R function factory (a funtion that returns another function), that accepts the standard Beverton-Holt parameters – h, R0, and S0 – and returns back a new function to which SSB is provided an input (see the example below).</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">beverton_holt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">h</span>, <span class="va">R0</span>, <span class="va">S0</span>, <span class="va">sigR</span>, <span class="va">seed</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="co"># note that the set.seed() call needs to happen</span></span>
+<span>    <span class="co"># outside of the returned function, or else there</span></span>
+<span>    <span class="co"># will be no random variability in recruitment draws</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="va">seed</span><span class="op">)</span> </span>
 <span>    <span class="kw">function</span><span class="op">(</span><span class="va">ssb</span><span class="op">)</span><span class="op">{</span></span>
-<span>        <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="va">seed</span><span class="op">)</span></span>
 <span>        <span class="va">bh</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">4</span><span class="op">*</span><span class="va">R0</span><span class="op">*</span><span class="va">h</span><span class="op">*</span><span class="va">ssb</span><span class="op">)</span><span class="op">/</span><span class="op">(</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">h</span><span class="op">)</span><span class="op">*</span><span class="va">R0</span><span class="op">*</span><span class="op">(</span><span class="va">S0</span><span class="op">/</span><span class="va">R0</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">5</span><span class="op">*</span><span class="va">h</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span><span class="va">ssb</span><span class="op">)</span></span>
 <span>        <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span></span>
 <span>            <span class="va">bh</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean<span class="op">=</span><span class="fl">0</span>, sd<span class="op">=</span><span class="va">sigR</span><span class="op">)</span></span>

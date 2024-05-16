@@ -5,13 +5,13 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> • SablefishMSE</title>
+<title>Multiple MSE Simulations • SablefishMSE</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Multiple MSE Simulations">
 <meta property="og:description" content="SablefishMSE">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -50,7 +50,7 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/estimation_model.html">UNKNOWN TITLE</a>
+      <a href="../articles/estimation_model.html">Sablefish MSE Estimation Method</a>
     </li>
     <li>
       <a href="../articles/harvest_control_rule_function.html">Harvest Control Rules</a>
@@ -59,13 +59,13 @@
       <a href="../articles/intro.html">Intro</a>
     </li>
     <li>
-      <a href="../articles/multiple_mse_simulations.html">UNKNOWN TITLE</a>
+      <a href="../articles/multiple_mse_simulations.html">Multiple MSE Simulations</a>
     </li>
     <li>
       <a href="../articles/plotting_mse_results.html">UNKNOWN TITLE</a>
     </li>
     <li>
-      <a href="../articles/processing_mse_results.html">UNKNOWN TITLE</a>
+      <a href="../articles/processing_mse_results.html">Processing MSE Results</a>
     </li>
     <li>
       <a href="../articles/recruitment_functions.html">Specifying Recruitment</a>
@@ -86,7 +86,7 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip></h1>
+      <h1 data-toc-skip>Multiple MSE Simulations</h1>
             
       
       
@@ -96,7 +96,39 @@
 
     
     
-
+<p>Often, many MSEs simulations will want to be run consecutively. This could be accomplished naively by wrapping the simple MSE function, <code>run_mse(...)</code> in a loop, and running in many time in a row and collating the resulting data. However, given the long runtimes associated with MSEs, and the general inefficeincy of looping structures in R, this is often not desirable. In lieu of iteratively running many MSE simulation one-after-another in a serial fashion, the package provided a wrapper function <code>run_mse_parallel(...)</code> that handles running many MSE simulations in parallel across available computing hardware.</p>
+<div class="section level4">
+<h4 id="parallel-processing">Parallel Processing<a class="anchor" aria-label="anchor" href="#parallel-processing"></a>
+</h4>
+<p>Parallel processing within the package is currently handled via the <code>pblapply</code> function from the <code>pbapply</code> package. The function acts like a standard <code>lapply</code> function call, but allows for users to provide a cluster object as a parameter to faciliatte running the given function multiples time, at the same time (i.e. in parallel).</p>
+<p>The cluster object is created via a call to the <code>parallel::makeCluster(...)</code> function. By default, the <code>SablefishMSE</code> package will create a cluster using 2 fewer than the available number of cores on a machine. This ensures that computational power is reserved for users to complete other tasks. If fewer than that number of simulations is requested (e.g. the user asks for 5 simulations, but a computer has 10 cores), only as many compute cores as simulations are used.</p>
+<p>The full workflow used by the <code>run_mse_parallel</code> function is as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span>    <span class="va">cores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">-</span><span class="fl">2</span>, <span class="va">nsims</span><span class="op">)</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">makeCluster</a></span><span class="op">(</span><span class="va">cores</span>, outfile<span class="op">=</span><span class="st">""</span><span class="op">)</span></span>
+<span>    <span class="fu">registerDoParallel</span><span class="op">(</span><span class="va">cl</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="fu">pbapply</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pbapply/man/pbapply.html" class="external-link">pblapply</a></span><span class="op">(</span><span class="va">...</span>, <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">{</span></span>
+<span>        <span class="co"># Additional code to handle function imports, the run_mse() call, and data collation</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>Users <strong>DO NOT</strong> need to setup their own clusters; the above code block is provided to demonstrate what exactly is going on within the <code>run_mse_parallel</code> function.</p>
+</div>
+<div class="section level4">
+<h4 id="using-run_mse_parallel">Using <code>run_mse_parallel</code><a class="anchor" aria-label="anchor" href="#using-run_mse_parallel"></a>
+</h4>
+<p>The <code>run_mse_parallel(...)</code> function is designed to act as a simple parallel wrapper for the base <code>run_mse(...)</code> function. It will create a parallel computing cluster, and run multiple MSE simulations, with the same OM and HCR specifications, where each simulation will only vary by the random seed used to generate annual recruitment levels and simulate observations.</p>
+<p>To use this wrapper, users can simple define an <code>om</code> and <code>hcr</code> object as they would when using the basic <code><a href="../reference/run_mse.html">run_mse()</a></code> function, and then additionally specify a total number of simulations, <code>nsims</code> and a vector of random simulation seeds to be parallelized across.</p>
+<p>The full workflow works like:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">om</span> <span class="op">&lt;-</span> <span class="va">...</span> <span class="co"># Create an OM object</span></span>
+<span><span class="va">hcr</span> <span class="op">&lt;-</span> <span class="va">...</span> <span class="co"># Create an HCR function</span></span>
+<span></span>
+<span><span class="va">nsims</span> <span class="op">&lt;-</span> <span class="fl">10</span> <span class="co"># run 10 simulations</span></span>
+<span><span class="va">seeds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">1e6</span>, <span class="va">nsims</span><span class="op">)</span> <span class="co"># get some random seeds</span></span>
+<span></span>
+<span><span class="fu">run_mse_parallel</span><span class="op">(</span><span class="va">nsims</span>, <span class="va">seeds</span>, <span class="va">om</span>, <span class="va">hcr</span>, nyears<span class="op">=</span><span class="va">nyears</span><span class="op">)</span></span></code></pre></div>
+<p><em>In the future, additional parallel wrapper functions to allow for running multiple MSE simulations across multiple different HCRs and multiple different OMs will also be available.</em></p>
+</div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
