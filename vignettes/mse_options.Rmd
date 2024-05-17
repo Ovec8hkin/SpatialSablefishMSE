@@ -1,0 +1,24 @@
+---
+title: "MSE Options"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MSE Options}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The `run_mse()` function, and its associated wrapper functions, rely on an "options" list object to customize behavior. A default "options" list object can be created with the `setup_mse_options()` function. Required options, and their default values, are described below:
+
+---
+
+`run_estimation`: whether the estimation model should be run and reference points/recommended TACs calculated from population estimates. If FALSE, reference points and TACs (from the HCR) will be calculated using OM values of selectivity and recruitment. _DEFAULT: TRUE_.
+
+`ref_points$spr_target`: the target SPR used for reference points. The reference point function returns both an F that yields the target SPR and the spawning biomass associated with that target SPR level. _DEFAULT: 0.40_.
+
+`management$abc_tac_reduction`: a reduction factor for calculating TACs based on an ABC calculated from the HCR recommendation. This option is 0-1 bounded. _DEFAULT: 1.0_.
+
+`management$tac_land_reduction`: a reduction factor for calculating what percentage of the recommended TAC is actually landed. This option is 0-1 bounded. _DEFAULT: 1.0_.
+
+`management$max_stability`: whether or not stability constraints should be applied to the TAC to regulate interannual changes in established TACs. Values represent a maximum allowable percentage change between the current year's TAC and next year's TAC. If not stability constraints should be applied, set to `NA`. _DEFAULT: `NA`_.
+
+`management$harvest_cap`: whether or not a harvest cap should be applied. Values represent a maximum allowable TAC. The `tac_land_reduction` is applied after this cap has been applied. If no cap should be applied, set to `NA`. _DEFAULT: `NA`_.
