@@ -7,6 +7,30 @@
     <loc>/LICENSE-text.html</loc>
   </url>
   <url>
+    <loc>/articles/01_intro.html</loc>
+  </url>
+  <url>
+    <loc>/articles/02_estimation_model.html</loc>
+  </url>
+  <url>
+    <loc>/articles/03_recruitment_functions.html</loc>
+  </url>
+  <url>
+    <loc>/articles/04_harvest_control_rule_function.html</loc>
+  </url>
+  <url>
+    <loc>/articles/05_processing_mse_results.html</loc>
+  </url>
+  <url>
+    <loc>/articles/06_multiple_mse_simulations.html</loc>
+  </url>
+  <url>
+    <loc>/articles/07_plotting_mse_results.html</loc>
+  </url>
+  <url>
+    <loc>/articles/SablefishMSE.html</loc>
+  </url>
+  <url>
     <loc>/articles/estimation_model.html</loc>
   </url>
   <url>
@@ -17,6 +41,9 @@
   </url>
   <url>
     <loc>/articles/intro.html</loc>
+  </url>
+  <url>
+    <loc>/articles/mse_options.html</loc>
   </url>
   <url>
     <loc>/articles/multiple_mse_simulations.html</loc>

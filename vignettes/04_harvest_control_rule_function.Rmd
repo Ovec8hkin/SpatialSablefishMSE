@@ -7,10 +7,14 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r, include=FALSE}
+knitr::opts_chunk$set(out.height = "\\textheight",  out.width = "\\textwidth")
+```
+
 Users must provide as input to the MSE function a reference to a function that defines the harvest control rule (HCR) to apply to the population in each timestep. HCRs can take many forms including constant catch, constant fishing mortality, threshold, etc. Several HCR functions are provided as part of the package, including the current Tier 3a HCR used by the North Pacific Fisheries Management Council for Alaska sablefish, but users can also define their custom HCR functions for their own purposes. 
 
 A simple example of an HCR function is as follows:
-```{r, simple_hcr, eval=FALSE}
+```{r, simple_hcr}
 npfmc_tier3_F <- function(ssb, B_ref, F_ref){
     x <- ssb/B_ref
     f_min <- 0
@@ -33,6 +37,24 @@ tier3 <- function(ref_pts, naa, dem_params){
     )
 }
 ```
+
+```{r, visualize_tier3_hcr, echo=FALSE, fig.width=7, fig.height=4}
+library(ggplot2)
+ssb <- 0:400
+Fs <- sapply(ssb, \(x) npfmc_tier3_F(x, B_ref=119.960, F_ref=0.086))
+data <- data.frame(SSB=ssb, F=Fs)
+
+ggplot(data)+
+    geom_line(aes(x=SSB, y=F), linewidth=1)+
+    geom_vline(xintercept = 119.960, linetype="dashed")+
+    geom_hline(yintercept = 0.086, linetype="dashed")+
+    scale_y_continuous(limits=c(0, 0.12))+
+    ggtitle("NPFMC Tier 3a Harvest Control Rule")+
+    coord_cartesian(expand=0)+
+    theme_bw()
+
+```
+
 The function `npfmc_tier3_F` defines the NPFMC Tier 3a HCR that is currently used for sablefish management in Alaska. The HCR is a threshold rule that converts annual SSB into an allowable fishing mortality rate (see ____) based on a maximum reference level of F and a biomass reference level. The wrapper function `tier3()` encapsulates converting from numbers-at-age (`naa`, the unit of output from the OM) into SSB for the `npfmc_tier3_F` function. 
 
 In order for an HCR function to be compatible with the MSE framework, it must take, at minimum, three parameters: `ref_pts`, `naa`, and `dem_params`. The `ref_pts` input parameter expects an object generate via the `calculate_ref_points()` function that the MSE runs internally. The `naa` input parameter is a four dimensional array (dims [1, nages, nsexes, 1]) of numbers-at-age as output by either the OM or the EM. Finally, the `dem_params` input parameter is the demographic parameter matrix that is supplied as part of the OM definition.
@@ -45,16 +67,11 @@ Once an appropriate HCR function has been defined, a reference to the function i
 Here, we describe how to construct a new step-wise harvest control rule function, where F=0.10 when SSB > 100,000 tons, and where F=0.01 when SSB <= 100,000 tons.
 
 ```{r, stepwise_hcr_example, eval=FALSE}
-stepwise_hcr <- function(ssb, F_high, F_low, step_point){
-    return(ifelse(ssb > step_point, F_high, F_low))
-}
 
 step_hcr <- function(ref_pts, naa, dem_params){
     # Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons
     ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
-    return(
-        stepwise_hcr(ssb, F_high=0.10, F_low=0.01, step_point = 100)
-    )
+    return(ifelse(ssb > 100, 0.10, 0.01))
 }
 
 mse <- run_mse(om=om, hcr=step_hcr, nyears_input=100)

@@ -50,13 +50,16 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
+      <a href="../articles/01_intro.html">Intro</a>
+    </li>
+    <li>
       <a href="../articles/estimation_model.html">Sablefish MSE Estimation Method</a>
     </li>
     <li>
       <a href="../articles/harvest_control_rule_function.html">Harvest Control Rules</a>
     </li>
     <li>
-      <a href="../articles/intro.html">Intro</a>
+      <a href="../articles/mse_options.html">MSE Options</a>
     </li>
     <li>
       <a href="../articles/multiple_mse_simulations.html">Multiple MSE Simulations</a>
@@ -96,7 +99,7 @@
 
     
     
-<p>The estimation method (EM) used by the <code>SablefishMSE</code> package is an adapted version of the TMB model built by Craig Marsh and available as part of the <a href="https://github.com/Craig44/SpatialSablefishAssessment" class="external-link"><code>SpatialSablefishAssessment</code> package</a>. It is an single-region, two fleet, two survey, age-sex structured assessment model, that closesly mimics the dynamics of the operational Alaska sablefish assessment, build and run annually by Dr. Dan Goethel of NOAA Alaska Fisheries Science Center. The EM diverges from the <code>SpatialSablefishAssessment</code> model and the operational model in two key ways:</p>
+<p>The estimation method (EM) used by the <code>SablefishMSE</code> package is an adapted version of the TMB model built by Craig Marsh and available as part of the <a href="https://github.com/Craig44/SpatialSablefishAssessment" class="external-link"><code>SpatialSablefishAssessment</code> package</a>. It is a single-region, two fleet, two survey, age-sex structured assessment model, that closesly mimics the dynamics of the operational Alaska sablefish assessment (Goethel et al. 2023), built and run annually by Dr. Dan Goethel of NOAA Alaska Fisheries Science Center. The EM diverges from the <code>SpatialSablefishAssessment</code> model and the operational model in two key ways:</p>
 <ol style="list-style-type: decimal">
 <li>A recruitment bias correction ramp (Methot and Taylor, 2013) is implemented (the bias ramp is also implemented in the 2023 operational assessment)</li>
 <li>Age composition observations are fit in a sex-disaggregated fashion so as to allow for better estimation of sex-specific selectivity curves</li>
@@ -104,18 +107,24 @@
 <div class="section level4">
 <h4 id="recruitment-bias-ramp">Recruitment Bias Ramp<a class="anchor" aria-label="anchor" href="#recruitment-bias-ramp"></a>
 </h4>
-<p>The 2023 operational stock assessment model was updated to include the Methot and Taylor (2013) recruitment bias correction ramp in October/November 2023. In order to bring the EM for the MSE in line with the operational model, the bias correction ramp was integrated into the TMB model provided as part of the <code>SpatialSablefishAssessment</code> package. Despite the inclusion of the bias correction ramp, recruitment variation (<span class="math inline">\(\sigma_R\)</span>) remains a fixed parameter in the EM (at its maximum level, <span class="math inline">\(\sigma_R = 1.04\)</span>).</p>
+<p>The 2023 operational stock assessment model was updated to include the Methot and Taylor (2013) recruitment bias correction ramp in October/November 2023. In order to bring the EM for the MSE in line with the operational model, the bias correction ramp was integrated into the TMB model provided as part of the <code>SpatialSablefishAssessment</code> package. Recruitment variation (<span class="math inline">\(\sigma_R\)</span>) remains a fixed parameter in the EM (at its maximum level, <span class="math inline">\(\sigma_R = 1.04\)</span>).</p>
 </div>
 <div class="section level4">
 <h4 id="sex-disaggregated-age-compositions">Sex-disaggregated Age Compositions<a class="anchor" aria-label="anchor" href="#sex-disaggregated-age-compositions"></a>
 </h4>
-<p>In order to better fit sex-specific selectivity curves within the EM, the model was updated to fit to sex-disaggregated age composition data in a “proportions across approach”. This is different from the both the <code>SpatialSablefishAssessment</code> model and the operational assessment model, both of which fit to sex-aggregated age composition data.</p>
+<p>In order to better estimate sex-specific selectivity curves within the EM, the model was updated to fit to sex-disaggregated age composition data in a “proportions across approach”. This is different from the both the <code>SpatialSablefishAssessment</code> model and the operational assessment model, both of which fit to sex-aggregated age composition data.</p>
 </div>
 <div class="section level4">
 <h4 id="additional-notes-about-the-em">Additional Notes About the EM<a class="anchor" aria-label="anchor" href="#additional-notes-about-the-em"></a>
 </h4>
 <p>The EM is known to struggle with accurately identifying population scale, often having trouble correctly re-estimating survey catchability coefficients. To counter this problem, a strong prior is placed on the coefficient for both the Alaska longline and the NOAA trawl survey indices of abundance. The estimate of each catchability coefficient from the operational assessment is used as the mean of their respective priors. Prior standard deviations are constrained to 2% of the mean.</p>
 <p>While the EM is minimally biased with regards to SSB and fully-selected F, there persists an ~7% negative bias in average recruitment estimates. This is believed to be due to the fact that the EM does not constrain recriutment deviations to sum to zero across the timeseries (a sum-to-zero constraint), as is done in the operational assessment which is used to parameterize the OM.</p>
+</div>
+<div class="section level4">
+<h4 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h4>
+<p>Goethel, D.R., Cheng, M.L.H., Echave, K.B., Marsh, C., Rodgveller, C.J., Shotwell, K., Siwicke, K., 2023. Stock Assessment of the sablefish stock in Alaska. North Pacific Fisheries Management Council, Anchorage, AK.</p>
+<p>Methot, R.D., Taylor, I.G., 2011. Adjusting for bias due to variability of estimated recruitments in fishery assessment models. Can. J. Fish. Aquat. Sci. 68, 1744–1760. <a href="https://doi.org/10.1139/f2011-092" class="external-link uri">https://doi.org/10.1139/f2011-092</a></p>
 </div>
   </div>
 

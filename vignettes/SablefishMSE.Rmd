@@ -1,8 +1,8 @@
 ---
-title: "Intro"
+title: "SablefishMSE"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Intro}
+  %\VignetteIndexEntry{SablefishMSE}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -40,7 +40,7 @@ run_mse(
 
 Below, we break down the components that go into the `om` and `hcr` parameters.
 
-##### Setting up the Operating Model
+#### Setting up the Operating Model
 
 First, we start with defining the operating model. 
 ```{r, echo=FALSE}
@@ -71,11 +71,11 @@ names(sable_om)
 * `dem_params` is exactly the `dem_params` list that is supplied to `afscOM`.
 * `model_options` is the same list supplied to `afscOM` but with some extra options appended.
 * `init_naa` is the the initial numbers-at-age (and sex) vector from which the OM should begin.
-* `recruitment` is a function and list of parameters that defines how annual recruitment should be generated (for more on how recruitment functions work withing the package see: ___).
+* `recruitment` is a function and list of parameters that defines how annual recruitment should be generated (for more on how recruitment functions work within the package see: ["Specifying Recruitment"](03_recruitment_functions.html)).
 
-##### Setting up a Harvest Control Rule
+#### Setting up a Harvest Control Rule
 
-Second, users must define a harvest control rule (HCR) function that relates the current population state to a future fishing mortality rate. We provide several pre-built HCR functions, including the currently adopted Tier 3a rule (below) that is used to by the NPFMC to set ABCs for Alaska sablefish, but users can also define their own custom HCR functions (see ____ for more details on custom HCR functions).
+Second, users must define a harvest control rule (HCR) function that relates the current population state to a future fishing mortality rate. We provide several pre-built HCR functions, including the currently adopted Tier 3a rule (below) that is used to by the NPFMC to set ABCs for Alaska sablefish, but users can also define their own custom HCR functions (see ["Constructing a New HCR Function"](04_harvest_control_rule_function.html) for more details on custom HCR functions).
 
 ```{r, hcr}
 tier3 <- function(ref_pts, naa, dem_params){
@@ -88,9 +88,9 @@ tier3 <- function(ref_pts, naa, dem_params){
 }
 ```
 
-The function object is provided directly to the `run_mse` function, and is evaluated within the MSE function itself. For this reason, defining HCR functions must be done carefully with respect to the parameter inputs and function outputs (see ___ for details).
+The function object is provided directly to the `run_mse` function, and is evaluated within the MSE function itself. For this reason, defining HCR functions must be done carefully with respect to the parameter inputs and function outputs (see ["Constructing More Complex HCR Functions"](04_harvest_control_rule_function.html) for details).
 
-##### Running the MSE
+#### Running the MSE
 
 Once an OM object and HCR function have been correctly defined, running the MSE is as simple as:
 
@@ -106,9 +106,9 @@ The `nyears_input` parameter defined how many years for the MSE to project forwa
 
 _Tests have not been performed to verify the behavior of the MSE when the `spinup_years` parameter is different from 64._
 
-There is a wrapper function for performing many MSE runs across different random seeds in parallel. For more information on parallel MSE simulations, see _____.
+There is a wrapper function for performing many MSE runs across different random seeds in parallel. For more information on parallel MSE simulations, see ["Multiple MSE Simulations"](06_multiple_mse_simulations.html).
 
-##### Processing MSE outputs
+#### Processing MSE outputs
 
 The MSE function returns a large amount of data back to the user including numbers-at-age and sex for every year (both true and estimated), fishing-mortality-at-age (true and estimated), and the recommended F from the HCR in each year. To facilitate easier processing of these results, especially when MSEs with different OMs or different HCRs are being compared, a `bind_mse_outputs` function has been provided.
 
@@ -123,7 +123,7 @@ extra_columns <- list(
 bind_mse_outputs(model_runs, var=c("naa", "naa_est"), extra_columns)
 ```
 
-To use the `bind_mse_outputs` function, place the finished MSE objects into an unnamed list (`model_runs` in this case), create a named list of extra columns you want appended to the output data frame (`extra_columns` in this case; often this is going to just be the HCR and/or the OM that was used, but see ___ for more details on how this should be created), and determine the data you would like to pull from the MSE objects (`"naa"` and `"naa_est"` in this case). The resulting dataframe object with contain just the provided data the user asks for, in long format. From there, the user can manipulate the output data as necesarry for computing performance metrics or plotting results.
+To use the `bind_mse_outputs` function, place the finished MSE objects into an unnamed list (`model_runs` in this case), create a named list of extra columns you want appended to the output data frame (`extra_columns` in this case; often this is going to just be the HCR and/or the OM that was used, but see ["How to Use the extra_columns Parameter"](05_processing_mse_results.html) for more details on how this should be created), and determine the data you would like to pull from the MSE objects (`"naa"` and `"naa_est"` in this case). The resulting dataframe object with contain just the provided data the user asks for, in long format. From there, the user can manipulate the output data as necesarry for computing performance metrics or plotting results.
 
 Three wrapper functions, `get_ssb_biomass`, `get_fishing_mortalities`, and `get_recruits`, are provided to easily compute and return common quantities (spawning biomass and total biomass, fishing mortality, and recruitment respectively).
 

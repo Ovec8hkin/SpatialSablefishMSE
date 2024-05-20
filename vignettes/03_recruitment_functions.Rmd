@@ -47,7 +47,7 @@ beverton_holt <- function(h, R0, S0, sigR, seed){
     function(ssb){
         bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
         return(
-            bh + rnorm(1, mean=0, sd=sigR)
+            bh + exp(rnorm(1, mean=0, sd=sigR)) # lognormal deviates
         )
     }
 }

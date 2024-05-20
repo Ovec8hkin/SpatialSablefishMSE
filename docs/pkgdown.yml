@@ -2,12 +2,13 @@ pandoc: 2.16.2
 pkgdown: 2.0.7
 pkgdown_sha: ~
 articles:
-  estimation_model: estimation_model.html
-  harvest_control_rule_function: harvest_control_rule_function.html
-  intro: intro.html
-  multiple_mse_simulations: multiple_mse_simulations.html
-  plotting_mse_results: plotting_mse_results.html
-  processing_mse_results: processing_mse_results.html
-  recruitment_functions: recruitment_functions.html
-last_built: 2024-05-16T20:32Z
+  02_estimation_model: 02_estimation_model.html
+  03_recruitment_functions: 03_recruitment_functions.html
+  04_harvest_control_rule_function: 04_harvest_control_rule_function.html
+  05_processing_mse_results: 05_processing_mse_results.html
+  06_multiple_mse_simulations: 06_multiple_mse_simulations.html
+  07_plotting_mse_results: 07_plotting_mse_results.html
+  SablefishMSE: SablefishMSE.html
+  mse_options: mse_options.html
+last_built: 2024-05-20T23:09Z
 

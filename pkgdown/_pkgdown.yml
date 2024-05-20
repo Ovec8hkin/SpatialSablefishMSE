@@ -1,0 +1,12 @@
+template:
+  bootstrap: 5
+navbar:
+  structure:
+    left:
+      - home
+      - intro
+      - reference
+      - articles
+    right:
+      - search 
+      - github

@@ -50,13 +50,16 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
+      <a href="../articles/01_intro.html">Intro</a>
+    </li>
+    <li>
       <a href="../articles/estimation_model.html">Sablefish MSE Estimation Method</a>
     </li>
     <li>
       <a href="../articles/harvest_control_rule_function.html">Harvest Control Rules</a>
     </li>
     <li>
-      <a href="../articles/intro.html">Intro</a>
+      <a href="../articles/mse_options.html">MSE Options</a>
     </li>
     <li>
       <a href="../articles/multiple_mse_simulations.html">Multiple MSE Simulations</a>
@@ -120,6 +123,7 @@
 <span>        <span class="fu"><a href="../reference/npfmc_tier3_F.html">npfmc_tier3_F</a></span><span class="op">(</span><span class="va">ssb</span>, <span class="va">ref_pts</span><span class="op">$</span><span class="va">B40</span>, <span class="va">ref_pts</span><span class="op">$</span><span class="va">F40</span><span class="op">)</span></span>
 <span>    <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<p><img src="harvest_control_rule_function_files/figure-html/visualize_tier3_hcr-1.png" width="\textwidth" height="\textheight"></p>
 <p>The function <code>npfmc_tier3_F</code> defines the NPFMC Tier 3a HCR that is currently used for sablefish management in Alaska. The HCR is a threshold rule that converts annual SSB into an allowable fishing mortality rate (see ____) based on a maximum reference level of F and a biomass reference level. The wrapper function <code>tier3()</code> encapsulates converting from numbers-at-age (<code>naa</code>, the unit of output from the OM) into SSB for the <code>npfmc_tier3_F</code> function.</p>
 <p>In order for an HCR function to be compatible with the MSE framework, it must take, at minimum, three parameters: <code>ref_pts</code>, <code>naa</code>, and <code>dem_params</code>. The <code>ref_pts</code> input parameter expects an object generate via the <code><a href="../reference/calculate_ref_points.html">calculate_ref_points()</a></code> function that the MSE runs internally. The <code>naa</code> input parameter is a four dimensional array (dims [1, nages, nsexes, 1]) of numbers-at-age as output by either the OM or the EM. Finally, the <code>dem_params</code> input parameter is the demographic parameter matrix that is supplied as part of the OM definition.</p>
 <p>All three of these parameters are rquired even for HCRs that may not make direct use of one or more of such parametrs (such as a constant catch rule, which doesn’t require any of them). More complex HCR functions may optionally take additional parameters. Constrution of such HCRs is discussed later.</p>
@@ -129,16 +133,10 @@
 </h4>
 <p>Here, we describe how to construct a new step-wise harvest control rule function, where F=0.10 when SSB &gt; 100,000 tons, and where F=0.01 when SSB &lt;= 100,000 tons.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stepwise_hcr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ssb</span>, <span class="va">F_high</span>, <span class="va">F_low</span>, <span class="va">step_point</span><span class="op">)</span><span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">ssb</span> <span class="op">&gt;</span> <span class="va">step_point</span>, <span class="va">F_high</span>, <span class="va">F_low</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">step_hcr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ref_pts</span>, <span class="va">naa</span>, <span class="va">dem_params</span><span class="op">)</span><span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">step_hcr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ref_pts</span>, <span class="va">naa</span>, <span class="va">dem_params</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="co"># Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons</span></span>
 <span>    <span class="va">ssb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">naa</span><span class="op">[</span>,,<span class="fl">1</span>,<span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">waa</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">*</span><span class="va">dem_params</span><span class="op">$</span><span class="va">mat</span><span class="op">[</span>,,<span class="fl">1</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">sum</span><span class="op">)</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span></span>
-<span>        <span class="fu">stepwise_hcr</span><span class="op">(</span><span class="va">ssb</span>, F_high<span class="op">=</span><span class="fl">0.10</span>, F_low<span class="op">=</span><span class="fl">0.01</span>, step_point <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">ssb</span> <span class="op">&gt;</span> <span class="fl">100</span>, <span class="fl">0.10</span>, <span class="fl">0.01</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">mse</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_mse.html">run_mse</a></span><span class="op">(</span>om<span class="op">=</span><span class="va">om</span>, hcr<span class="op">=</span><span class="va">step_hcr</span>, nyears_input<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span></code></pre></div>
