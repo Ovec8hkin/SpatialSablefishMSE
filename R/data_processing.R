@@ -18,6 +18,7 @@
 #' }
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
+    group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
@@ -36,7 +37,12 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
             mutate(
                 biomass = value*weight,
                 spbio = value*weight*maturity
-            )
+            ) %>%
+            # SSB is females only
+            filter(sex == "F") %>%
+            # summarise SSB across year and sim 
+            group_by(across(all_of(group_columns))) %>%
+            summarise(spbio=sum(spbio))
     )
 }
 
@@ -60,17 +66,19 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
 #' }
 #'
 get_fishing_mortalities <- function(model_runs, extra_columns){
+    group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
+    
     return(
         bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
             as_tibble() %>%
             drop_na() %>%
-            group_by(time, fleet, sim, L1, hcr) %>%
+            group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
             summarise(
                 F = max(value)
             ) %>%
             ungroup() %>%
-            group_by(time, sim, L1, hcr) %>%
+            group_by(across(all_of(group_columns[-2]))) %>%
             # total F is the sum of fleet-based Fs
             mutate(
                 total_F = sum(F)
@@ -98,12 +106,13 @@ get_fishing_mortalities <- function(model_runs, extra_columns){
 #' }
 #'
 get_recruits <- function(model_runs, extra_columns){
+    group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
             drop_na() %>%
             filter(age == 2) %>%
-            group_by(time, L1, hcr, sim) %>%
+            group_by(across(all_of(group_columns))) %>%
             summarise(rec=sum(value))
     )
 }
@@ -128,17 +137,18 @@ get_recruits <- function(model_runs, extra_columns){
 #' }
 #'
 get_landed_catch <- function(model_runs, extra_columns){
+    group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
             as_tibble() %>%
             drop_na() %>%
-            group_by(time, fleet, sim, L1, hcr) %>%
+            group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
             summarise(
                 catch = sum(value)
             ) %>%
             ungroup() %>%
-            group_by(time, sim, L1, hcr) %>%
+            group_by(across(all_of(group_columns[-2]))) %>%
             # total F is the sum of fleet-based Fs
             mutate(
                 total_catch = sum(catch)
@@ -167,10 +177,12 @@ get_landed_catch <- function(model_runs, extra_columns){
 #' }
 #'
 get_management_quantities <- function(model_runs, extra_columns){
+    cols <- c("time", "sim", "value", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
             as_tibble() %>%
-            drop_na()
+            drop_na() %>%
+            select(cols)
     )
 }
 
