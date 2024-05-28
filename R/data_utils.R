@@ -36,16 +36,25 @@ reformat_ggdist_long <- function(data, n=1){
 #' @export bind_mse_outputs
 #'
 #' @example
-#'
+#' 
 bind_mse_outputs <- function(model_runs, var, extra_columns){
 
-    bind_rows(
+    if(length(extra_columns) == 1){
+        col_name <- names(extra_columns)
+        model_grid <- as.data.frame(tibble(!!col_name := extra_columns[[1]]))
+    }else{
+        model_grid <- expand.grid(extra_columns)
+    }
+
+    t <- bind_rows(
         lapply(
             seq_along(model_runs), 
             function(x){
                 y <- melt(model_runs[[x]][var])
-                for(i in 1:length(extra_columns)){
-                    y <- y %>% mutate(!!names(extra_columns)[[i]] := extra_columns[[i]][x])
+                for(i in 1:ncol(model_grid)){
+                    col_name <- names(model_grid)[i]
+                    y <- y %>% mutate(!!col_name := model_grid[x,i])
+
                 }
                 return(y)
             }
@@ -53,3 +62,21 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
     )
 
 }
+
+
+# bind_mse_outputs_old <- function(model_runs, var, extra_columns){
+
+#     bind_rows(
+#         lapply(
+#             seq_along(model_runs), 
+#             function(x){
+#                 y <- melt(model_runs[[x]][var])
+#                 for(i in 1:length(extra_columns)){
+#                     y <- y %>% mutate(!!names(extra_columns)[[i]] := extra_columns[[i]][x])
+#                 }
+#                 return(y)
+#             }
+#         )
+#     )
+
+# }
