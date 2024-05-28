@@ -18,7 +18,7 @@
 #'
 run_mse_multiple <- function(om_list, hcr_list, seed_list, ...){
     
-    mse_run_grid <- expand.grid(om=om_list, hcr=hcr_list)
+    mse_run_grid <- expand.grid(om=names(om_list), hcr=names(hcr_list))
     mse_objects <- list()
 
     nsims <- length(seed_list)
