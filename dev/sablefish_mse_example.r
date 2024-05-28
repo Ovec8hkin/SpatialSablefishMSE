@@ -35,7 +35,7 @@ source("R/setup_mse_options.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 120
+nyears <- 75
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 
@@ -175,7 +175,7 @@ abctac <- get_management_quantities(model_runs, extra_columns)
 plot_abc_tac(abctac)
 
 catch_data <- get_landed_catch(model_runs, extra_columns)
-plot_landed_catch(catch_data, by_fleet = TRUE)
+plot_landed_catch(catch_data)
 
 # Phase plane diagrams
 plot_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
