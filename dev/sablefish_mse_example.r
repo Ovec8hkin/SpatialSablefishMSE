@@ -18,19 +18,19 @@ sablefishMSE_dir <- here::here()
 devtools::load_all(afscOM_dir)
 devtools::load_all(sablefishMSE_dir)
 
-# source("R/reference_points.R")
-# source("R/harvest_control_rules.R")
-# source("R/simulate_TAC.R")
-# source("R/age_structure_stats.R")
-# source("R/data_utils.R")
-# source("R/data_processing.R")
-# source("R/run_mse.R")
-# source("R/run_mse_multiple.R")
-# source("R/run_mse_parallel.R")
-# source("R/format_em_data.R")
-# source("R/fit_TMB_model.R")
-# source("R/recruitment_utils.R")
-# source("R/setup_mse_options.R")
+source("R/reference_points.R")
+source("R/harvest_control_rules.R")
+source("R/simulate_TAC.R")
+source("R/age_structure_stats.R")
+source("R/data_utils.R")
+source("R/data_processing.R")
+source("R/run_mse.R")
+source("R/run_mse_multiple.R")
+source("R/run_mse_parallel.R")
+source("R/format_em_data.R")
+source("R/fit_TMB_model.R")
+source("R/recruitment_utils.R")
+source("R/setup_mse_options.R")
 
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
@@ -92,6 +92,15 @@ tier3 <- function(ref_pts, naa, dem_params){
     )
 }
 
+hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    )
+)
+
 # Going to start an MSE Options list distinct from everything else
 mse_options <- setup_mse_options() # get default values
 mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annually
@@ -104,7 +113,7 @@ mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annu
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 1
+nsims <- 9
 seeds <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 tic()
@@ -114,18 +123,18 @@ mse_small_1 <- run_mse_parallel(
     seeds=seeds, 
     nyears=nyears, 
     om=sable_om, 
-    hcr=tier3, 
+    hcr=hcr, 
     mse_options=mse_options
 )
 
-mse_options$management$harvest_cap <- 20
+hcr$extra_options$harvest_cap <- 20
 
 mse_small_2 <- run_mse_parallel(
     nsims=nsims, 
     seeds=seeds, 
     nyears=nyears, 
     om=sable_om, 
-    hcr=tier3, 
+    hcr=hcr, 
     mse_options=mse_options
 )
 
@@ -136,18 +145,19 @@ toc()
 # ms_small <- run_mse_multiple(nsims=nsims, seeds=seeds, nyears=100, om=sable_om, hcr=tier3)
 
 # Example of running a single MSE simulation
-mse_tier3     <- run_mse(om=sable_om, hcr=tier3, mse_options=mse_options, nyears_input=100)
+# mse_tier3     <- run_mse(om=sable_om, hcr=hcr, mse_options=mse_options, nyears_input=100)
 
 #' 4. Process MSE results
 #' An example processing routine to plot the OM spawning biomass,
 #' aggregated over multiple simulations, alongside the EM estimate
 #' of spawning biomass.
 model_runs <- list(
-    #mse_tier3
+    # mse_tier3
     mse_small_1,
     mse_small_2
 )
 extra_columns <- list(
+    # hcr = c("No Harvest Cap")
     hcr = c("No Harvest Cap", "12,000mt Harvest Cap")
 )
 

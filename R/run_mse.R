@@ -1,5 +1,5 @@
 #' Run Management Strategy Evaluation
-#' #'
+#' 
 #' Run an MSE simulation loop.
 #'
 #' @param om path to a saved OM .RDS file (should contain
@@ -231,7 +231,12 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                 spr_target = mse_options$ref_points$spr_target
             )
 
-            hcr_F[y] <- match.fun(hcr)(ref_pts, naa_proj, dp_y, ...)
+            hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
+            if(!is.na(hcr$extra_pars)){
+                hcr_parameters <- c(hcr_parameters, hcr$extra_pars)
+            }
+
+            hcr_F[y] <- do.call(hcr$func, hcr_parameters)
             #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
             joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
@@ -245,6 +250,7 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                 joint_sel = joint_sel, 
                 dem_params = dp_y, 
                 hist_tac = tac[y,1,1,1],
+                hcr_options = hcr$extra_options,
                 options = mse_options$management
             )
 
