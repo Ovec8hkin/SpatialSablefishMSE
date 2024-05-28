@@ -1,41 +1,45 @@
-plot_ssb <- function(data){
+plot_ssb <- function(data, v1="hcr", v2=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
     d <- data %>%
-        # SSB is females only
-        filter(sex == "F") %>%
-        # summarise SSB across year and sim 
-        group_by(time, hcr, sim, L1) %>%
-        summarise(spbio=sum(spbio)) %>%
         # Compute quantiles of SSB distribution
-        group_by(time, hcr, L1) %>%
+        group_by(across(all_of(group_columns))) %>%
         median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
-        reformat_ggdist_long(n=3)
+        reformat_ggdist_long(n=length(group_columns))
 
 
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
         geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_vline(xintercept=64, linetype="dashed")+
         geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 300))+
+        scale_y_continuous(limits=c(0, 320))+
         coord_cartesian(expand=0)+
         theme_bw()
+
+    if(!is.na(v2)){
+        plot <- plot + facet_wrap(~.data[[v2]])
+    }
 
     return(plot)
 }
 
-plot_fishing_mortalities <- function(data){
+plot_fishing_mortalities <- function(data, v1="hcr", v2=NA){
     # Plot fishing mortality rates from OM and EM
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "F", "total_F")]
+
     f <- data %>%
-        group_by(time, fleet, L1, hcr) %>%
+        group_by(across(all_of(group_columns))) %>%
         median_qi(F, total_F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-        reformat_ggdist_long(n=4) %>%
+        reformat_ggdist_long(n=length(group_columns)) %>%
         filter(name == "total_F")
 
     plot <- ggplot(f %>% filter(L1 == "faa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
         geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
@@ -43,21 +47,27 @@ plot_fishing_mortalities <- function(data){
         coord_cartesian(expand=0)+
         theme_bw()
 
+    if(!is.na(v2)){
+        plot <- plot + facet_wrap(~.data[[v2]])
+    }
+
     return(plot)
 }
 
-plot_recruitment <- function(data){
-    
+plot_recruitment <- function(data, v1="hcr", v2=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "rec")]
+
     r <- data %>%
         # summarise SSB across year and sim 
-        group_by(time, hcr, L1) %>%
+        group_by(across(all_of(group_columns))) %>%
         median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-        reformat_ggdist_long(n=3)
+        reformat_ggdist_long(n=length(group_columns))
 
     mean_rec <- r %>% pull(median) %>% mean
 
     plot <- ggplot(r %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr), size=0.4)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
         geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_hline(yintercept = mean_rec, linetype="dashed") + 
         scale_fill_brewer(palette="Blues")+
@@ -65,14 +75,21 @@ plot_recruitment <- function(data){
         coord_cartesian(expand=0)+
         theme_bw()
 
+    if(!is.na(v2)){
+        plot <- plot + facet_wrap(~.data[[v2]])
+    }
+
     return(plot)
 }
 
-plot_landed_catch <- function(data, by_fleet = FALSE){
+plot_landed_catch <- function(data, v1="hcr", v2=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
+
     c <- data %>%
-        group_by(time, fleet, L1, hcr) %>%
+        group_by(across(all_of(group_columns))) %>%
         median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-        reformat_ggdist_long(n=4)
+        reformat_ggdist_long(n=length(group_columns))
     
     if(by_fleet){
         c <- c %>% filter(name == "catch")
@@ -80,34 +97,46 @@ plot_landed_catch <- function(data, by_fleet = FALSE){
         c <- c %>% filter(name == "total_catch")
     }
 
-    plot <- ggplot(c, aes(x=time, y=median, ymin=lower, ymax=upper, group=hcr, color=hcr))+
+    plot <- ggplot(c, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
         geom_lineribbon()+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 35))+
+        scale_y_continuous(limits=c(0, 50))+
         coord_cartesian(expand=0)+
         theme_bw()
-    
-    if(by_fleet){
-        plot <- plot + facet_wrap(~fleet)
+
+    if(!is.na(v2)){
+        plot <- plot + facet_wrap(~.data[[v2]])
     }
+    
+    # if(by_fleet){
+    #     plot <- plot + facet_wrap(~fleet)
+    # }
 
     return(plot)
 
 }
 
-plot_abc_tac <- function(data){
+plot_abc_tac <- function(data, v1="hcr", v2=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "value")]
+
     q <- data %>%
-        group_by(time, L1, hcr) %>%
+        group_by(across(all_of(group_columns))) %>%
         median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-        reformat_ggdist_long(n=3)
+        reformat_ggdist_long(n=length(group_columns))
     
     plot <- ggplot(q)+
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr, group=interaction(hcr, L1)))+
-        scale_y_continuous(limits=c(0, 50))+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=.data[[v1]], group=interaction(.data[[v1]], L1)))+
+        scale_y_continuous(limits=c(0, 70))+
         scale_fill_brewer(palette="Blues")+
-        theme_bw()+
-        facet_wrap(~L1)
+        theme_bw()
+
+    if(!is.na(v2)){
+        plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]))
+    }else{
+        plot <- plot + facet_wrap(~L1)
+    }
 
     return(plot)
 }
