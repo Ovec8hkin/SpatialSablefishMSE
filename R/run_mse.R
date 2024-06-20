@@ -15,7 +15,7 @@
 #'
 #' @example
 #'
-run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
+run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
    
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -148,7 +148,7 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
             sel <- dp_y$sel
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
 
-            if(mse_options$run_estimation){
+            if(run_estimation){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
                 assess_inputs <- simulate_em_data_sex_disaggregate(
@@ -238,9 +238,10 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                 sel =  joint_self,
                 ret = joint_ret,
                 avg_rec = mean(rec)/2,
-                spr_target = mse_options$ref_points$spr_target
+                spr_target = mp$ref_points$spr_target
             )
 
+            hcr <- mp$hcr
             hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
             if(!is.na(hcr$extra_pars)){
                 hcr_parameters <- c(hcr_parameters, hcr$extra_pars)
@@ -261,7 +262,7 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                 dem_params = dp_y, 
                 hist_tac = tac[y,1,1,1],
                 hcr_options = hcr$extra_options,
-                options = mse_options$management
+                options = mp$management
             )
 
             abc[y+1,1,1,1] <- mgmt_out$abc

@@ -10,15 +10,13 @@ setup_mse_options <- function(){
 
     return(
         list(
-            run_estimation = TRUE,
+            hcr = NULL,
             ref_points = list(
                 spr_target = 0.40
             ),
             management = list(
                 abc_tac_reduction = 1,
-                tac_land_reduction = 1,
-                max_stability = NA,
-                harvest_cap = NA
+                tac_land_reduction = 1
             )
         )
     )

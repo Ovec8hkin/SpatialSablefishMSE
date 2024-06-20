@@ -120,7 +120,12 @@ tier3 <- function(ref_pts, naa, dem_params){
     )
 }
 
-hcr1 <- list(
+# Going to start an MSE Options list distinct from everything else
+mse_options <- setup_mse_options() # get default values
+mse_options$management_procedure$management$tac_land_reduction <- 0.80 # only ~80% of TAC is used annually
+
+mp1 <- mse_options
+mp1$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
@@ -129,7 +134,8 @@ hcr1 <- list(
     )
 )
 
-hcr2 <- list(
+mp2 <- mse_options
+mp2$hcr  <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
@@ -138,11 +144,7 @@ hcr2 <- list(
     )
 )
 
-hcr_list <- listN(hcr1, hcr2)
-
-# Going to start an MSE Options list distinct from everything else
-mse_options <- setup_mse_options() # get default values
-mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annually
+mp_list <- listN(mp1, mp2)
 
 #' 3. Run the closed-loop MSE simulation
 #' A single MSE simulation can be run using the `run_mse(...)`
@@ -152,14 +154,14 @@ mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annu
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 9
+nsims <- 1
 seed_list <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
-model_runs2 <- run_mse_multiple(om_list, hcr_list, seed_list, nyears=100, mse_options=mse_options)
+model_runs2 <- run_mse_multiple(om_list, mp_list, seed_list, nyears=100, mse_options=mse_options)
 
 extra_columns2 <- list(
     om=names(om_list),
-    hcr=names(hcr_list)
+    hcr=names(mp_list)
 )
 
 # model_runs <- mse_objects
