@@ -24,6 +24,7 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
 
     # Load OM dimensions into global environment
     list2env(afscOM::get_model_dimensions(dem_params$sel), env=environment())
+    nsurveys <- ifelse(model_options$simulate_observations, get_model_dimensions(dem_params$surv_sel)$nfleets, 0)
 
     if(!is.na(nyears_input)){
         nyears <- nyears_input
@@ -62,14 +63,18 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
     hcr_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
     out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
+    f           = array(NA, dim=c(nyears, 1, 1, nregions, nfleets))
+
+    survey_preds <- list(
+        rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
+        rpws = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
+        acs  = array(NA, dim=c(nyears, nages, nsexes, nregions, nsurveys+nfleets))
+    )
+
     survey_obs <- list(
-        ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions)),
-        ll_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
-        tw_rpw = array(NA, dim=c(nyears, 1, 1, nregions)),
-        ll_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
-        tw_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
-        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions)),
-        twfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions))
+        rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
+        rpws = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
+        acs  = array(NA, dim=c(nyears, nages, nsexes, nregions, nsurveys+nfleets))
     )
 
     model_outs = list(
@@ -90,12 +95,14 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
         full_recruitment[1:length(hist_recruitment)] <- hist_recruitment
     }
     
-    for(y in 1:nyears){
+    for(y in 1:nyears_input){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
         dp_y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
         removals_input <- landings[y]
-        fleet.props <- unlist(lapply(model_options$fleet_apportionment, \(x) x[y]))
+        fleet.props <- subset_matrix(model_options$fleet_apportionment, y, d=1, drop=FALSE)
+        region_props <- as.matrix(1)
+        rec_props <- as.matrix(1)
 
         # will work for any recruitment function that only requires
         # ssb as a yearly input (beverton holt and ricker should work fine)
@@ -110,7 +117,9 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
             dem_params=dp_y,
             prev_naa=prev_naa,
             recruitment=full_recruitment[y+1],
-            fleet.props = fleet.props,
+            fleet_props = fleet.props,
+            region_props = region_props,
+            rec_props = rec_props,
             options=model_options
         )
 
@@ -120,15 +129,16 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
         caa[y,,,,] <- out_vars$caa_tmp
         faa[y,,,,] <- out_vars$faa_tmp
         naa[y+1,,,] <- out_vars$naa_tmp
-        out_f[y,,,] <- sum(out_vars$F_f_tmp[1,1,1,1,])
 
-        survey_obs$ll_rpn[y,,,] <- out_vars$surv_obs$ll_rpn
-        survey_obs$ll_rpw[y,,,] <- out_vars$surv_obs$ll_rpw
-        survey_obs$tw_rpw[y,,,] <- out_vars$surv_obs$tw_rpw
-        survey_obs$ll_acs[y,,,] <- out_vars$surv_obs$ll_ac_obs
-        survey_obs$tw_acs[y,,,] <- out_vars$surv_obs$tw_ac_obs
-        survey_obs$fxfish_acs[y,,,] <- out_vars$surv_obs$fxfish_caa_obs
-        survey_obs$twfish_acs[y,,,] <- out_vars$surv_obs$twfish_caa_obs
+        f[y,,,,] <- out_vars$F_f_tmp
+
+        survey_preds$rpns[y,,,,] <- out_vars$survey_preds$rpns
+        survey_preds$rpws[y,,,,] <- out_vars$survey_preds$rpws
+        survey_preds$acs[y,,,,]  <- out_vars$survey_preds$acs
+
+        survey_obs$rpns[y,,,,] <- out_vars$survey_obs$rpns
+        survey_obs$rpws[y,,,,] <- out_vars$survey_obs$rpws
+        survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
 
         
         if((y+1) > spinup_years){
@@ -146,10 +156,10 @@ run_mse <- function(om, hcr, ..., mse_options, nyears_input=NA, spinup_years=64,
                     dem_params = afscOM::subset_dem_params(om$dem_params, 1:y, d=1, drop=FALSE),
                     land_caa = land_caa[1:y,,,,,drop=FALSE],
                     survey_indices = afscOM::subset_dem_params(survey_obs, 1:y, d=1, drop=FALSE),
-                    fxfish_caa_obs = survey_obs$fxfish_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
-                    twfish_caa_obs = survey_obs$twfish_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
-                    ll_ac_obs = survey_obs$ll_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
-                    tw_ac_obs = survey_obs$tw_acs[1:y,,,,drop=FALSE], # Age comp data is one year delayed
+                    fxfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,1,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    twfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    ll_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    tw_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     model_options = om$model_options,
                     added_years = y-spinup_years,
                     file_suffix = y

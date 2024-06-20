@@ -41,13 +41,13 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, spinup_
         outputs$abc[,,,,s] <- mse$abc
         outputs$tac[,,,,s] <- mse$tac
 
-        outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$ll_rpn
-        outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$ll_rpw
-        outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$tw_rpw
-        outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$ll_acs
-        outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$tw_acs
-        outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$fxfish_acs
-        outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$twfish_acs
+        outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$rpns[,,,,1]
+        outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,1]
+        outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,2]
+        outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$acs[,,,,3]
+        outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$acs[,,,,4]
+        outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,1]
+        outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
 
         if(om$model_options$run_estimation){
             outputs$model_outs$mods[,s] <- mse$model_outs$mods

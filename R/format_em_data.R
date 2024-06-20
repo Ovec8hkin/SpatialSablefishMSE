@@ -466,8 +466,8 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
 
     # Survey new_data
     srv_ll_rpn_indic <- SpatialSablefishAssessment::extend_vec_last_val(new_data$srv_dom_ll_bio_indicator, n=extra_years)
-    srv_ll_rpn_obs <- survey_indices$ll_rpn[as.logical(srv_ll_rpn_indic)]
-    srv_ll_rpn_ses <- model_options$obs_pars$surv_ll$rpn_cv*survey_indices$ll_rpn[as.logical(srv_ll_rpn_indic)]
+    srv_ll_rpn_obs <- survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
+    srv_ll_rpn_ses <- model_options$obs_pars$rpn_cv[3]*survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
 
     new_data$srv_dom_ll_bio_indicator <- srv_ll_rpn_indic
     new_data$obs_dom_ll_bio <- as.vector(srv_ll_rpn_obs)
@@ -479,8 +479,8 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     # Be careful here. The trawl survey technically only happens ever other
     # year, but its being simulated occurring in every year.
     srv_tw_rpw_indic <- c(new_data$srv_nmfs_trwl_bio_indicator, rep(1, length.out=extra_years))#c(new_data$srv_nmfs_trwl_bio_indicator, rep(c(0, 1), length.out=extra_years))
-    srv_tw_rpw_obs <- survey_indices$tw_rpw[as.logical(srv_tw_rpw_indic)]
-    srv_tw_rpw_ses <- model_options$obs_pars$surv_tw$rpw_cv*survey_indices$tw_rpw[as.logical(srv_tw_rpw_indic)]
+    srv_tw_rpw_obs <- survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
+    srv_tw_rpw_ses <- model_options$obs_pars$rpw_cv[4]*survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
 
     new_data$srv_nmfs_trwl_bio_indicator <- srv_tw_rpw_indic
     new_data$obs_nmfs_trwl_bio <- as.vector(srv_tw_rpw_obs)

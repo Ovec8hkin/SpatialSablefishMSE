@@ -35,9 +35,25 @@ source("R/setup_mse_options.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 75
+nyears <- 100
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
+
+sable_om$model_options$obs_pars <- list(
+    # longline fishery, trawl fishery, longline survey, trawl survey
+    is_survey   = c(0, 0, 1, 1),  # is this a survey (1) or fishery (0)
+    qs          = c(1, 1, 6.41, 0.85), # catchability coefficient (q) for surveys
+    rpn         = c(0, 0, 1, 1), # should RPNs be computed (yes=1, no=0)
+    rpn_cv      = c(0, 0, 0.1, 0.1), # RPN CV
+    rpw         = c(0, 0, 1, 1), # should RPWs be computed (yes=1, no=0)
+    rpw_cv      = c(0, 0, 0.1, 0.1), # RPW CV
+    acs         = c(1, 1, 1, 1), # should age compositions be computed (yes=1, no=0)
+    ac_samps    = c(50, 30, 50, 30), # total sample size for age composition observations
+    ac_as_integers  = c(TRUE, TRUE, TRUE, TRUE), # return age comps as integers (TRUE) or proportions (FALSE)
+    acs_agg_sex     = c(FALSE, FALSE, FALSE, FALSE) # should age comps be aggregated by sex
+)
+
+sable_om$model_options$fleet_apportionment <- matrix(c(sable_om$model_options$fleet_apportionment[[1]], sable_om$model_options$fleet_apportionment[[2]]), ncol=2)
 
 # Define recruitment to occur via historical resampling
 assessment <- dget("data/sablefish_assessment_2023.rdat")
@@ -127,16 +143,16 @@ mse_small_1 <- run_mse_parallel(
     mse_options=mse_options
 )
 
-hcr$extra_options$harvest_cap <- 20
+# hcr$extra_options$harvest_cap <- 20
 
-mse_small_2 <- run_mse_parallel(
-    nsims=nsims, 
-    seeds=seeds, 
-    nyears=nyears, 
-    om=sable_om, 
-    hcr=hcr, 
-    mse_options=mse_options
-)
+# mse_small_2 <- run_mse_parallel(
+#     nsims=nsims, 
+#     seeds=seeds, 
+#     nyears=nyears, 
+#     om=sable_om, 
+#     hcr=hcr, 
+#     mse_options=mse_options
+# )
 
 toc()
 
@@ -153,16 +169,17 @@ toc()
 #' of spawning biomass.
 model_runs <- list(
     # mse_tier3
-    mse_small_1,
-    mse_small_2
+    mse_small_1
 )
 extra_columns <- list(
-    # hcr = c("No Harvest Cap")
-    hcr = c("No Harvest Cap", "12,000mt Harvest Cap")
+    hcr = c("No Harvest Cap")
+    # hcr = c("No Harvest Cap", "12,000mt Harvest Cap")
 )
 
 ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params)
-plot_ssb(ssb_data)
+ssb_plot <- plot_ssb(ssb_data)
+ssb_plot$layers[[2]] <- NULL
+ssb_plot
 
 # Plot fishing mortality rates from OM and EM
 f_data <- get_fishing_mortalities(model_runs, extra_columns)
@@ -175,10 +192,45 @@ abctac <- get_management_quantities(model_runs, extra_columns)
 plot_abc_tac(abctac)
 
 catch_data <- get_landed_catch(model_runs, extra_columns)
-plot_landed_catch(catch_data)
+plot_landed_catch(catch_data)+scale_y_continuous(limits=c(0, 60))
 
 # Phase plane diagrams
 plot_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
 plot_hcr_phase_diagram(model_runs, extra_columns, sable_om$dem_params, nyears)
   
 get_reference_points(model_runs, extra_columns, sable_om$dem_params, nyears)
+
+
+bind_mse_outputs(model_runs, c("naa", "caa"), extra_columns) %>%
+    as_tibble() %>%
+    mutate(
+        class = factor(
+            case_when(age < 3 ~ "1/2", age < 5 ~ "2/3", age < 7 ~ "3/4", age < 9 ~ "4/5", age < 15 ~ "5/7", age > 14 ~ "7+"), 
+            levels=c("1/2", "2/3", "3/4", "4/5", "5/7", "7+"), 
+            labels=c("Grade 1/2 (1-2yo)", "Grade 2/3 (3-4yo)", "Grade 3/4 (5-6yo)", "Grade 4/5 (7-8yo)", "Grade 5/7 (9-14yo)", "Grade 7+ (15+yo)")
+        ),
+        L1 = factor(L1, levels=c("caa", "naa"), labels=c("Catch-at-Age", "Numbers-at-Age"))
+    ) %>%
+    group_by(time, class, sim, hcr, L1) %>%
+    summarise(value=sum(value)) %>%
+    group_by(time, class, hcr, L1) %>%
+    median_qi(value, .width=c(0.50)) %>%
+
+    ggplot()+
+        geom_bar(aes(x=time, y=value, fill=class), position="fill", stat="identity")+
+        geom_vline(xintercept = 2022-1960+1, color="white", size=1.25, linetype="dashed")+
+        scale_fill_viridis(direction=-1, discrete=TRUE, option="magma")+
+        scale_x_continuous(breaks=seq(1, nyears+1, 20), labels=seq(1960, 1960+nyears+1, 20))+
+        coord_cartesian(expand=0)+
+        labs(x="Year", fill="Age Group")+
+        guides(fill=guide_legend(reverse=TRUE))+
+        facet_wrap(~L1, ncol=1, scales="free_x")+
+        theme_bw()+
+        theme(
+            axis.text = element_text(size=12),
+            axis.title.y=element_blank(), 
+            strip.background = element_blank(),
+            strip.text.x = element_text(size=16, hjust=0),
+            panel.spacing.y = unit(0.4, "in"),
+            legend.position = "bottom"
+        )

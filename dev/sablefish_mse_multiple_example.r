@@ -35,7 +35,7 @@ source("R/setup_mse_options.R")
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
-nyears <- 120
+nyears <- 100
 
 sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
 
@@ -60,7 +60,16 @@ om2$recruitment$pars <- list(
     starting_regime = 0
 )
 
-om_list <- listN(om1, om2)
+om3 <- sable_om
+om3$recruitment$func <- beverton_holt
+om3$recruitment$pars <- list(
+    h = 0.7,
+    R0 = 20,
+    S0 = 282,
+    sigR = 1.04
+)
+
+om_list <- listN(om1, om2, om3)
 
 # sable_om$recruitment$func <- beverton_holt
 # sable_om$recruitment$pars <- list(
@@ -125,7 +134,7 @@ hcr2 <- list(
     extra_pars = NA,
     extra_options = list(
         max_stability = NA,
-        harvest_cap = 20
+        harvest_cap = 25
     )
 )
 
@@ -146,7 +155,7 @@ set.seed(1007)
 nsims <- 9
 seed_list <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
-model_runs2 <- run_mse_multiple(om_list, hcr_list, seed_list, nyears=75, mse_options=mse_options)
+model_runs2 <- run_mse_multiple(om_list, hcr_list, seed_list, nyears=100, mse_options=mse_options)
 
 extra_columns2 <- list(
     om=names(om_list),
