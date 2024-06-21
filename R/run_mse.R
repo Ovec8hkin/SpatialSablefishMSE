@@ -225,18 +225,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
             # and compute TAC for the next year. Note that
             # selectivity for RP calculations is weighted
             # by terminal year F.
-            joint_self <- apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-            joint_selm <- apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-            joint_retf <- apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
-            joint_retm <- apply(dp_y$ret[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,2,,,drop=FALSE], c(1, 2), sum))
-            
-            joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
-            joint_sel[,,1,] <- joint_self
-            joint_sel[,,2,] <- joint_selm
-
-            joint_ret <- array(NA, dim=dim(out_vars$naa_tmp))
-            joint_ret[,,1,] <- joint_retf
-            joint_ret[,,2,] <- joint_retm
+            joint_selret <- calculate_joint_selret(sel, dp_y$ret, prop_fs)
 
             # reference points are all female based
             ref_pts <- calculate_ref_points(
@@ -244,8 +233,8 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                 mort = dp_y$mort[,,1,],
                 mat = dp_y$mat[,,1,],
                 waa = dp_y$waa[,,1,],
-                sel =  joint_self,
-                ret = joint_retf,
+                sel =  joint_selret$sel[,,1,,drop=FALSE],
+                ret = joint_selret$ret[,,1,,drop=FALSE],
                 avg_rec = mean(rec)/2,
                 spr_target = mp$ref_points$spr_target
             )
