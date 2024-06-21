@@ -53,7 +53,7 @@ sable_om$model_options$obs_pars <- list(
     acs_agg_sex     = c(FALSE, FALSE, FALSE, FALSE) # should age comps be aggregated by sex
 )
 
-sable_om$model_options$fleet_apportionment <- matrix(c(sable_om$model_options$fleet_apportionment[[1]], sable_om$model_options$fleet_apportionment[[2]]), ncol=2)
+# sable_om$model_options$fleet_apportionment <- matrix(c(sable_om$model_options$fleet_apportionment[[1]], sable_om$model_options$fleet_apportionment[[2]]), ncol=2)
 
 # Define recruitment to occur via historical resampling
 assessment <- dget("data/sablefish_assessment_2023.rdat")
@@ -108,18 +108,22 @@ tier3 <- function(ref_pts, naa, dem_params){
     )
 }
 
-hcr <- list(
+# Going to start an MSE Options list distinct from everything else
+mse_options <- setup_mse_options() # get default values
+mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annually
+
+mp <- mse_options
+mp$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
         max_stability = NA,
         harvest_cap = NA
-    )
+    ),
+    units = "F"
 )
 
-# Going to start an MSE Options list distinct from everything else
-mse_options <- setup_mse_options() # get default values
-mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annually
+
 
 #' 3. Run the closed-loop MSE simulation
 #' A single MSE simulation can be run using the `run_mse(...)`
@@ -139,7 +143,7 @@ mse_small_1 <- run_mse_parallel(
     seeds=seeds, 
     nyears=nyears, 
     om=sable_om, 
-    hcr=hcr, 
+    hcr=mp, 
     mse_options=mse_options
 )
 

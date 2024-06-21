@@ -227,8 +227,17 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
             # by terminal year F.
             joint_self <- apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
             joint_selm <- apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-            joint_ret <- apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_retf <- apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,1,,,drop=FALSE], c(1, 2), sum))
+            joint_retm <- apply(dp_y$ret[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(dp_y$ret[,,2,,,drop=FALSE], c(1, 2), sum))
             
+            joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
+            joint_sel[,,1,] <- joint_self
+            joint_sel[,,2,] <- joint_selm
+
+            joint_ret <- array(NA, dim=dim(out_vars$naa_tmp))
+            joint_ret[,,1,] <- joint_retf
+            joint_ret[,,2,] <- joint_retm
+
             # reference points are all female based
             ref_pts <- calculate_ref_points(
                 nages=nages,
@@ -236,23 +245,32 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                 mat = dp_y$mat[,,1,],
                 waa = dp_y$waa[,,1,],
                 sel =  joint_self,
-                ret = joint_ret,
+                ret = joint_retf,
                 avg_rec = mean(rec)/2,
                 spr_target = mp$ref_points$spr_target
             )
 
-            hcr <- mp$hcr
             hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
-            if(!is.na(hcr$extra_pars)){
-                hcr_parameters <- c(hcr_parameters, hcr$extra_pars)
+            if(!is.na(mp$hcr$extra_pars)){
+                hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
             }
 
-            hcr_F[y] <- do.call(hcr$func, hcr_parameters)
-            #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
+            hcr_out <- do.call(mp$hcr$func, hcr_parameters)
+            if(mp$hcr$units != "F"){
+                hcr_out <- afscOM::find_F(
+                    f_guess=0.10,
+                    naa = naa_proj,
+                    waa = dp_y$waa,
+                    mort = dp_y$mort,
+                    selex = joint_sel,
+                    ret = joint_ret,
+                    dmr = afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE),
+                    prov_catch = hcr_out
+                )
+            }
 
-            joint_sel <- array(NA, dim=dim(out_vars$naa_tmp))
-            joint_sel[,,1,] <- joint_self
-            joint_sel[,,2,] <- joint_selm
+            hcr_F[y] <- hcr_out
+            #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
             mgmt_out <- simulate_TAC(
                 hcr_F = hcr_F[y], 
@@ -261,7 +279,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                 joint_sel = joint_sel, 
                 dem_params = dp_y, 
                 hist_tac = tac[y,1,1,1],
-                hcr_options = hcr$extra_options,
+                hcr_options = mp$hcr$extra_options,
                 options = mp$management
             )
 

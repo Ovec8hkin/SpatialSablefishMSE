@@ -122,7 +122,7 @@ tier3 <- function(ref_pts, naa, dem_params){
 
 # Going to start an MSE Options list distinct from everything else
 mse_options <- setup_mse_options() # get default values
-mse_options$management_procedure$management$tac_land_reduction <- 0.80 # only ~80% of TAC is used annually
+mse_options$management$tac_land_reduction <- 0.80 # only ~80% of TAC is used annually
 
 mp1 <- mse_options
 mp1$hcr <- list(
@@ -131,7 +131,8 @@ mp1$hcr <- list(
     extra_options = list(
         max_stability = NA,
         harvest_cap = NA
-    )
+    ),
+    units = "F"
 )
 
 mp2 <- mse_options
@@ -141,7 +142,8 @@ mp2$hcr  <- list(
     extra_options = list(
         max_stability = NA,
         harvest_cap = 25
-    )
+    ),
+    units = "F"
 )
 
 mp_list <- listN(mp1, mp2)
