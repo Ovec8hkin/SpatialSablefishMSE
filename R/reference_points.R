@@ -156,5 +156,6 @@ calculate_npfmc_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec)
 calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec, spr_target){
   Fref <- spr_x(nages, mort, mat, waa, sel, ret, target_x=spr_target)
   Bref <- compute_bx(nages, mort, mat, waa, sel, ret, F=Fref, avg_rec=avg_rec)
-  return(list(Fref=Fref, Bref=Bref))
+  B0 <- compute_bx(nages, mort, mat, waa, sel, ret, F=0, avg_rec=avg_rec)
+  return(list(Fref=Fref, Bref=Bref, B0=B0))
 }
