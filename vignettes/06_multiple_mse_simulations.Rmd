@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-Often, many MSEs simulations will want to be run consecutively. This could be accomplished naively by wrapping the simple MSE function, `run_mse(...)` in a loop, and running in many time in a row and collating the resulting data. However, given the long runtimes associated with MSEs, and the general inefficeincy of looping structures in R, this is often not desirable. In lieu of iteratively running many MSE simulation one-after-another in a serial fashion, the package provided a wrapper function `run_mse_parallel(...)` that handles running many MSE simulations in parallel across available computing hardware.
+Often, many MSEs simulations will want to be run consecutively. This could be accomplished naively by wrapping the simple MSE function, `run_mse(...)` in a loop, and running it many time in a row and collating the resulting data. However, given the long runtimes associated with MSEs, and the general inefficeincy of looping structures in R, this is often not desirable. In lieu of iteratively running many MSE simulation one-after-another in a serial fashion, the package provided a wrapper function `run_mse_parallel(...)` that handles running many MSE simulations in parallel across available computing hardware.
 
 #### Parallel Processing
 Parallel processing within the package is currently handled via the `pblapply` function from the `pbapply` package. The function acts like a standard `lapply` function call, but allows for users to provide a cluster object as a parameter to faciliatte running the given function multiples time, at the same time (i.e. in parallel).
@@ -48,4 +48,22 @@ run_mse_parallel(nsims, seeds, om, hcr, nyears=nyears)
 
 ```
 
-_In the future, additional parallel wrapper functions to allow for running multiple MSE simulations across multiple different HCRs and multiple different OMs will also be available._
+#### Running MSEs Across Multiple OMs and HCRs
+MSE analyses frequently make use of multiple operating models (OMs) and multiple HCRs in order to evaluate the effectiveness of management policies across multiple possible states of nature. The package provides a wrapper function, `run_mse_multiple` that handles running simulations across multiple OMs and multiple HCRs. 
+
+To use `run_mse_multiple` users need only provide a list of OM objects, a list of MP/HCR objects, and a list (or vector) of random seeds. The function creates a __factorial grid of combinations of OMs and MPs__ and serially runs `run_mse_parallel` for each combination. Additional parameters required by `run_mse` (such as `nyears`) also need to be provided.
+
+```{r, eval=FALSE}
+om1 <- ...
+om2 <- ...
+oms <- list(om1, om2)
+mp1 <- ...
+mp2 <- ...
+mps <- list(mp1, mp2)
+seeds <- ...
+
+run_mse_multiple(oms, mps, seeds, ...)
+
+```
+
+`run_mse_multiple` will output a list object containing the results of each MSE run. This data can be quite large depending on how many simulation years, seeds, and combinations of OMs and MPs were run. Processing this data can be done using `bind_mse_outputs()` and the associated data processing and plotting function. See [Processing MSE Results](05_processing_mse_results.html).
