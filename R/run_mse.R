@@ -251,8 +251,8 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                     naa = naa_proj,
                     waa = dp_y$waa,
                     mort = dp_y$mort,
-                    selex = joint_sel,
-                    ret = joint_ret,
+                    selex = joint_selret$sel,
+                    ret = joint_selret$ret,
                     dmr = afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE),
                     prov_catch = hcr_out
                 )
@@ -265,7 +265,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                 hcr_F = hcr_F[y], 
                 naa = naa_proj, 
                 recruitment = mean(rec)/2, 
-                joint_sel = joint_sel, 
+                joint_sel = joint_selret$sel, 
                 dem_params = dp_y, 
                 hist_tac = tac[y,1,1,1],
                 hcr_options = mp$hcr$extra_options,
