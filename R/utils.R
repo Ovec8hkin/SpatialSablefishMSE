@@ -13,10 +13,10 @@
 #' @example
 #'
 calculate_joint_selret <- function(sel, ret, prop_fs=c(0.50, 0.50)){
-    joint_self <- apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-    joint_selm <- apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(sel[,,2,,,drop=FALSE]*prop_fs, c(1, 2), sum))
-    joint_retf <- apply(ret[,,1,,,drop=FALSE], c(1, 2), sum)/max(apply(ret[,,1,,,drop=FALSE], c(1, 2), sum))
-    joint_retm <- apply(ret[,,2,,,drop=FALSE], c(1, 2), sum)/max(apply(ret[,,2,,,drop=FALSE], c(1, 2), sum))
+    joint_self <- apply(sweep(sel[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_selm <- apply(sweep(sel[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_retf <- apply(sweep(ret[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_retm <- apply(sweep(ret[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
     
     joint_sel <- array(NA, dim=dim(sel)[1:4])
     joint_sel[,,1,] <- joint_self
