@@ -60,8 +60,8 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
-    hcr_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
-    out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
+    hcr_f       = array(NA, dim=c(nyears+1,   1, 1, 1), dimnames=list("time"=1:(nyears+1),     1, 1, "region"="Alaska"))
+    # out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
     f           = array(NA, dim=c(nyears, 1, 1, nregions, nfleets))
 
@@ -258,11 +258,11 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                 )
             }
 
-            hcr_F[y] <- hcr_out
+            # hcr_F[y+1] <- hcr_out
             #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
 
             mgmt_out <- simulate_TAC(
-                hcr_F = hcr_F[y], 
+                hcr_F = hcr_out, 
                 naa = naa_proj, 
                 recruitment = mean(rec)/2, 
                 joint_sel = joint_selret$sel, 
@@ -276,7 +276,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
             tac[y+1,1,1,1] <- mgmt_out$tac
             exp_land[y+1,1,1,1] <- mgmt_out$land
             landings[y+1] <- mgmt_out$land
-            hcr_f[y,,,] <- hcr_F[y] 
+            hcr_f[y+1,,,] <- hcr_out
         }
 
         if(y %% 10 == 0){
@@ -290,3 +290,4 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
     return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, survey_obs, model_outs))
 
 }
+
