@@ -20,8 +20,8 @@ reformat_ggdist_long <- function(data, n=1){
 
     return(
         medians %>% 
-            left_join(lowers, by=c(colnames(medians)[1:(5+n-1)])) %>% 
-            left_join(uppers, by=c(colnames(medians)[1:(5+n-1)])) %>%
+            left_join(lowers, by=c(colnames(medians)[1:(4+n)])) %>% 
+            left_join(uppers, by=c(colnames(medians)[1:(4+n)])) %>%
             rename("median"="value.x", "lower"="value.y", "upper"="value")
     )
     

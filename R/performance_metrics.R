@@ -6,7 +6,7 @@ average_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.8
             group_by(time, sim, om, hcr) %>%
             mutate(total_catch = sum(value)) %>%
             group_by(om, hcr) %>%
-            median_qi(total_catch, .width=interval_widths)
+            median_qi(total_catch, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
@@ -15,7 +15,7 @@ average_ssb <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80)
         get_ssb_biomass(model_runs, extra_columns) %>%
             filter(L1 == "naa_est", time > 64) %>%
             group_by(om, hcr) %>%
-            median_qi(spbio, .width=interval_widths)
+            median_qi(spbio, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
@@ -28,7 +28,7 @@ average_annual_catch_variation <- function(model_runs, extra_columns, interval_w
                 aav = aav(total_catch)
             ) %>%
             group_by(hcr, om) %>%
-            median_qi(aav, .width=interval_widths)
+            median_qi(aav, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
@@ -57,7 +57,7 @@ average_proportion_catch_large <- function(model_runs, extra_columns, interval_w
             ungroup() %>%
             pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
             group_by(size_group, om, hcr) %>%
-            median_qi(catch, .width=interval_widths)
+            median_qi(catch, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
@@ -93,7 +93,7 @@ average_proportion_biomass_old <- function(model_runs, extra_columns, interval_w
             ungroup() %>%
             pivot_longer(Adult:Young, names_to="age_group", values_to="bio") %>%
             group_by(age_group, om, hcr) %>%
-            median_qi(bio, .width=interval_widths) %>%
+            median_qi(bio, .width=interval_widths, .simple_names=FALSE) %>%
             arrange(.width, hcr, om, age_group)
     )
 }
