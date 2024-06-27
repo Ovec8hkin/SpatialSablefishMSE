@@ -186,6 +186,24 @@ get_management_quantities <- function(model_runs, extra_columns){
     )
 }
 
+get_numbers_at_age <- function(model_runs, extra_columns){
+    group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
+    return(
+        bind_mse_outputs(model_runs2, c("naa"), extra_columns2) %>%
+            as_tibble() %>%
+            mutate(
+                class = factor(
+                    case_when(age < 3 ~ "1/2", age < 5 ~ "2/3", age < 7 ~ "3/4", age < 9 ~ "4/5", age < 15 ~ "5/7", age > 14 ~ "7+"), 
+                    levels=c("1/2", "2/3", "3/4", "4/5", "5/7", "7+"), 
+                    labels=c("Grade 1/2 (1-2yo)", "Grade 2/3 (3-4yo)", "Grade 3/4 (5-6yo)", "Grade 4/5 (7-8yo)", "Grade 5/7 (9-14yo)", "Grade 7+ (15+yo)")
+                ),
+                L1 = factor(L1, levels=c("caa", "naa"), labels=c("Catch-at-Age", "Numbers-at-Age"))
+            ) %>%
+            group_by(across(all_of(group_columns))) %>%
+            summarise(value=sum(value))
+    )
+}
+
 #' Get Reference Points from MSE Simulations
 #' 
 #' Derive fishing mortality and biomass reference points
@@ -210,40 +228,59 @@ get_management_quantities <- function(model_runs, extra_columns){
 #'      get_reference_points(model_runs, extra_columns, om$dem_params, nyears)
 #' }
 #'
-get_reference_points <- function(model_runs, extra_columns, dem_params, year){
+get_reference_points <- function(model_runs, extra_columns){
+
+    get_rps <- function(om_name, recruitment, prop_fs){
+        om <- om_list[[which(names(om_list) == om_name)]]
+        year <- 64
+        joint_selret <- calculate_joint_selret(
+            sel=om$dem_params$sel[year,,,,,drop=FALSE],
+            ret=om$dem_params$ret[year,,,,,drop=FALSE],
+            prop_fs = prop_fs
+        )
+        ref_pts <- calculate_ref_points(
+            30,
+            om$dem_params$mort[year,,1,1],
+            om$dem_params$mat[year,,1,1],
+            om$dem_params$waa[year,,1,1],
+            joint_selret$sel[,,1,,drop=FALSE],
+            joint_selret$ret[,,1,,drop=FALSE],
+            recruitment/2,
+            spr_target = 0.40
+        )
+        return(c(ref_pts$Fref, ref_pts$Bref, ref_pts$B0))
+    }
 
     avg_recruitment <- get_recruits(model_runs, extra_columns) %>%
-        filter(time <= year) %>%
-        group_by(time) %>%
-        summarise(rec=median(rec)) %>%
-        pull(rec) %>%
-        mean
+        group_by(sim, om) %>%
+        summarise(rec=median(rec))
 
-    prop_fs <- get_fishing_mortalities(model_runs, extra_columns) %>%
-        filter(L1 != "faa_est", time <= year) %>%
-        group_by(time, sim, fleet) %>%
-        summarise(
+    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns) %>%
+        filter(L1 != "faa_est") %>%
+        group_by(time, sim, om, hcr, fleet) %>%
+        mutate(
             prop_f = F/total_F
         ) %>%
+        select(time, sim, fleet, om, hcr, prop_f) %>%
+        distinct() %>%
         pivot_wider(names_from = "fleet", values_from="prop_f") %>%
-        ungroup() %>%
-        summarise(across(Fixed:Trawl, mean)) %>%
-        slice(1) %>%
-        unlist(., use.names=FALSE)
+        group_by(sim, om, hcr) %>%
+        summarise(Fixed = mean(Fixed), Trawl=mean(Trawl))
 
-    joint_sel_f <- apply(dem_params$sel[year,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum)/max(apply(dem_params$sel[year,,1,,,drop=FALSE]*prop_fs, c(1, 2), sum))
 
-    ref_pts <- calculate_ref_points(
-        30,
-        dem_params$mort[year,,1,1],
-        dem_params$mat[year,,1,1],
-        dem_params$waa[year,,1,1],
-        joint_sel_f,
-        dem_params$ret[year,,1,1,1],
-        avg_recruitment/2,
-        spr_target = 0.40
-    )
+    ref_pts_df <- prop_fs_df %>% 
+        left_join(avg_recruitment, by=c("sim", "om")) %>%
+        group_by(sim, om, hcr) %>%
+        reframe(rps = get_rps(om, rec, c(Fixed, Trawl))) %>%
+        mutate(rp_name = rep(c("F40", "B40", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
+        pivot_wider(names_from="rp_name", values_from="rps") %>%
+        group_by(om) %>%
+        median_qi(F40, B40, B0, .width=interval_widths, .simple_names=TRUE) %>%
+        # mutate(bad=1) %>%
+        # select(bad, 1:12) %>%
+        reformat_ggdist_long(n=1)
+        # select(-bad)
 
-    return(ref_pts)
+    return(ref_pts_df)
 
 }
