@@ -247,3 +247,50 @@ plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears
     return(plot)
 
 }
+
+
+plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
+    all_data <- bind_rows(
+        get_ssb_biomass(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=spbio),
+        get_management_quantities(model_runs, extra_columns),
+        get_landed_catch(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_catch),
+        get_fishing_mortalities(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_F)
+    )
+
+    ad <- all_data %>% 
+        filter(L1 %in% c("abc", "faa", "naa", "land_caa")) %>%
+        group_by(time, L1, om, hcr) %>%
+        median_qi(value, .width = interval_widths) %>%
+        reformat_ggdist_long(n=4) %>%
+        mutate(
+            L1 = factor(
+                L1,
+                levels = c("abc", "land_caa", "faa", "naa"),
+                labels = c("ABC", "Catch", "Fishing Mortality", "Spawning Biomass")
+            )
+        )
+
+    plot <- ggplot(ad %>% filter(time > 63), aes(x=time, y=median, color=hcr))+
+        geom_line(size=0.85)+
+        geom_vline(xintercept = 64, linetype="dashed")+
+        geom_line(data=ad %>% filter(hcr=="F40", time <= 64), color="black", size=0.85)+
+        facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
+        facetted_pos_scales(
+            y = list(
+                scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
+                scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
+                scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.20, 0.05)),
+                scale_y_continuous(limits=c(0, 350, breaks=seq(0, 350, 100)))
+            )
+        )+
+        scale_x_continuous(limits=c(0, 110))+
+        labs(y="", x="Year", color="HCR")+
+        coord_cartesian(expand=0)+
+        theme_bw()
+
+    if(!is.null(theme)){
+        plot <- plot + theme
+    }
+
+    return(plot)
+}
