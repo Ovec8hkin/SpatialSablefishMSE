@@ -46,18 +46,18 @@ calculate_joint_selret <- function(sel, ret, prop_fs=c(0.50, 0.50)){
 #'
 #' @example
 #'
-get_big_recruitment_filter <- function(om_list, seed_list, model_runs, large_event_thresh){
+get_big_recruitment_filter <- function(om_list, seed_list, model_runs, om_names, large_event_thresh, lags){
     rec_years_interest <- list()
 
     for(o in 1:length(om_list)){
-        oname <- names(om_list)[o]
+        oname <- om_names[o]
         mr1 <- model_runs[[o]]
         for(s in 1:length(seed_list)){
             sim <- seed_list[s]
             mr1_recs <- apply(mr1$naa[65:110,1,,,s], 1, sum)
             # large_event_thresh <- 60
             large_event_years <- as.numeric(names(which(mr1_recs >= large_event_thresh)))
-            years <- unique(as.vector(sapply(large_event_years, \(x) return(seq(x-2, x+5, 1)))))
+            years <- unique(as.vector(sapply(large_event_years, \(x) return(seq(x+lags[1], x+lags[2], 1)))))
             exp <- 
                 paste0(
                     "om == '", oname ,
@@ -68,7 +68,7 @@ get_big_recruitment_filter <- function(om_list, seed_list, model_runs, large_eve
         }
     }
 
-    eval(rec_years_interest[1])
+    # eval(rec_years_interest[1])
 
     giant_filter <- rlang::parse_expr(paste(paste0("(", rec_years_interest, ")"), collapse = " | "))
     return(giant_filter)
