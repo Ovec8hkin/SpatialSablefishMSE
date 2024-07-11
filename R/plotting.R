@@ -295,3 +295,33 @@ plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
 
     return(plot)
 }
+
+plot_performance_metric_summary <- function(perf_data){
+    return(
+        ggplot(perf_data)+
+            geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr, shape=om), point_size=3, position="dodge")+
+            geom_vline(data=perf_data %>% filter(hcr == unique(perf_data$hcr)[1], om == unique(perf_data$om)[1]), aes(xintercept = median), color="black")+
+            scale_shape_manual(values=c(16, 4, 15))+
+            facet_wrap(vars(name), scales="free_x")+
+            ggh4x::facetted_pos_scales(
+                x = list(
+                    scale_x_continuous(limits=c(0, 50)),
+                    scale_x_continuous(limits=c(0, 300)),
+                    scale_x_continuous(limits=c(0, 0.07)),
+                    scale_x_continuous(limits=c(0, 1)),
+                    scale_x_continuous(limits=c(0, 0.25)),
+                    scale_x_continuous(limits=c(0, 30))
+                )
+            )+
+            labs(y="", x="", shape="OM", color="HCR")+
+            coord_cartesian(expand=0)+
+            guides(shape=guide_legend(nrow=3), color=guide_legend(nrow=4))+
+            theme_bw()+
+            theme(
+                plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
+                panel.spacing.x = unit(1.5, "cm"),
+                plot.title = element_text(size=18),
+                legend.spacing.x = unit(1.5, "cm")
+            )
+        )
+}
