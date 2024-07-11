@@ -167,3 +167,40 @@ average_annual_value <- function(model_runs, extra_columns, interval_widths=c(0.
                 median_qi(annual_value, .width=interval_widths, .simple_names=FALSE)
         )
 }
+
+performance_metric_summary <- function(model_runs, extra_columns, interval_widths, extra_filter=NULL){
+    # Average Catch Across Projection Period
+    avg_catch <- average_catch(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+
+    # Average SSB Across Projection Period
+    avg_ssb <- average_ssb(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+
+    # Average Annual Catch Variation Across Projection Period
+    avg_variation <- average_annual_catch_variation(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+
+    # Average proportion of catch that is "large"
+    avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% 
+        filter(size_group == "Large") %>%
+        select(-size_group) %>%
+        reformat_ggdist_long(n=2)
+
+    # Average proportion of population that is "old"
+    avg_pop_old <- average_proportion_biomass_old(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% 
+        filter(age_group == "Old") %>%
+        select(-age_group) %>%
+        reformat_ggdist_long(n=2)
+
+    # Average annual value
+    annual_value <- average_annual_value(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+
+    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value) %>%
+        mutate(name=factor(
+                        name, 
+                        levels=c("total_catch", "spbio", "aav", "catch", "bio", "annual_value"), 
+                        labels=c("Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "Annual Value")
+                    )
+        )
+
+    return(afscOM::listN(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value, perf_data))
+
+}
