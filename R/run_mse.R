@@ -102,7 +102,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
         removals_input <- landings[y]
         fleet.props <- subset_matrix(model_options$fleet_apportionment, y, d=1, drop=FALSE)
         region_props <- as.matrix(1)
-        rec_props <- as.matrix(1)
+        # rec_props <- as.matrix(1)
 
         # will work for any recruitment function that only requires
         # ssb as a yearly input (beverton holt and ricker should work fine)
@@ -119,7 +119,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
             recruitment=full_recruitment[y+1],
             fleet_props = fleet.props,
             region_props = region_props,
-            rec_props = rec_props,
+            # rec_props = rec_props,
             options=model_options
         )
 
