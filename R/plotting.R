@@ -90,7 +90,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA){
     return(plot)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
@@ -109,12 +109,13 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA){
         geom_lineribbon()+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 50))+
+        scale_y_continuous(limits=c(0, 60))+
         coord_cartesian(expand=0)+
+        guides(fill="none")+
         theme_bw()
 
     if(!is.na(v2)){
-        plot <- plot + facet_wrap(~.data[[v2]])
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
     }
     
     # if(by_fleet){
