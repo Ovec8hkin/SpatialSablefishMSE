@@ -1,4 +1,4 @@
-plot_ssb <- function(data, v1="hcr", v2=NA){
+plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
@@ -11,23 +11,27 @@ plot_ssb <- function(data, v1="hcr", v2=NA){
 
 
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
-        geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
         geom_vline(xintercept=64, linetype="dashed")+
         geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 320))+
         coord_cartesian(expand=0)+
+        guides(fill="none")+
         theme_bw()
 
+    if(show_est){
+        plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+    }
+
     if(!is.na(v2)){
-        plot <- plot + facet_wrap(~.data[[v2]])
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
     }
 
     return(plot)
 }
 
-plot_fishing_mortalities <- function(data, v1="hcr", v2=NA){
+plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "F", "total_F")]
@@ -39,16 +43,20 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA){
         filter(name == "total_F")
 
     plot <- ggplot(f %>% filter(L1 == "faa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
-        geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 0.20))+
         coord_cartesian(expand=0)+
+        guides(fill="none")+
         theme_bw()
 
+    if(show_est){
+        plot <- plot + geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+    }
+
     if(!is.na(v2)){
-        plot <- plot + facet_wrap(~.data[[v2]])
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
     }
 
     return(plot)
