@@ -126,6 +126,103 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE){
 
 }
 
+plot_atage_trajectory_ternary <- function(data, segments, col_names){
+    axis_names = names(data)[6:8]
+    return(
+        ggplot(data, aes(x=.data[[col_names[1]]], y=.data[[col_names[2]]], z=.data[[col_names[3]]], color=hcr))+
+            coord_tern(Tlim=c(0, 1), Llim=c(0, 1), Rlim=c(0, 1))+
+            geom_point()+
+            geom_segment(
+                data = segments, 
+                aes(x=x, y=y, z=z, xend=xend, yend=yend, zend=zend, group=hcr),
+                arrow=arrow(length = unit(3, "mm"))
+            )+
+            scale_T_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            scale_L_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            scale_R_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            facet_grid(rows=vars(om), cols=vars(hcr))+
+            labs(x=axis_names[1], y=axis_names[2], z=axis_names[3])+
+            theme_bw()+
+            theme(
+                legend.position="bottom",
+                tern.axis.arrow.show = TRUE,
+                panel.spacing.x = unit(1, "cm"),
+                panel.grid.minor = element_line(color="white")
+            )
+    
+    )
+
+}
+
+plot_atage_density_ternary <- function(data, col_names){
+    axis_names <- names(data)[6:8]
+    return(
+        ggplot(data, aes(x=.data[[col_names[1]]], y=.data[[col_names[2]]], z=.data[[col_names[3]]]))+
+            coord_tern()+
+            stat_density_tern(
+                geom='polygon',
+                aes(fill=..level..),
+                bins=100,
+            )+
+            geom_mean_ellipse(color="white")+
+            scale_fill_viridis(limits=c(0, 65))+
+            scale_T_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            scale_L_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            scale_R_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
+            facet_grid(rows=vars(om), cols=vars(hcr))+
+            labs(fill="Simulation Years", x=axis_names[1], y=axis_names[2], z=axis_names[3])+
+            theme_bw()+
+            theme(
+                legend.position="bottom",
+                tern.axis.arrow.show = TRUE,
+                panel.spacing.x = unit(1, "cm"),
+                panel.grid.minor = element_line(color="white")
+            )
+    )
+}
+
+# plot_atage <- function(data, v1="hcr", v2=NA){
+#     group_columns <- colnames(data)
+#     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
+    
+#     d <- data %>%
+#         group_by(time, class, hcr, om, L1) %>%
+#         median_qi(value, .width=c(0.50))
+
+#     plot <- ggplot()+
+#         geom_bar(aes(x=time, y=value, fill=class), position="fill", stat="identity")+
+#         geom_vline(xintercept = 2022-1960+1, color="white", size=1.25, linetype="dashed")+
+#         scale_fill_viridis(direction=-1, discrete=TRUE, option="magma")+
+#         scale_x_continuous(breaks=seq(1, nyears+1, 20), labels=seq(1960, 1960+nyears+1, 20))+
+#         coord_cartesian(expand=0)+
+#         labs(x="Year", fill="Age Group")+
+#         guides(fill=guide_legend(reverse=TRUE))+
+#         # facet_wrap(~L1, ncol=1, scales="free_x")+
+#         facet_grid(rows=vars(hcr), cols=vars(L1))+
+#         theme_bw()+
+#         theme(
+#             axis.text = element_text(size=12),
+#             axis.title.y=element_blank(), 
+#             strip.background = element_blank(),
+#             strip.text.x = element_text(size=16, hjust=0),
+#             panel.spacing.y = unit(0.4, "in"),
+#             legend.position = "bottom"
+#         )
+
+#     if(!is.na(v2)){
+#         plot <- plot + facet_wrap(~.data[[v2]])
+#     }else{
+    
+#     }
+    
+#     # if(by_fleet){
+#     #     plot <- plot + facet_wrap(~fleet)
+#     # }
+
+#     return(plot)
+
+# }
+
 plot_abc_tac <- function(data, v1="hcr", v2=NA){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
@@ -278,10 +375,10 @@ plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
         facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
         facetted_pos_scales(
             y = list(
-                scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
+                scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25)),
                 scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
                 scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.20, 0.05)),
-                scale_y_continuous(limits=c(0, 350, breaks=seq(0, 350, 100)))
+                scale_y_continuous(limits=c(0, 650, breaks=seq(0, 650, 100)))
             )
         )+
         scale_x_continuous(limits=c(0, 110))+
@@ -296,32 +393,53 @@ plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
     return(plot)
 }
 
-plot_performance_metric_summary <- function(perf_data){
-    return(
-        ggplot(perf_data)+
-            geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr, shape=om), point_size=3, position="dodge")+
-            geom_vline(data=perf_data %>% filter(hcr == unique(perf_data$hcr)[1], om == unique(perf_data$om)[1]), aes(xintercept = median), color="black")+
-            scale_shape_manual(values=c(16, 4, 15))+
-            facet_wrap(vars(name), scales="free_x")+
+plot_performance_metric_summary <- function(perf_data, is_relative=FALSE){
+
+    om_summary <- perf_data %>% filter(.width == 0.50) %>% 
+        group_by(om, name) %>% 
+        summarise(value = mean(median))
+
+    plot <- ggplot(perf_data)+
+                geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr, shape=om), point_size=3, position="dodge")+
+                geom_vline(data=om_summary, aes(xintercept = value), color="black")+
+                scale_shape_discrete()+
+                facet_grid(rows=vars(om), cols=vars(name), scales="free_x")+
+                # facet_wrap(vars(name), scales="free_x")+
+                labs(y="", x="", shape="OM", color="HCR")+
+                coord_cartesian(expand=0)+
+                guides(shape=guide_legend(nrow=3), color=guide_legend(nrow=4))+
+                theme_bw()+
+                theme(
+                    plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
+                    panel.spacing.x = unit(0.5, "cm"),
+                    plot.title = element_text(size=18),
+                    legend.spacing.x = unit(1.5, "cm")
+                )
+
+    if(!is_relative){
+        plot <- plot + 
             ggh4x::facetted_pos_scales(
                 x = list(
-                    scale_x_continuous(limits=c(0, 50)),
-                    scale_x_continuous(limits=c(0, 300)),
-                    scale_x_continuous(limits=c(0, 0.07)),
-                    scale_x_continuous(limits=c(0, 1)),
-                    scale_x_continuous(limits=c(0, 0.25)),
-                    scale_x_continuous(limits=c(0, 30))
+                    scale_x_continuous(limits=c(0, 65), breaks=seq(0, 60, 20), labels = seq(0, 60, 20)),
+                    scale_x_continuous(limits=c(0, 600), breaks=seq(0, 600, 200), labels=seq(0, 600, 200)),
+                    scale_x_continuous(limits=c(0, 0.07), breaks=seq(0, 0.06, 0.02), labels=seq(0, 0.06, 0.02)),
+                    scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25), labels=seq(0, 100, 25)),
+                    scale_x_continuous(limits=c(0, 0.25), breaks=seq(0, 0.25, 0.05), labels=seq(0, 25, 5)),
+                    scale_x_continuous(limits=c(0, 45), breaks=seq(0, 40, 10), labels=seq(0, 40, 10))
                 )
-            )+
-            labs(y="", x="", shape="OM", color="HCR")+
-            coord_cartesian(expand=0)+
-            guides(shape=guide_legend(nrow=3), color=guide_legend(nrow=4))+
-            theme_bw()+
-            theme(
-                plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
-                panel.spacing.x = unit(1.5, "cm"),
-                plot.title = element_text(size=18),
-                legend.spacing.x = unit(1.5, "cm")
             )
-        )
+    }else{
+        plot <- plot + ggh4x::facetted_pos_scales(
+                x = list(
+                    scale_x_continuous(limits=c(0, 1.5)),
+                    scale_x_continuous(limits=c(0.75, 2.0)),
+                    scale_x_continuous(limits=c(0, 3.5)),
+                    scale_x_continuous(limits=c(0.75, 1.5)),
+                    scale_x_continuous(limits=c(0.75, 2.5)),
+                    scale_x_continuous(limits=c(0.5, 1.25))
+                )
+            )
+    }
+
+    return(plot)
 }
