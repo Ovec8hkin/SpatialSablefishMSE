@@ -228,10 +228,10 @@ get_numbers_at_age <- function(model_runs, extra_columns){
 #'      get_reference_points(model_runs, extra_columns, om$dem_params, nyears)
 #' }
 #'
-get_reference_points <- function(model_runs, extra_columns){
+get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
 
     get_rps <- function(om_name, recruitment, prop_fs){
-        om <- om_list[[which(names(om_list) == om_name)]]
+        om <- om_list[[which(om_names == om_name)]]
         year <- 64
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
@@ -253,7 +253,7 @@ get_reference_points <- function(model_runs, extra_columns){
 
     avg_recruitment <- get_recruits(model_runs, extra_columns) %>%
         group_by(sim, om) %>%
-        summarise(rec=median(rec))
+        summarise(rec=mean(rec))
 
     prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns) %>%
         filter(L1 != "faa_est") %>%
@@ -274,12 +274,14 @@ get_reference_points <- function(model_runs, extra_columns){
         reframe(rps = get_rps(om, rec, c(Fixed, Trawl))) %>%
         mutate(rp_name = rep(c("F40", "B40", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
-        group_by(om) %>%
+        group_by(om, hcr) %>%
         median_qi(F40, B40, B0, .width=interval_widths, .simple_names=TRUE) %>%
-        # mutate(bad=1) %>%
-        # select(bad, 1:12) %>%
-        reformat_ggdist_long(n=1)
-        # select(-bad)
+        reformat_ggdist_long(n=2) %>% 
+        filter(.width == 0.5) %>%
+        select(om, hcr, name, median) %>%
+        pivot_wider(names_from=name, values_from=median) %>%
+        arrange(hcr)
+
 
     return(ref_pts_df)
 
