@@ -6,21 +6,22 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, spinup_
     cl <- parallel::makeCluster(cores, outfile="")
     registerDoParallel(cl)
 
-    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, spinup_years, seeds){
+    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, spinup_years, seeds, ...){
         suppressMessages({
             library(tidyverse)
             library(TMB)
             library(devtools)
+            library(abind)
 
             lapply(list.files("R", full.names = TRUE), source)
             devtools::load_all("~/Desktop/Projects/afscOM")
         })
         
         seed <- seeds[s]
-        mse <- run_mse(om, mp=hcr, nyears_input=nyears, spinup_years=spinup_years, seed=seed, file_suffix = seed)
+        mse <- run_mse(om, mp=hcr, nyears_input=nyears, spinup_years=spinup_years, seed=seed, file_suffix = seed, ...)
         return(mse)
 
-    }, om=om, hcr=hcr, nyears=nyears, spinup_years=spinup_years, seeds=seeds, cl=cl)
+    }, om=om, hcr=hcr, nyears=nyears, spinup_years=spinup_years, seeds=seeds, ..., cl=cl)
 
     stopCluster(cl)
 
