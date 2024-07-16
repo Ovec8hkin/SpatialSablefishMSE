@@ -439,3 +439,14 @@ plot_performance_metric_summary <- function(perf_data, is_relative=FALSE){
 
     return(plot)
 }
+
+
+custom_theme <- theme(
+    panel.spacing.y = unit(0.5, "cm"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size=14),
+    axis.text = element_text(size=14),
+    strip.text = element_text(size=14),
+    legend.text = element_text(size=14),
+    legend.position = "bottom"
+)
