@@ -221,6 +221,54 @@ get_numbers_at_age <- function(model_runs, extra_columns){
     )
 }
 
+get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_names, group_abbs, summarise=FALSE, make_segments=FALSE){
+    data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
+            as_tibble() %>%
+            mutate(
+                class = factor(
+                    case_when(age < age_groups[1] ~ group_names[1], age < age_groups[2] ~ group_names[2], TRUE ~ group_names[3]), 
+                    levels=group_names, 
+                    labels=group_abbs
+                ),
+                L1 = factor(L1, levels=c("caa", "naa"), labels=c("Catch-at-Age", "Numbers-at-Age"))
+            ) %>%
+            group_by(time, class, sim, L1, hcr, om) %>%
+            summarise(value=sum(value)) %>%
+            filter(time > 64) %>%
+            select(time, class, sim, hcr, om, value) %>%
+            pivot_wider(names_from="hcr", values_from="value") %>%
+            group_by(time, sim, om) %>%
+            mutate(across(3:(ncol(.)-3), ~ ./sum(.))) %>% 
+            pivot_longer(6:(ncol(.)), names_to="hcr", values_to="value") %>%
+            ungroup() %>%
+            pivot_wider(names_from="class", values_from="value")
+
+    if(summarise){
+        data <- data %>% group_by(time, hcr, om) %>%
+            filter(time > 64) %>%
+            summarise(across((ncol(.)-2-3):(ncol(.)-3), ~ mean(.)))
+    }
+
+    if(make_segments){
+        segments <- data %>% as_tibble() %>% 
+            select(2:ncol(.)) %>% 
+            rename(x=3, y=4, z=5) %>%
+            group_by(om, hcr) %>%
+            mutate(
+                xend = lead(x, 1),
+                yend = lead(y, 1),
+                zend = lead(z, 1)
+            ) %>%
+            ungroup() %>%
+            arrange(om, hcr) %>%
+            drop_na()
+        
+        return(afscOM::listN(data, segments))
+    }else{
+        return(data)
+    }
+}
+
 #' Get Reference Points from MSE Simulations
 #' 
 #' Derive fishing mortality and biomass reference points
