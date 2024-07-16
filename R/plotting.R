@@ -347,7 +347,7 @@ plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears
 }
 
 
-plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
+plot_mse_summary <- function(model_runs, extra_columns, common_trajectory=64){
     all_data <- bind_rows(
         get_ssb_biomass(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=spbio),
         get_management_quantities(model_runs, extra_columns),
@@ -368,10 +368,10 @@ plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
             )
         )
 
-    plot <- ggplot(ad %>% filter(time > 63), aes(x=time, y=median, color=hcr))+
+    plot <- ggplot(ad %>% filter(time > common_trajectory-1), aes(x=time, y=median, color=hcr))+
         geom_line(size=0.85)+
-        geom_vline(xintercept = 64, linetype="dashed")+
-        geom_line(data=ad %>% filter(hcr=="F40", time <= 64), color="black", size=0.85)+
+        geom_vline(xintercept = common_trajectory, linetype="dashed")+
+        geom_line(data=ad %>% filter(hcr=="F40", time <= common_trajectory), color="black", size=0.85)+
         facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
         facetted_pos_scales(
             y = list(
@@ -381,14 +381,10 @@ plot_mse_summary <- function(model_runs, extra_columns, theme=NULL){
                 scale_y_continuous(limits=c(0, 650, breaks=seq(0, 650, 100)))
             )
         )+
-        scale_x_continuous(limits=c(0, 110))+
+        scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
         labs(y="", x="Year", color="HCR")+
         coord_cartesian(expand=0)+
         theme_bw()
-
-    if(!is.null(theme)){
-        plot <- plot + theme
-    }
 
     return(plot)
 }
