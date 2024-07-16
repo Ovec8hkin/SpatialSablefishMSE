@@ -90,3 +90,20 @@ aav <- function(data){
     aav <- sum(diffs/total)/(length(data)-1)
     return(ifelse(is.nan(aav), 0, aav)) # If all data is 0, return 0 rather than NA
 }
+
+extend_3darray_last_dim <- function(array_3d, n){
+    if(n <= 0){
+        return(array_3d[,,1:(dim(array_3d)[3]+n)])
+    }
+    new_3d_array = abind(array_3d, replicate(array_3d[, , dim(array_3d)[3]], 
+        n = n), along = 3)
+    return(new_3d_array)
+}
+
+extend_vec_last_val <- function(vector, n){
+    if(n <= 0){
+        return(vector[1:(length(vector)+n)])
+    }
+    new_vec = c(vector, rep(vector[length(vector)], n))
+    return(new_vec)
+}
