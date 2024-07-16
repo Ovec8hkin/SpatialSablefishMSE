@@ -178,11 +178,28 @@ get_landed_catch <- function(model_runs, extra_columns){
 #'
 get_management_quantities <- function(model_runs, extra_columns){
     cols <- c("time", "sim", "value", "L1", names(extra_columns))
+
+    hist_abcs <- c(44200, 37100, 33400, 28800, 25200, 25000, 28800, 25300, 19600, 17200, 16800, 15900, 17200, 16900, 17300, 20900, 23000, 21000, 21000, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 22000, 29600, 34500, 40500)
+    hist_tacs <- c(18000, 19300, 17300, 14500, 14800, 13500, 21400, 27700, 36400, 32200, 33200, 28800, 25200, 25000, 28800, 25300, 19400, 16800, 16800, 15400, 17200, 16900, 17300, 20900, 22600, 21000, 20700, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 18300, 26100, 34500, 39600)
+    hist_land <- c(10400, 12600, 12000, 11800, 14100, 14500, 28900, 35200, 38400, 34800, 30200, 26400, 23900, 25400, 23600, 20700, 17400, 14600, 13900, 13600, 15600, 14100, 14700, 16400, 17500, 16600, 15600, 16000, 14600, 13100, 11900, 13000, 13900, 13600, 11500, 10900, 10200, 12300, 14200, 16600, 19000, 21300, 26900, 20400)
+    historical_management <- data.frame(
+        time = (1980:2023)-1960+1,
+        abc = c(rep(NA, length(hist_tacs) - length(hist_abcs)), hist_abcs/1000),
+        tac = c(rep(NA, length(hist_tacs) - length(hist_tacs)), hist_tacs/1000),
+        exp_land = c(rep(NA, length(hist_tacs) - length(hist_land)), hist_land/1000)
+    ) %>%
+    pivot_longer(abc:exp_land, names_to="L1", values_to="value")
+
+    mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
+                as_tibble() %>%
+                drop_na() %>%
+                select(cols)
+
     return(
-        bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
-            as_tibble() %>%
-            drop_na() %>%
-            select(cols)
+        bind_rows(
+            cross_join(mgmt %>% distinct(sim, om, hcr), historical_management),
+            mgmt
+        )
     )
 }
 
