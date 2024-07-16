@@ -39,13 +39,13 @@ reformat_ggdist_long <- function(data, n=1){
 #' 
 bind_mse_outputs <- function(model_runs, var, extra_columns){
 
-    if(length(extra_columns) == 1){
-        col_name <- names(extra_columns)
-        model_grid <- as.data.frame(tibble(!!col_name := extra_columns[[1]]))
-    }else{
-        model_grid <- expand.grid(extra_columns)
-    }
-
+    # if(length(extra_columns) == 1){
+    #     col_name <- names(extra_columns)
+    #     model_grid <- as.data.frame(tibble(!!col_name := extra_columns[[1]]))
+    # }else{
+    #     model_grid <- expand.grid(extra_columns)
+    # }
+    model_grid <- extra_columns
     t <- bind_rows(
         lapply(
             seq_along(model_runs), 
