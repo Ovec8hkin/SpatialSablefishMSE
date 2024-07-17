@@ -1,4 +1,4 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE){
+plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
@@ -9,10 +9,13 @@ plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE){
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
+    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+    om1 <- as.character((d %>% pull(om) %>% unique)[1])
 
-    plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
-        geom_vline(xintercept=64, linetype="dashed")+
+    plot <- ggplot(d %>% filter(L1 == "naa", time > common_trajectory-1)) + 
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = d %>% filter(L1=="naa", hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
+        geom_vline(xintercept=common_trajectory, linetype="dashed")+
         geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 320))+
@@ -31,7 +34,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE){
     return(plot)
 }
 
-plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE){
+plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "F", "total_F")]
@@ -42,8 +45,12 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE){
         reformat_ggdist_long(n=length(group_columns)) %>%
         filter(name == "total_F")
 
-    plot <- ggplot(f %>% filter(L1 == "faa")) + 
+    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+    om1 <- as.character((d %>% pull(om) %>% unique)[1])
+
+    plot <- ggplot(f %>% filter(L1 == "faa", time > common_trajectory-1)) + 
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
+        geom_line(data = f %>% filter(L1=="faa", hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 0.20))+
@@ -90,7 +97,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA){
     return(plot)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
@@ -99,14 +106,18 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE){
         median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
+    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+    om1 <- as.character((d %>% pull(om) %>% unique)[1])
+
     if(by_fleet){
         c <- c %>% filter(name == "catch")
     }else{
         c <- c %>% filter(name == "total_catch")
     }
 
-    plot <- ggplot(c, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
-        geom_lineribbon()+
+    plot <- ggplot(c %>% filter(time > common_trajectory-1))+
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
+        geom_line(data = c %>% filter(hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
         geom_vline(xintercept=64, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 60))+
@@ -228,14 +239,18 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA){
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
     q <- data %>%
+        filter(L1 != "Expected Landings") %>%
         group_by(across(all_of(group_columns))) %>%
         median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
-    plot <- ggplot(q)+
+    plot <- ggplot(q %>% filter(time > 63))+
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=.data[[v1]], group=interaction(.data[[v1]], L1)))+
-        scale_y_continuous(limits=c(0, 70))+
+        geom_line(data=q %>% filter(hcr=="F40", time <= 64), aes(x=time, y=median), color="black", size=0.85)+
+        geom_vline(xintercept=64, linetype="dashed")+
+        scale_y_continuous(limits=c(0, 100))+
         scale_fill_brewer(palette="Blues")+
+        coord_cartesian(expand=0)+
         theme_bw()
 
     if(!is.na(v2)){
