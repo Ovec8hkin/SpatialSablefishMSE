@@ -187,13 +187,17 @@ get_management_quantities <- function(model_runs, extra_columns){
         abc = c(rep(NA, length(hist_tacs) - length(hist_abcs)), hist_abcs/1000),
         tac = c(rep(NA, length(hist_tacs) - length(hist_tacs)), hist_tacs/1000),
         exp_land = c(rep(NA, length(hist_tacs) - length(hist_land)), hist_land/1000)
-    ) %>%
+    ) %>% as_tibble() %>%
+    mutate(attainment = exp_land/tac) %>%
     pivot_longer(abc:exp_land, names_to="L1", values_to="value")
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
                 as_tibble() %>%
                 drop_na() %>%
-                select(cols)
+                select(cols) %>%
+                pivot_wider(names_from=L1, values_from=value) %>%
+                mutate(attainment = exp_land/tac) %>%
+                pivot_longer(abc:attainment, names_to="L1", values_to="value")
 
     return(
         bind_rows(

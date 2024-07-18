@@ -106,8 +106,8 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE, common_traj
         median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
-    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
-    om1 <- as.character((d %>% pull(om) %>% unique)[1])
+    hcr1 <- as.character((c %>% pull(hcr) %>% unique)[1])
+    om1 <- as.character((c %>% pull(om) %>% unique)[1])
 
     if(by_fleet){
         c <- c %>% filter(name == "catch")
@@ -239,7 +239,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA){
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
     q <- data %>%
-        filter(L1 != "Expected Landings") %>%
+        # filter(L1 != "Expected Landings") %>%
         group_by(across(all_of(group_columns))) %>%
         median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
@@ -248,16 +248,24 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA){
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=.data[[v1]], group=interaction(.data[[v1]], L1)))+
         geom_line(data=q %>% filter(hcr=="F40", time <= 64), aes(x=time, y=median), color="black", size=0.85)+
         geom_vline(xintercept=64, linetype="dashed")+
-        scale_y_continuous(limits=c(0, 100))+
         scale_fill_brewer(palette="Blues")+
         coord_cartesian(expand=0)+
         theme_bw()
 
     if(!is.na(v2)){
-        plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]))
+        plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")
     }else{
-        plot <- plot + facet_wrap(~L1)
+        plot <- plot + facet_wrap(~L1, scales="free_y")
     }
+
+    plot <- plot + ggh4x::facetted_pos_scales(
+            y = list(
+                scale_y_continuous(limits=c(0, 100)),
+                scale_y_continuous(limits=c(0, 100)),
+                scale_y_continuous(limits=c(0, 100)),
+                scale_y_continuous(limits=c(0.5, 1))
+            )
+        )
 
     return(plot)
 }
@@ -362,9 +370,9 @@ plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears
 }
 
 
-plot_mse_summary <- function(model_runs, extra_columns, common_trajectory=64){
+plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_trajectory=64){
     all_data <- bind_rows(
-        get_ssb_biomass(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=spbio),
+        get_ssb_biomass(model_runs, extra_columns, dem_params) %>% select(time, sim, L1, om, hcr, value=spbio),
         get_management_quantities(model_runs, extra_columns),
         get_landed_catch(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_catch),
         get_fishing_mortalities(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_F)
