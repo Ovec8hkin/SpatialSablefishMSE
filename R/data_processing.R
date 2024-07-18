@@ -176,7 +176,7 @@ get_landed_catch <- function(model_runs, extra_columns){
 #'      get_management_quantities(model_runs, extra_columns)
 #' }
 #'
-get_management_quantities <- function(model_runs, extra_columns){
+get_management_quantities <- function(model_runs, extra_columns, spinup_years=64){
     cols <- c("time", "sim", "value", "L1", names(extra_columns))
 
     hist_abcs <- c(44200, 37100, 33400, 28800, 25200, 25000, 28800, 25300, 19600, 17200, 16800, 15900, 17200, 16900, 17300, 20900, 23000, 21000, 21000, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 22000, 29600, 34500, 40500)
@@ -189,7 +189,7 @@ get_management_quantities <- function(model_runs, extra_columns){
         exp_land = c(rep(NA, length(hist_tacs) - length(hist_land)), hist_land/1000)
     ) %>% as_tibble() %>%
     mutate(attainment = exp_land/tac) %>%
-    pivot_longer(abc:exp_land, names_to="L1", values_to="value")
+    pivot_longer(abc:attainment, names_to="L1", values_to="value")
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
                 as_tibble() %>%
@@ -201,7 +201,7 @@ get_management_quantities <- function(model_runs, extra_columns){
 
     return(
         bind_rows(
-            cross_join(mgmt %>% distinct(sim, om, hcr), historical_management),
+            cross_join(mgmt %>% distinct(sim, om, hcr), historical_management) %>% filter(time < spinup_years+1),
             mgmt
         )
     )
