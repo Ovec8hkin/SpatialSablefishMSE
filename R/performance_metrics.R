@@ -276,7 +276,74 @@ average_annual_value <- function(model_runs, extra_columns, interval_widths=c(0.
         )
 }
 
-performance_metric_summary <- function(model_runs, extra_columns, interval_widths, extra_filter=NULL, relative=NULL){
+average_annual_dynamic_value <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL){
+    
+    compute_dynamic_value <- function(landings, min_price_age, max_price_age, breakpoints=c(15, 30)){
+        if(landings < breakpoints[1]){
+            return(max_price_age)
+        }else if(landings >= breakpoints[1] & landings <= breakpoints[2]){
+            return(
+                min_price_age + (breakpoints[2]-landings)/(breakpoints[2]-breakpoints[1])*(max_price_age-min_price_age)
+            )
+        }else{
+            return(min_price_age)
+        }
+    }
+
+    price_age_f_low <- c(0.597895623, 1.320303448, 1.320303448, 1.856562267, 2.610111345, 2.610111345, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875)
+    price_age_m_low <- c(0.597895623, 0.597895623, 1.320303448, 1.320303448, 1.856562267, 1.856562267, 1.856562267, 1.856562267, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345)
+    price_data_low <- matrix(c(price_age_f_low, price_age_m_low), nrow=length(price_age_f_low), ncol=2)
+    dimnames(price_data_low) <- list("age"=2:31, "sex"=c("F", "M"))
+
+    price_age_f_max <- c(7.917460094, 8.40756497, 8.40756497, 9.944657109, 11.46480347, 11.46480347, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658)
+    price_age_m_max <- c(7.917460094, 7.917460094, 8.40756497, 8.40756497, 9.944657109, 9.944657109, 9.944657109, 9.944657109, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347)
+    price_data_max <- matrix(c(price_age_f_max, price_age_m_max), nrow=length(price_age_f_max), ncol=2)
+    dimnames(price_data_max) <- list("age"=2:31, "sex"=c("F", "M"))
+
+    dyn_value <- bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
+        as_tibble() %>%
+        group_by(time, sim, om, hcr) %>%
+        mutate(tot_catch = sum(value)) %>%
+        filter(time > 64, fleet == "Fixed") %>%
+        left_join(
+            reshape2::melt(price_data_low) %>% rename(min_price=value),
+            by = c("age", "sex")
+        ) %>%
+        left_join(
+            reshape2::melt(price_data_max) %>% rename(max_price=value),
+            by = c("age", "sex")
+        ) %>%
+        rowwise() %>%
+        mutate(
+            dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
+        ) %>%
+        group_by(time, sim, om, hcr) %>%
+        summarise(total_value = sum(dyn_price*value)) 
+                     # only calculate value for fixed-gera fleet
+
+    if(!is.null(relative)){
+        dyn_value <- dyn_value %>%
+            group_by(sim, om, hcr) %>%
+            pivot_wider(names_from=hcr, values_from = total_value) %>%
+            mutate(across(everything(), ~ . / eval(rlang::parse_expr(relative)))) %>%
+            pivot_longer(4:(ncol(.)), names_to="hcr", values_to="total_value")
+    }
+
+    if(!is.null(extra_filter)){
+        avg_rel_value <- avg_rel_value %>% filter(eval(extra_filter))
+    }
+
+    return(
+        dyn_value %>%
+            group_by(sim, om, hcr) %>%
+            summarise(dyn_annual_value = mean(total_value)) %>%
+            group_by(om, hcr) %>%
+            median_qi(dyn_annual_value, .width=interval_widths, .simple_names=FALSE)
+    )
+
+}
+
+performance_metric_summary <- function(model_runs, extra_columns, dem_params, interval_widths, extra_filter=NULL, relative=NULL){
     # Average Catch Across Projection Period
     avg_catch <- average_catch(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
 
