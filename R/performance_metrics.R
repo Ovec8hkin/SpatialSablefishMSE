@@ -3,12 +3,12 @@ average_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.8
             as_tibble() %>%
             filter(time > 64) %>%
             group_by(time, sim, om, hcr) %>%
-            summarise(total_catch = sum(value))
+            summarise(annual_catch = sum(value))
     
     if(!is.null(relative)){
         avg_catch <- avg_catch %>%
             group_by(sim, om, hcr) %>%
-            pivot_wider(names_from=hcr, values_from = total_catch) %>%
+            pivot_wider(names_from=hcr, values_from = annual_catch) %>%
             mutate(across(everything(), ~ . / eval(rlang::parse_expr(relative)))) %>%
             pivot_longer(4:(ncol(.)), names_to="hcr", values_to="total_catch")
     }
@@ -20,7 +20,7 @@ average_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.8
     return(
         avg_catch %>%
             group_by(om, hcr) %>%
-            median_qi(total_catch, .width=interval_widths, .simple_names=FALSE)
+            median_qi(annual_catch, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
@@ -58,9 +58,10 @@ prop_years_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 
             mutate(
                 total_catch = sum(value),
             ) %>%
+            filter(age == 2, sex == "F", fleet == "Fixed") %>%
             group_by(sim, om, hcr) %>%
             summarise(
-                num_years = sum(total_catch >= catch_threshold)
+                num_years = sum(total_catch >= catch_threshold)/n()
             )
 
     if(!is.null(relative)){
@@ -82,9 +83,9 @@ prop_years_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 
     )
 }
 
-average_ssb <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL){
+average_ssb <- function(model_runs, extra_columns, dem_params, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL){
     
-    agv_ssb <- get_ssb_biomass(model_runs, extra_columns) %>%
+    agv_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
             ungroup() %>%
             filter(L1 != "naa_est", time > 64) %>%
             select(-L1)
@@ -345,37 +346,45 @@ average_annual_dynamic_value <- function(model_runs, extra_columns, interval_wid
 
 performance_metric_summary <- function(model_runs, extra_columns, dem_params, interval_widths, extra_filter=NULL, relative=NULL){
     # Average Catch Across Projection Period
-    avg_catch <- average_catch(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
+    avg_catch <- average_catch(model_runs, extra_columns, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
+
+    # Total Catch Across Projection Period
+    tot_catch <- total_catch(model_runs, extra_columns, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
+
+    # Prop Years High Catch
+    prop_years_high_catch <- prop_years_catch(model_runs, extra_columns, interval_widths, extra_filter=extra_filter, relative=relative, catch_threshold = 30) %>% reformat_ggdist_long(n=2)
 
     # Average SSB Across Projection Period
-    avg_ssb <- average_ssb(model_runs, extra_columns2, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
+    avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, interval_widths, extra_filter=extra_filter, relative=relative) %>% reformat_ggdist_long(n=2)
 
     # Average Annual Catch Variation Across Projection Period
-    avg_variation <- average_annual_catch_variation(model_runs, extra_columns2, interval_widths, relative=relative, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+    avg_variation <- average_annual_catch_variation(model_runs, extra_columns, interval_widths, relative=relative, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
 
     # Average proportion of catch that is "large"
-    avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns2, interval_widths, relative=relative, extra_filter=extra_filter) %>% 
+    avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns, interval_widths, relative=relative, extra_filter=extra_filter) %>% 
         filter(size_group == "Large") %>%
         select(-size_group) %>%
         reformat_ggdist_long(n=2)
 
     # Average proportion of population that is "old"
-    avg_pop_old <- average_proportion_biomass_old(model_runs, extra_columns2, interval_widths, relative=relative, extra_filter=extra_filter) %>% 
+    avg_pop_old <- average_proportion_biomass_old(model_runs, extra_columns, interval_widths, relative=relative, extra_filter=extra_filter) %>% 
         filter(age_group == "Old") %>%
         select(-age_group) %>%
         reformat_ggdist_long(n=2)
 
     # Average annual value
-    annual_value <- average_annual_value(model_runs, extra_columns2, interval_widths, relative=relative, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+    annual_value <- average_annual_value(model_runs, extra_columns, interval_widths, relative=relative, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
 
-    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value) %>%
+    dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, interval_widths, relative=relative, extra_filter=extra_filter) %>% reformat_ggdist_long(n=2)
+
+    perf_data <- bind_rows(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value) %>%
         mutate(name=factor(
                         name, 
-                        levels=c("total_catch", "spbio", "aav", "catch", "bio", "annual_value"), 
-                        labels=c("Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "Annual Value")
+                        levels=c("annual_catch", "total_catch", "num_years", "spbio", "aav", "catch", "bio", "annual_value", "dyn_annual_value"), 
+                        labels=c("Annual Catch", "Total Catch", "Years High Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "Annual Value", "Dynamic Annual Value")
                     )
         )
 
-    return(afscOM::listN(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value, perf_data))
+    return(afscOM::listN(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value, perf_data))
 
 }
