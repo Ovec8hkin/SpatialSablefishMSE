@@ -412,17 +412,15 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
     return(plot)
 }
 
-plot_performance_metric_summary <- function(perf_data, is_relative=FALSE){
+plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE){
 
-    om_summary <- perf_data %>% filter(.width == 0.50) %>% 
-        group_by(om, name) %>% 
-        summarise(value = mean(median))
+    # om_summary <- perf_data %>% filter(.width == 0.50) %>% 
+    #     group_by(om, name) %>% 
+    #     summarise(value = mean(median))
 
     plot <- ggplot(perf_data)+
-                geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr, shape=om), point_size=3, position="dodge")+
-                geom_vline(data=om_summary, aes(xintercept = value), color="black")+
+                # geom_vline(data=om_summary, aes(xintercept = value), color="black")+
                 scale_shape_discrete()+
-                facet_grid(rows=vars(om), cols=vars(name), scales="free_x")+
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="HCR")+
                 coord_cartesian(expand=0)+
@@ -435,18 +433,31 @@ plot_performance_metric_summary <- function(perf_data, is_relative=FALSE){
                     legend.spacing.x = unit(1.5, "cm")
                 )
 
+    if(is.character(v2)){
+        plot <- plot + 
+                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=.data[[v1]], shape=.data[[v2]]), point_size=3, position="dodge")+
+                    facet_grid(rows=vars(.data[[v2]]), cols=vars(name), scales="free_x")
+    }else{
+        plot <- plot + 
+                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=.data[[v1]]), point_size=3, position="dodge")+
+                    facet_wrap(~name, scales="free_x")
+    }
+
     if(!is_relative){
         plot <- plot + 
-            ggh4x::facetted_pos_scales(
-                x = list(
-                    scale_x_continuous(limits=c(0, 65), breaks=seq(0, 60, 20), labels = seq(0, 60, 20)),
-                    scale_x_continuous(limits=c(0, 600), breaks=seq(0, 600, 200), labels=seq(0, 600, 200)),
-                    scale_x_continuous(limits=c(0, 0.07), breaks=seq(0, 0.06, 0.02), labels=seq(0, 0.06, 0.02)),
-                    scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25), labels=seq(0, 100, 25)),
-                    scale_x_continuous(limits=c(0, 0.25), breaks=seq(0, 0.25, 0.05), labels=seq(0, 25, 5)),
-                    scale_x_continuous(limits=c(0, 45), breaks=seq(0, 40, 10), labels=seq(0, 40, 10))
+                ggh4x::facetted_pos_scales(
+                    x = list(
+                        # scale_x_continuous(limits=c(0, 65), breaks=seq(0, 60, 20), labels = seq(0, 60, 20)),
+                        scale_x_continuous(limits=c(500, 2500), breaks=seq(500, 2500, 500), labels = seq(500, 2500, 500)),
+                        # scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.2), labels = seq(0, 1, 0.2)),
+                        scale_x_continuous(limits=c(0, 600), breaks=seq(0, 600, 200), labels=seq(0, 600, 200)),
+                        scale_x_continuous(limits=c(0, 0.07), breaks=seq(0, 0.06, 0.02), labels=seq(0, 0.06, 0.02)),
+                        scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25), labels=seq(0, 100, 25)),
+                        scale_x_continuous(limits=c(0, 0.25), breaks=seq(0, 0.25, 0.05), labels=seq(0, 25, 5)),
+                        # scale_x_continuous(limits=c(0, 45), breaks=seq(0, 40, 10), labels=seq(0, 40, 10)),
+                        scale_x_continuous(limits=c(5, 15), breaks=seq(5, 15, 5), labels=seq(5, 15, 5))
+                    )
                 )
-            )
     }else{
         plot <- plot + ggh4x::facetted_pos_scales(
                 x = list(
