@@ -2,10 +2,15 @@
 #' 
 #' Run an MSE simulation loop.
 #'
-#' @param om path to a saved OM .RDS file (should contain
-#' demagraphic parameters list and model options list)
-#' @param hcr a function to compute the allowable F in the next year
+#' @param om an operating model list object (should minimally contain a
+#' list object with demographic parameters, an array of initial NAAs, a
+#' list object specifying recruitment, and a list of model_options).
+#' @param mp a list object specifying the management procedure to be applied during
+#' the projection period
 #' @param ... parameters to pass to the `hcr` function
+#' @param run_estimation whether to run the estimation procedure or not. If FALSE, 
+#' management procedures will use OM outputs rather than EM estimates to compute
+#' future harvest from the management procedure function.
 #' @param nyears_input number of years to simulate forward (will override the dimensions
 #' of the demagraphic parameters matrices defined in the OM)
 #' @param spinup_years number of years before estimation process should begin

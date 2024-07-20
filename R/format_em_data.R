@@ -1,5 +1,5 @@
 #' Format OM Observation Data for TMB Assessment Model
-#' #'
+#' 
 #' Format data and observations from an `afscOM` operating model
 #' and update the model data and parameters required by the 
 #' `SpatialSablefishAssessment` TMB assessment model. 
@@ -291,6 +291,32 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
     }
 }
 
+#' Simulate OM Observation Data for TMB Assessment Model
+#' 
+#' Format data and observations from an `afscOM` operating model
+#' and update the model data and parameters required by the 
+#' `SpatialSablefishAssessment` TMB assessment model. 
+#' 
+#' This function requires the existence of 'data/sablefish_em_data_2022.RDS',
+#' and 'data/sablefish_em_par_2022.RDS' files, which come packaged with the
+#' `SablefishMSE` codebase. 
+#'
+#' @param nyears the number of years of data that will be passed to the model
+#' @param dem_params demographic parameter matrices subsetted to 1 year
+#' @param land_caa nyears worth of landed catch-at-age data (dimensins [1, nages, nsexes, nregions, nfleets])
+#' @param survey_indices nyears worth of survey indices (LL RPN, LL RPW, and TW RPW)
+#' @param fxfish_caa_obs nyears worth of catch-at-age observation from the fixed gear fishery
+#' @param twfish_caa_obs nyears worth of catch-at-age observation from the trawl gear fishery
+#' @param ll_ac_obs nyears worth of age composition observations frmo the longline survey
+#' @param tw_ac_obs nyears worth of age composition observations frmo the trawl survey
+#' @param model_options list of model options provided to the OM
+#' @param added_year the number of new years of data being added (should usually be 1) 
+#' @param file_suffix suffix to append to saved outputs
+#'
+#' @export format_em_data
+#'
+#' @example
+#'
 simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, model_options, added_years=1, file_suffix=""){
 
     extra_years <- nyears-63
@@ -639,6 +665,34 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
 
 }
 
+#' Simulate OM Observation Data for Sex-Disaggregated TMB Assessment Model
+#' 
+#' Format data and observations from an `afscOM` operating model
+#' and update the model data and parameters required by the 
+#' `SpatialSablefishAssessment` TMB assessment model. Age composition data
+#' is properly formatted for use in a sex-disaggregated "proportions across"
+#' approch as is used in the TMB estimation model.
+#' 
+#' This function requires the existence of 'data/sablefish_em_data_2022.RDS',
+#' and 'data/sablefish_em_par_2022.RDS' files, which come packaged with the
+#' `SablefishMSE` codebase. 
+#'
+#' @param nyears the number of years of data that will be passed to the model
+#' @param dem_params demographic parameter matrices subsetted to 1 year
+#' @param land_caa nyears worth of landed catch-at-age data (dimensins [1, nages, nsexes, nregions, nfleets])
+#' @param survey_indices nyears worth of survey indices (LL RPN, LL RPW, and TW RPW)
+#' @param fxfish_caa_obs nyears worth of catch-at-age observation from the fixed gear fishery
+#' @param twfish_caa_obs nyears worth of catch-at-age observation from the trawl gear fishery
+#' @param ll_ac_obs nyears worth of age composition observations frmo the longline survey
+#' @param tw_ac_obs nyears worth of age composition observations frmo the trawl survey
+#' @param model_options list of model options provided to the OM
+#' @param added_year the number of new years of data being added (should usually be 1) 
+#' @param file_suffix suffix to append to saved outputs
+#'
+#' @export format_em_data
+#'
+#' @example
+#'
 simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, model_options, added_years=1, file_suffix=""){
     out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs,  tw_ac_obs, model_options, added_years, file_suffix)
 

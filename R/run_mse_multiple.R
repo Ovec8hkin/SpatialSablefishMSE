@@ -9,6 +9,8 @@
 #' @param om_list named list of operating model list objects
 #' @param hcr_list named list of harvest control rule list objects
 #' @param seed_list vector of random seeds
+#' @param mse_options list of mse_options objects to apply to each
+#' OM. Must be either length 1, or length == length(om_list).
 #' @param ... additional parameters to pass to the `run_mse` call
 #'
 #' @return list of MSE simualtion results

@@ -53,7 +53,7 @@ resample_regime_recruits <- function(regime1_recruits, regime2_recruits, nyears,
 
 
 #' Regime-like recruitment
-#' #'
+#' 
 #' Generate future recruitment timeseries based on mean and CV of distinct
 #' regimes, via a lognormal distribution.
 #'
@@ -116,5 +116,40 @@ beverton_holt <- function(h, R0, S0, sigR, seed){
     }
 }
 
-# bevholt <- beverton_holt(0.7, 25, 300, 1120)
-# bevholt(200)
+#' Recruitment function with a specified crash period
+#' 
+#' Generate future recruitment timeseries via historical reasampling, 
+#' (see `resample_recruits`) but set a specific time period of the
+#' projected recruitment to a different values. Can be used to specify
+#' a "crash" in recruitment, or a "spike" in recruitment depending on
+#' the `crash_value`.
+#'
+#' @param crash_start_years projection year to start the recruitment crash
+#' @param crash_length number of years to have "crashed" recruitment
+#' @param crash_value recruitment during the "crash" period
+#' @param hist_recruits historical timeseries of recruitment (or deviates)
+#' @param nyears total number of years to resample
+#' @param seed random seed for reproducability
+#'
+#' @export recruits_crash
+#'
+#' @example
+#'
+recruits_crash <- function(crash_start_year, crash_length, crash_value, hist_recruits, nyears, seed){
+    rec <- resample_recruits(hist_recruits, nyears, seed)
+    rec[crash_start_year:(crash_start_year+crash_length-1)] <- crash_value
+    return(rec)
+}
+
+retro_recruitment <- function(hist_recruits, nyears, seed, sim_func, ...){
+    rec <- rep(NA, nyears)
+    rec[1:length(hist_recruits)] <- hist_recruits
+    rec[(length(hist_recruits)+1):nyears] <- do.call(sim_func, c(list(hist_recruits=hist_recruits), list(nyears=nyears), list(seed=seed), list(...)))#rlnorm(nyears-length(rec[!is.na(rec)]), meanlog=log(15), sdlog=0.20)
+    return(rec)
+}
+
+f <- function(...){
+    return(list(...))
+}
+
+f(a=1, b=2)

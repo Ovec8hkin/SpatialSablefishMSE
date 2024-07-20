@@ -5,16 +5,18 @@
 #'
 #' @param model_runs list of completed MSE simualtion objects
 #' @param extra_columns additional columns to append to output
+#' @param dem_params demographic parameter matrix
 #'
 #' @export get_ssb_biomass
 #'
 #' @example \dontrun{
+#'      dem_params <- om$dem_params
 #'      mse1 <- run_mse(om, hcr1, ...)
 #'      mse2 <- run_mse(om, hcr2, ...)
 #' 
 #'      model_runs <- list(mse1, mse2)
 #'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_ssb_biomass(model_runs, extra_columns)
+#'      get_ssb_biomass(model_runs, extra_columns, dem_params)
 #' }
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
@@ -160,10 +162,13 @@ get_landed_catch <- function(model_runs, extra_columns){
 #' Get ABC, TAC, and Expected Landings
 #' 
 #' Process MSE simulations for ABC, TAC, and expected 
-#' landings quantities
+#' landings quantities. Historical ABCs, TACs, and landings
+#' appendded to begining of output data.frame, and are from
+#' Goethel et al. 2023.
 #'
-#' @param model_runs list of completed MSE simualtion objects
+#' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
+#' @param spinup_years year at which to begin calculating quantities
 #'
 #' @export get_management_quantities
 #'
@@ -210,7 +215,7 @@ get_management_quantities <- function(model_runs, extra_columns, spinup_years=64
 get_numbers_at_age <- function(model_runs, extra_columns){
     group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
     return(
-        bind_mse_outputs(model_runs2, c("naa"), extra_columns2) %>%
+        bind_mse_outputs(model_runs, c("naa"), extra_columns) %>%
             as_tibble() %>%
             mutate(
                 class = factor(
@@ -225,6 +230,24 @@ get_numbers_at_age <- function(model_runs, extra_columns){
     )
 }
 
+#' Get Catch or Numbers-at-Age by Age Groups
+#' 
+#' Process MSE simulation results for -at-age by
+#' specified age groups. 
+#'
+#' @param model_runs list of completed MSE simulation objects
+#' @param extra_columns additional columns to append to output
+#' @param q either "caa" (for catch-at-age) or "naa" (for numbers-at-age)
+#' @param age_groups ages that define age groups (3 groups required)
+#' @param group_names names for each age group
+#' @param group_abbs abbreviated names for each age group
+#' @param summarise whether to summarise across simualtions or not
+#' @param make_segments whether to generate data.frame of segment for use in plotting 
+#'
+#' @export get_atage_groups
+#'
+#' @example
+#'
 get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_names, group_abbs, summarise=FALSE, make_segments=FALSE){
     data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
             as_tibble() %>%
@@ -284,18 +307,12 @@ get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_nam
 #' @param model_runs list of completed MSE simulations
 #' @param extra_columns additional columns that should be
 #' appended to the resultant data frame
-#' @param dem_params list of demographic parameter matrices
-#' @param year the simualtion year to calculate reference 
-#' points at
+#' @param om_list list of OM objects
+#' @param om_names vector of OM names
 #'
 #' @export get_reference_points
 #'
 #' @example
-#' \dontrun{
-#'      model_runs <- list(mse1)
-#'      extra_columns <- list(hcr="hcr1")
-#'      get_reference_points(model_runs, extra_columns, om$dem_params, nyears)
-#' }
 #'
 get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
 

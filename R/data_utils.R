@@ -31,7 +31,7 @@ reformat_ggdist_long <- function(data, n=1){
 #'
 #' @param model_runs a list of MSE model run objects (created via `run_mse(...)`)
 #' @param var the output variable from the model run objects
-#' @param extra_columns a list of extra column names and values to add to the tibble
+#' @param extra_columns a data.frame of extra column names and values to add to the tibble
 #'
 #' @export bind_mse_outputs
 #'

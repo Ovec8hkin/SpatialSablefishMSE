@@ -1,3 +1,21 @@
+#' Compute Average Catch across projection period
+#' 
+#' Compute average catch (median and CIs) per year across all years and simulation seeds, 
+#' for each combination of operating models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_catch
+#'
+#' @example
+#'
 average_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     avg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
             as_tibble() %>%
@@ -24,6 +42,24 @@ average_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.8
     )
 }
 
+#' Compute Toatl Catch over projection period
+#' 
+#' Compute total catch (median and CIs) over all years and simulation seeds, 
+#' for each combination of operating models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export total_catch
+#'
+#' @example
+#'
 total_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=TRUE, summarise_by=c("om", "hcr")){
     tot_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
             as_tibble() %>%
@@ -50,6 +86,25 @@ total_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80)
     )
 }
 
+#' Compute proportion of years catch exceeds a threshold level across projection period
+#' 
+#' Compute average proportion of years where catch exceeds a threshold level
+#' (median and CIs) per year across all years and simulation seeds, 
+#' for each combination of operating models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export prop_years_catch
+#'
+#' @example
+#'
 prop_years_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), catch_threshold, extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     catch_years <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
             as_tibble() %>%
@@ -83,6 +138,26 @@ prop_years_catch <- function(model_runs, extra_columns, interval_widths=c(0.50, 
     )
 }
 
+#' Compute Average SSB across projection period
+#' 
+#' Compute average SSB (median and CIs) per year across all years and 
+#' simulation seeds, for each combination of operating models and management 
+#' procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param dem_params demographic parameters matrices from OM
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_ssb
+#'
+#' @example
+#'
 average_ssb <- function(model_runs, extra_columns, dem_params, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     
     agv_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
@@ -109,6 +184,25 @@ average_ssb <- function(model_runs, extra_columns, dem_params, interval_widths=c
     )
 }
 
+#' Compute Average Annual Catch Variation (AAV) across projection period
+#' 
+#' Compute average annual catch variation (median and CIs) per year 
+#' across all years and simulation seeds, for each combination of 
+#' operating models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_annual_catch_variation
+#'
+#' @example
+#'
 average_annual_catch_variation <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     
     avg_catch_var <- get_landed_catch(model_runs, extra_columns) %>% 
@@ -137,6 +231,26 @@ average_annual_catch_variation <- function(model_runs, extra_columns, interval_w
     )
 }
 
+#' Compute average proportion of catch that is "Large" across projection period
+#' 
+#' Compute average proportion of catch that is "large" (median and CIs) 
+#' per year across all years and simulation seeds, for each combination 
+#' of operating models and management procedures. "Large" fish are those 
+#' >9yo.
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_proportion_catch_large
+#'
+#' @example
+#'
 average_proportion_catch_large <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     
     prop_lg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
@@ -182,6 +296,26 @@ average_proportion_catch_large <- function(model_runs, extra_columns, interval_w
     )
 }
 
+#' Compute average proportion of population that is "Old" across projection period
+#' 
+#' Compute aaverage proportion of population that is "Old" (median and CIs) 
+#' per year across all years and simulation seeds, for each combination 
+#' of operating models and management procedures. "Old" fish are those 
+#' >21yo.
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_proportion_biomass_old
+#'
+#' @example
+#'
 average_proportion_biomass_old <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     
     prop_old_biomass <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
@@ -234,6 +368,29 @@ average_proportion_biomass_old <- function(model_runs, extra_columns, interval_w
     )
 }
 
+#' Compute Average Annual Value of Catch across projection period
+#' 
+#' Compute average annual value of landed catch (median and CIs) 
+#' per year across all years and simulation seeds, for each combination 
+#' of operating models and management procedures. Fish >9yo are considered
+#' "high value" and are assigned a relative value of 1, fish 5-9yo are
+#' considered "medium value" and are asisgned a relative value of 0.556, 
+#' and fish <5yo are considered "low value" and are assigned a relative
+#' valye of 0.337.
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_annual_value
+#'
+#' @example
+#'
 average_annual_value <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     avg_rel_value <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
@@ -278,6 +435,31 @@ average_annual_value <- function(model_runs, extra_columns, interval_widths=c(0.
         )
 }
 
+#' Compute Average Annual Dynamic Value of Catch across projection period
+#' 
+#' Compute average annual dynamic value of landed catch from the
+#' fixed-gear fleet (median and CIs) per year across all years and 
+#' simulation seeds, for each combination of operating models and management 
+#' procedures. Value is computed based on an assumed linear relationship
+#' between catch and price (assuming that increased catch floods existing
+#' markets and decreases prices due to market abundance), where prices are 
+#' constant at a "maximum" level when catch <15k mt, and are constant at a 
+#' "minimum" level when catch >30k mt. Pricing data from June 2024 NPFMC
+#' Small Sablefish Release Analyses.
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_annual_dynamic_value
+#'
+#' @example
+#'
 average_annual_dynamic_value <- function(model_runs, extra_columns, interval_widths=c(0.50, 0.80), extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     
     compute_dynamic_value <- function(landings, min_price_age, max_price_age, breakpoints=c(15, 30)){
@@ -349,6 +531,36 @@ average_annual_dynamic_value <- function(model_runs, extra_columns, interval_wid
 
 }
 
+#' Compute all Performance Metrics
+#' 
+#' Wrapper functions to compute all performance metrics (identified below).
+#' - average annual catch
+#' - total catch
+#' - proportion of years catch exceeds a threshold
+#' - average ssb
+#' - average annual catch variation
+#' - average proportion of catch that is "large"
+#' - average proportion of population that is "old"
+#' - annual relative value
+#' - annual dynamic value
+#' 
+#' The summarised output only includes total catch, average ssb, average 
+#' annual catch variation, proportion large catch, proportion old population,
+#' and annual dynamic value.
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export performance_metric_summary
+#'
+#' @example
+#'
 performance_metric_summary <- function(model_runs, extra_columns, dem_params, interval_widths, extra_filter=NULL, relative=NULL, summarise_by=c("om", "hcr")){
     # Average Catch Across Projection Period
     avg_catch <- average_catch(model_runs, extra_columns, interval_widths, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))

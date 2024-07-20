@@ -12,8 +12,11 @@
 #' @param recruitment projected recruitment in next year
 #' @param join_sel joint fishery selectivity
 #' @param dem_params demographic parameter matrices subsetted to 1 year
-#' @param abc_tac_reduction proportional reduction from ABC to TAC
-#' @param tac_land_reduction proportional reduction from TAC to landings
+#' @param hist_tac TAC from the previous year
+#' @param hcr_options list of additional management options such as stability
+#' constraints and harvest caps
+#' @param options list of additional ABC/TAC simulation options such as ABC-TAC
+#' reduction levels and attainment functions.
 #'
 #' @export simulate_TAC
 #'
