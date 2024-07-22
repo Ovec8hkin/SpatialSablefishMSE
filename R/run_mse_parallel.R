@@ -1,4 +1,4 @@
-run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, spinup_years=64, diagnostics=FALSE, ...){
+run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnostics=FALSE, ...){
 
     outputs <- setup_output_arrays(nyears, nsims, seeds, spinup_years)
 
@@ -6,7 +6,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, spinup_
     cl <- parallel::makeCluster(cores, outfile="")
     registerDoParallel(cl)
 
-    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, spinup_years, seeds, ...){
+    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, seeds, options){
         suppressMessages({
             library(tidyverse)
             library(TMB)
@@ -18,10 +18,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, spinup_
         })
         
         seed <- seeds[s]
-        mse <- run_mse(om, mp=hcr, nyears_input=nyears, spinup_years=spinup_years, seed=seed, file_suffix = seed, ...)
+        mse <- run_mse(om=om, mp=hcr, mse_options=options, nyears_input=nyears, seed=seed, file_suffix = seed)
         return(mse)
 
-    }, om=om, hcr=hcr, nyears=nyears, spinup_years=spinup_years, seeds=seeds, ..., cl=cl)
+    }, om=om, hcr=hcr, nyears=nyears, seeds=seeds, options=mse_options, cl=cl)
 
     stopCluster(cl)
 

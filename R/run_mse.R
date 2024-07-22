@@ -20,8 +20,10 @@
 #'
 #' @example
 #'
-run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_years=64, seed=1120, file_suffix=""){
+run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix=""){
    
+    spinup_years <- mse_options$n_spinup_years
+
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
     # Load OM parameters into global environment
@@ -92,6 +94,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
 
     set.seed(seed)
     hist_recruitment <- assessment$natage.female[,1]*2
+    hist_recruitment <- hist_recruitment[1:mse_options$recruitment_start]
     projected_recruitment <- do.call(recruitment$func, c(recruitment$pars, list(seed=seed)))
     if(!is.function(projected_recruitment)){
         full_recruitment <- c(hist_recruitment, projected_recruitment)
@@ -153,7 +156,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
             sel <- dp_y$sel
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
 
-            if(run_estimation){
+            if(mse_options$run_estimation){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
                 assess_inputs <- simulate_em_data_sex_disaggregate(
@@ -166,7 +169,7 @@ run_mse <- function(om, mp, ..., run_estimation=TRUE, nyears_input=NA, spinup_ye
                     ll_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     tw_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     model_options = om$model_options,
-                    added_years = y-spinup_years,
+                    added_years = y-spinup_years+1,
                     file_suffix = y
                 )
 
