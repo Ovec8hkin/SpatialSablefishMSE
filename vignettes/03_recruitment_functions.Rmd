@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-As part of the `model_options` list that is a required input to the MSE function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from the historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necesarry.
+As part of the operating model (OM) list object (`om`) that is a required input to the MSE function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necesarry.
 
 A simple example of specifying a recruitment function for the MSE is as follows:
 ```{r, recruitment, echo=TRUE, eval=FALSE}
@@ -26,14 +26,15 @@ om$recruitment$pars <- list(
 The `om$recruitment$func` list element is a reference to the recruitment function that should be used to project recruitment in the future, while `om$recruitment$pars` is a named list of parameter values spcific to the provided recruitment function. Note that the final required parameter in `resample_recruits`, "seed", is not povided in the `recruitment$pars` list. Instead, this parameter is dynmically passed to the recruitment function within the MSE loop, thus ensuring that recruitment timeseries remain reproducible across multiple simpulations.
 
 #### Working with Existing Recruitment functions
-Four recruitment functions come pre-packaged with the repository:
+Five recruitment functions come pre-packaged with the repository:
 
 1. `resample_recruits` - randomly resample from a known recruitment timeseries
-2. `resample_regime_recruits` - randomly resample recruits form a known recruitment timeseries with pre-defined regimes
+2. `resample_regime_recruits` - randomly resample recruits from a known recruitment timeseries with pre-defined regimes
 3. `regime_recruits` - randonly draw recruitment from regime-specific distributions
 4. `beverton_holt` - a Beverton-Holt stock recruit relationships, parameterized with steepness
+5. `recruits_crash` - randomly resample from a known recruitment timeseries, except during a specified time period, during which recruitment is set to a pre-specified value.
 
-The first three functions all function in the same way as in the example above, where users simple provide the function name, and a named parameter list (without the final `seed` parameter).
+All functions except for `beverton_holt` operate in the same way as in the example above, where users simple provide the function name, and a named parameter list (without the final `seed` parameter).
 
 The `beverton_holt` function works differently however, due to it specifying a state-dependent recruitment function. This function is an R function factory (a funtion that returns another function), that accepts the standard Beverton-Holt parameters -- h, R0, and S0 -- and returns back a new function to which SSB is provided an input (see the example below).
 
@@ -75,7 +76,7 @@ Users can, optionally, define their own recruitment functions beyond what comes 
 
 There are two types of recruitment functions that can be developed: those which are state-dependent (such as the Beverton-Holt), and those that are not state-dependent (such as the recruitment regime functions). State-independent recruitment functions have the useful property that the entire recruitment timeseries can be defined before the MSE simulation starts (which is helpful for guaranteeing reproducability between model runs), while state-depenedent functions are only realized at the start of each simulation year. Where possible, we recommend defining state-independent recruitment functions.
 
-The R function that defines a custom recruitment function, regardless of type, can take any form it needs too with the important caveat that the final function pararmeter must be called "seed" and represent a random seed (this holds even if the custom recruitment functions is completely deterministic). Below is an example of a recruitment function that random pulls recruitment from a lognormal distribution:
+The R function that defines a custom recruitment function, regardless of type, can take any form it needs too with the important caveat that the final function pararmeter must be called "seed" and represent a random seed (this holds even if the custom recruitment functions is completely deterministic). Below is an example of a recruitment function that randomly draws recruitment from a lognormal distribution:
 
 ```{r, custom_rec_func, eval=FALSE}
 random_lognormal <- function(log_mean_rec, sigR, nyears, seed){

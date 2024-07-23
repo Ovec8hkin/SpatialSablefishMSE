@@ -55,7 +55,7 @@ ggplot(data)+
 
 ```
 
-The function `npfmc_tier3_F` defines the NPFMC Tier 3a HCR that is currently used for sablefish management in Alaska. The HCR is a threshold rule that converts annual SSB into an allowable fishing mortality rate (see ____) based on a maximum reference level of F and a biomass reference level. The wrapper function `tier3()` encapsulates converting from numbers-at-age (`naa`, the unit of output from the OM) into SSB for the `npfmc_tier3_F` function. 
+The function `npfmc_tier3_F` defines the NPFMC Tier 3a HCR that is currently used for sablefish management in Alaska. The HCR is a threshold rule that converts annual SSB into an allowable fishing mortality rate (see ____) based on a maximum reference level for F and a biomass reference level. The wrapper function `tier3()` encapsulates converting from numbers-at-age (`naa`, the unit of output from the OM) into SSB for the `npfmc_tier3_F` function. 
 
 In order for an HCR function to be compatible with the MSE framework, it must take, at minimum, three parameters: `ref_pts`, `naa`, and `dem_params`. The `ref_pts` input parameter expects an object generated via the `calculate_ref_points()` function that the MSE runs internally. The `naa` input parameter is a four dimensional array (dims [1, nages, nsexes, 1]) of numbers-at-age as output by either the OM or the EM. Finally, the `dem_params` input parameter is the demographic parameter matrix that is supplied as part of the OM definition.
 
@@ -100,7 +100,20 @@ Required elements of MP objects include:
 * `management$abc_tac_reduction`: the proportion of the ABC to set the TAC too. HCR functions are used to compute the ABC (Acceptable Biological Catch), which is a maximum permissable TAC, but TACs are often set lower than ABC. This parameter captures that reduction level. _Default value is 1_.
 * `management$tac_land_reduction`: the proportion of the TAC to set the following years realized landings too. For use when the entire TAC is not utilized by the fishery. _Default value is 1_.
 
-A default `mp` object can be generated from the `setup_mse_options()` function. Default MP objects do not have an HCR element defined. HCR objects must be defined by the user and inserted into the `mp` object.
+The `abc_tac_reduction` and `tac_land_reduction` can, optionally, also be calculated internally based on a provided function and list of parameters. The below example will calculate the annual `tac_land_reduction` using the "stairstep_attainment" function and the associated parameter values. 
+
+```{r, tac_land_reduction, eval=FALSE}
+mp$management$tac_land_reduction <- list(
+    func = stairstep_attainment,
+    pars = list(
+        breakpoints = c(20, 30),
+        levels = c(0.9, 0.8, 0.6),
+        phase_ins = 0
+    )
+)
+```
+
+A default `mp` object can be generated from the `setup_mp_options()` function. Default MP objects do not have an HCR element defined. HCR objects must be defined by the user and inserted into the `mp` object.
 
 This list object is then supplied as an input to the `run_mse(...)` function or its associated wrapper functions, like: `run_mse(..., hcr=mp_obj, ...)`.
 
@@ -125,7 +138,7 @@ hcr <- list(
     units = "F"
 )
 
-mp <- setup_mse_options()
+mp <- setup_mp_options()
 mp$hcr <- hcr
 
 mse <- run_mse(om=om, hcr=hcr, nyears_input=100)
@@ -181,7 +194,7 @@ hcr <- list(
     units = "F"
 )
 
-mp <- setup_mse_options()
+mp <- setup_mp_options()
 mp$hcr <- hcr
 
 mse <- run_mse(om=om, hcr=mp, nyears_input=100)
@@ -193,7 +206,7 @@ This pattern extends to any HCR function, even ones that require dozens of addit
 #### Additional HCR Complexity
 HCRs can also have additional "meta-rules" that further define their behavior. A common example are stability constraints, which limit how much annual catch levels are allowed to change between years. These constraints are defined by the `extra_options` list object within the larged HCR object definition.
 
-To supply additional management rules, such as stability constraints or harvest caps, a named list `extra_options` must be added to the larger `hcr` list. The `extra_options` list object, can, presently, define three parameters:
+To supply additional management rules, such as stability constraints or harvest caps, a named list `extra_options` must be added to the larger `hcr` list object. The `extra_options` list object, can, presently, define two parameters:
 
 ```{r, mngmt_rules_list, eval=FALSE}
 
@@ -204,4 +217,4 @@ hcr$extra_options = list(
 
 ```
 
-_NOTE: The interface for defining complex HCR functions and for defining additional management meta-rules is subject to change (06/21/2024)._
+_NOTE: The interface for defining complex HCR functions and for defining additional management meta-rules is subject to change (07/22/2024)._

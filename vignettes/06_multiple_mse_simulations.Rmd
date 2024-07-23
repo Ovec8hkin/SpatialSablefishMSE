@@ -51,7 +51,9 @@ run_mse_parallel(nsims, seeds, om, hcr, nyears=nyears)
 #### Running MSEs Across Multiple OMs and HCRs
 MSE analyses frequently make use of multiple operating models (OMs) and multiple HCRs in order to evaluate the effectiveness of management policies across multiple possible states of nature. The package provides a wrapper function, `run_mse_multiple` that handles running simulations across multiple OMs and multiple HCRs. 
 
-To use `run_mse_multiple` users need only provide a list of OM objects, a list of MP/HCR objects, and a list (or vector) of random seeds. The function creates a __factorial grid of combinations of OMs and MPs__ and serially runs `run_mse_parallel` for each combination. Additional parameters required by `run_mse` (such as `nyears`) also need to be provided.
+To use `run_mse_multiple` users need only provide a list of OM objects, a list of MP/HCR objects,a list of MSE options objects, and a list (or vector) of random seeds. The function creates a __factorial grid of combinations of OMs and MPs__ and serially runs `run_mse_parallel` for each combination. Additional parameters required by `run_mse` (such as `nyears`) also need to be provided. 
+
+Note that if multiple MSE options objects are provided, they will be included in the factorial grid.
 
 ```{r, eval=FALSE}
 om1 <- ...
@@ -62,7 +64,9 @@ mp2 <- ...
 mps <- list(mp1, mp2)
 seeds <- ...
 
-run_mse_multiple(oms, mps, seeds, ...)
+opts <- setup_mse_options()
+
+run_mse_multiple(oms, mps, seeds, opts, ...)
 
 ```
 
