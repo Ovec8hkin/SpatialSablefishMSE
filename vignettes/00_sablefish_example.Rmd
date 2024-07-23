@@ -1,0 +1,340 @@
+---
+title: "Sablefish MSE Example"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Estimation Method}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+A fully worked example of this MSE framework for Alaska Sablefish follows. This example includes the following features:
+
+- multiple operating models
+- multiple harvest control rules
+- state-dependent and state-independent recruitment functions
+- HCRs with stability costraints and harvest caps
+- HCRs with different reference point levels
+- Parallel MSE simulations
+- MSE output processing and plotting.
+
+### Defining Operating Models
+
+A base operating model (OM) object is already available to the package to start from. As all of the OMs developed for this example vary only in terms of how recruitment is projected in the future, we will load that base OM object in, and simply modify the recruitment parameter.
+
+```{r, load_base_om, eval=FALSE}
+nyears <- 100
+
+sable_om <- readRDS("data/sablefish_om_big.RDS")
+
+# Also load the historical recruitment timeseries
+assessment <- dget("data/sablefish_assessment_2023.rdat")
+hist_recruits <- assessment$natage.female[,1]*2
+```
+
+OM1 will project future recruitment by resampling from the historical recruitment timeseries, using the `resample_recruits` function:
+```{r, om1, eval=FALSE}
+om1 <- sable_om
+om1$recruitment$func <- resample_recruits
+om1$recruitment$pars <- list(
+    hist_recruits = hist_recruits,
+    nyears = nyears
+)
+```
+
+OM2 will project future recruitment by resampling historical recruitment from different regimes using `resample_regime_recruits`. In this case, a "low regime" has been defined as consisting of recruitment events with fewer than 35 million recruits, while a "high regime" has been defined as consisting of recruitment events with more than 35 million recruits. The regimes alternate, beginning with the low regime for 20 years, following by the high regime for 5 years. 
+```{r, om2, eval=FALSE}
+om2 <- sable_om
+om2$recruitment$func <- resample_regime_recruits
+om2$recruitment$pars <- list(
+    regime1_recruits = hist_recruits[hist_recruits <= 35],
+    regime2_recruits = hist_recruits[hist_recruits > 35],
+    nyears = 10*nyears,
+    regime_length = c(20, 5),
+    starting_regime = 0
+)
+```
+
+OM3 projects future recruitment via a Beverton-Holt stock recruit relationship with $h=0.7$ and $\sigma_R = 1.04$. As a state-dependent recruitment function, the underlying `beverton_holt` R function is a "function factory", whose returned function is used internally by the MSE to compute recruitment based on current spawning biomass. 
+
+```{r. om3, eval=FALSE}
+om3 <- sable_om
+om3$recruitment$func <- beverton_holt
+om3$recruitment$pars <- list(
+    h = 0.7,
+    R0 = 25,
+    S0 = 300,
+    sigR = 1.04
+)
+```
+
+OM4 assumes that future recruitment stays "low" by parameterizing a lognormal distribution with the mean and CV of historical recruitment events <35 million strong. This is accomplished using the `regime_recruits` function with a regime length longer than the projection period.
+```{r, om4, eval=FALSE}
+om4 <- sable_om
+om4$recruitment$func <- regime_recruits
+om4$recruitment$pars <- list(
+    mus = c(mean(hist_recruits[hist_recruits <= 35])),
+    cvs = c(sd(hist_recruits[hist_recruits <= 35])/mean(hist_recruits[hist_recruits <= 35])),
+    nyears = 10*nyears,
+    regime_length = c(nyears*10),
+    starting_regime = 0
+)
+```
+
+OM6 assumes that recruitment crashes for the first 10 years of the projection period (a "crash" being defined as 0 annual recruits), while the recruitment for the remainder of the projection period is historcially resamples as in OM1.
+```{r, om5, eval=FALSE}
+om6 <- sable_om
+om6$recruitment$func <- recruits_crash
+om6$recruitment$pars <- list(
+    crash_start_year = 1,
+    crash_length = 10,
+    crash_value = 0,
+    hist_recruits = hist_recruits,
+    nyears = 10*nyears
+)
+```
+
+The five OM objects are placed in a master list that will later be passed to the MSE function.
+
+```{r, om_list, eval=FALSE}
+om_list <- listN(om1, om2, om3, om4, om6)
+```
+
+### Defining Management Procedures
+Management procedures (MPs) are specified as a complex list of values that define the specified of the harvest control rule to be applied, the reference point targets to use, ABC-TAC and TAC-landings reductions, survey frequency, and assessment frequency. A default MP objects is available through the `setup_mp_options` function. The eleven MPs specified here differ only in terms of their HCR function and their reference point target, so the default MP object can, largely be reused.
+```{r, setup_mp_options, eval=FALSE}
+mp_base <- setup_mp_options()
+```
+
+The default value for the TAC-landings reduction factor (otherwise known as attainment) is 1 (meaning that the TAC is taken exactly). Here, we specify a custom attainment function to use that sets the annual attainment level as a function of the TAC. The attainment function used here establishes three attainment levels: 87.4% when TAC < 20k mt, 78.6% when 20k < TAC < 30k mt, and 64.7% when TAC > 30k mt. This attainment function will be used for all MPs, so it is applied to the base MP object (`mp_base`).
+
+```{r, atainment_function, eval=FALSE}
+mp_base$management$tac_land_reduction <- list(
+    func = stairstep_attainment,
+    pars = list(
+        breakpoints = c(20, 30),
+        levels = c(0.874, 0.786, 0.647),
+        phase_ins = 0
+    )
+)
+```
+
+MP1 is the NPFMC Tier 3a HCR that is currently used to manage sablefish in Alaska. It is a threshold HCR that uses a target reference point of SPR_40%. The HCR function (`tier3`) outputs in unit of fihsing mortality (F), as specified by "units". No harvest cap or stability constraints are applied. 
+```{r, mp1, eval=FALSE}
+mp1 <- mp_base
+mp1$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+```
+
+MP2, MP3, and MP4 are a simple variation on MP1, where stability constraints of 10%, 15%, and 25% are applied to the TAC. Otherwise, these MPs are defined exactly as MP1.
+```{r, mp234, eval=FALSE}
+mp2 <- mp_base
+mp2$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = 0.10,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp3 <- mp_base
+mp3$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = 0.15,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp4 <- mp_base
+mp4$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = 0.25,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+```
+
+MP5 is also like MP1 but uses a different target reference point of SPR_50%. The reference point target level is defined as part of the larger MP object, rather than within the HCR list.
+```{r, mp5, eval=FALSE}
+mp5 <- mp_base
+mp5$ref_points$spr_target <- 0.50
+mp5$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+```
+
+MP6 and MP7 are another variation on MP1, where the input to the HCR (total spawning biomass for MP1) is changed to spawning biomass of individuals >7yo and >14yo respectvively.
+```{r, mp67, eval=FALSE}
+mp6 <- mp_base
+mp6$hcr <- list(
+    func = tier3,
+    extra_pars = list(cutoff_age = 7),
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp7 <- mp_base
+mp7$hcr <- list(
+    func = tier3,
+    extra_pars = list(cutoff_age = 14),
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+```
+
+MP8 is an implementation of the Pacific Fisheries Management Council's "40-10" HCR that is used to maanged sablefish along the west coast of the continental United States. This HCR traditionally operates at the TAC level, but is implemented here so as to output an ABC, as the other HCR functions do. MP8 uses a target reference level of SPR_45%, and, unlike the other HCR functions, outputs in units of catch (TAC) rather than F.
+```{r, mp8, eval=FALSE}
+mp8 <- mp_base
+mp8$ref_points$spr_target <- 0.45
+mp8$hcr <- list(
+    func = pfmc4010,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "TAC"
+)
+```
+
+MP9, MP10, and MP11 are another simple variation on MP1, whereby a maximum permissable TAC is implemented. If the recommended TAC (via evaluation of the harvest control rule and after application of the ABC-TAC reduction) exceeds the specified harvest cap, the TAC will be reduced to the harvest cap exactly. Attainment will be applied after the harvest cap has been applied. Harvest caps are 15k, 20k, and 25k mt respectively.
+```{r, mp91011, eval=FALSE}
+mp9 <- mp_base
+mp9$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = 15
+    ),
+    units = "F"
+)
+
+mp10 <- mp_base
+mp10$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = 20
+    ),
+    units = "F"
+)
+
+mp11 <- mp_base
+mp11$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = 25
+    ),
+    units = "F"
+)
+```
+
+The eleven MP objects are placed in a master list that will later be passed to the MSE function.
+
+```{r, mp_list, eval=FALSE}
+mp_list <- listN(mp1, mp2, mp, mp4, mp5, mp6, mp7, mp8, mp9, mp10, mp11)
+```
+
+### Defining the `mse_options` Object
+An `mse_options` list object is also defined to provode additional options to the MSE function. Critically, this list object defines: the number of years to project for, the length of the OM conditioning period, the simulation year in which to begin projecting recruitment using the provided recruitment function, and whether the estimation method should be run or not. 
+
+The default values are all appropriate for this case study, and can be accessed using `setup_mse_options`.
+
+```{r, mse_options, eval=FALSE}
+mse_options <- setup_mse_options()
+```
+
+### Running the MSE
+Now that all of the OMs and MPs have been appropriately defined, the full set of MSE simulation can be run. Here we will run each combination of OM and MP for 9 random simulations in parallel. The parallel computing overhead is handled internally by the MSE function and uses 2 fewer than the available number of compute cores on the machine. 
+
+```{r, run_mse, eval=FALSE}
+nsims <- 9
+seed_list <- sample(1:(1000*nsims), nsims)
+model_runs <- run_mse_multiple(
+    om_list, 
+    hcr_list, 
+    seed_list,
+    nyears=nyears,
+    mse_options_list=mse_options_list
+)
+```
+Depending on the number of OMs, MPs, seeds, and other options, this function may take several hours to complete. A relatively fast machine, with >10 compute cores should take ~2 hours to complete all of the simulations as specified above.
+
+### Processing MSE Results
+The above MSE will generate results from 55 unique models (11 MPs across 5 HCRs), each model consisting of results for 9 simulations, with each simulation having lasted 100 years. The amount of output data often makes processing MSE results tricky. Multiple helper functions are provided by the package to make processing results easier.
+
+Before prcoessing output, create a data.frame that specifies which models in the `model_runs` used which combination of OM and MP object. Often this can be simply accomplished using `expand.grid`, as this is what is used internally by `run_mse_multiple()`. For readability and plotting purposes, it is often useful to assign each OM and HCR a human readable name in the same order as the objects appear in their respective lists (`om_list` for OMs and `hcr_list` for MPs).
+```{r, extra_columns, eval=FALSE}
+om_names <- c("Random Recruitment", "Cyclic Recruitment", "Beverton-Holt Recruitment", "Low Recruitment", "Recruitment Crash")
+hcr_names <- c("F40", "F40 +/-10%", "F40 +/-15%", "F40 +/-25%", "F50", "F40 >7yo", "F40 >14yo", "PFMC 40-10", "F40 15k Cap", "F40 20k Cap", "F40 25k Cap")
+
+extra_columns <- expand.grid(
+    om = om_names,
+    hcr = hcr_names
+)
+```
+
+Five helper functions are predefined to facilitate working with common outputs from the MSE: spawning biomass, fishing mortality, recruitment, ABC and TAC, and landed catch. Each function is defined very similarly, taking the list of MSE output objects (`model_runs`) and the data.frame of OMs and HCRs that apply to each model (`extra_columns`). These are used internally by each function to assign the correct OM and HCR name to each model, and pull the correct data from the MSE outputs.
+
+```{r, data_processing, eval=FALSE}
+ssb_data <- get_ssb_biomass(model_runs, extra_columns2, sable_om$dem_params)
+f_data <- get_fishing_mortalities(model_runs, extra_columns2)
+r_data <- get_recruits(model_runs, extra_columns2)
+abctac <- get_management_quantities(model_runs, extra_columns2)
+catch_data <- get_landed_catch(model_runs, extra_columns2)
+```
+
+These helper functions return tibbles in long format that can be easily provided to `ggplot` for plotting or used within other tidyverse style data processing pipelines. A plotting function is also defined alongside each data processing function above, and will return a ggplot object that can be further modified outside of the function. For each plotting function, the parameter `v1` corresponds to the column name assigned to the "color" aesthetic, and the parameter `v2` corresponds to the column names to facet by. Facetting by mulitple variables (e.g. a facet grid) is not currently supported by default.
+
+```{r, plotting, eval=FALSE}
+plot_ssb(ssb_data, v1="hcr", v2="om")
+plot_fishing_mortalities(f_data, v1="hcr", v2="om")
+plot_recruitment(r_data, v1="hcr", v2="om")
+plot_abc_tac(abctac, v1="hcr", v2="om")
+plot_landed_catch(catch_data, v1="hcr", v2="om")
+```
+
+### Computing Performance Metrics
+Helper functions are also provided to compute performance metrics. Individual functions for each performance metric are available (though outputs may require additional processing), or the `performance_metric_summary` function can be used to quickly compute all of them. Like with the otehr data processing functions, a default plotting functions for performance metrics is also available.
+
+```{r, performance_metrics, eval=FALSE}
+performance_metrics <- performance_metric_summary(
+    model_runs, 
+    extra_columns2, 
+    sable_om$dem_params, 
+)
+
+perf_data <- performance_metrics$perf_data
+plot_performance_metric_summary(perf_data)
+
+```
