@@ -64,19 +64,27 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
 }
 
 
-# bind_mse_outputs_old <- function(model_runs, var, extra_columns){
+relativize_performance <- function(data, rel_column, value_column, rel_value, grouping){
+    if(is.null(rel_value)){
+        return(data)
+    }
+    
+    return(
+        data %>%
+            group_by(across(all_of(grouping))) %>%
+            pivot_wider(names_from=rel_column, values_from = value_column) %>%
+            mutate(across(everything(), ~ . / eval(rlang::parse_expr(rel_value)))) %>%
+            pivot_longer((length(grouping)+1):(ncol(.)), names_to=rel_column, values_to=value_column)
+    )
+}
 
-#     bind_rows(
-#         lapply(
-#             seq_along(model_runs), 
-#             function(x){
-#                 y <- melt(model_runs[[x]][var])
-#                 for(i in 1:length(extra_columns)){
-#                     y <- y %>% mutate(!!names(extra_columns)[[i]] := extra_columns[[i]][x])
-#                 }
-#                 return(y)
-#             }
-#         )
-#     )
+filter_times <- function(data, time_horizon){
+    times <- seq(
+        from = ifelse(!is.na(time_horizon[1]), time_horizon[1], 1),
+        to   = ifelse(!is.na(time_horizon[2]), time_horizon[2], max(data$time)),
+        by=1
+    )
 
-# }
+    return(data %>% filter(time %in% times))
+}
+
