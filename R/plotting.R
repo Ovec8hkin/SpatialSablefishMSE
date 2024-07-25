@@ -1,4 +1,4 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
+plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
@@ -10,12 +10,16 @@ plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64
         reformat_ggdist_long(n=length(group_columns))
 
     hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
-    om1 <- as.character((d %>% pull(om) %>% unique)[1])
 
-    plot <- ggplot(d %>% filter(L1 == "naa", time > common_trajectory-1)) + 
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+    plot <- ggplot(d %>% filter(L1 == "naa")) + 
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(data = d %>% filter(L1=="naa", hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
-        geom_vline(xintercept=common_trajectory, linetype="dashed")+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 320))+
@@ -27,8 +31,10 @@ plot_ssb <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64
         plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
     }
 
-    if(!is.na(v2)){
+    if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
 
     return(plot)
@@ -46,12 +52,16 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, comm
         filter(name == "total_F")
 
     hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
-    om1 <- as.character((d %>% pull(om) %>% unique)[1])
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- f %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
-    plot <- ggplot(f %>% filter(L1 == "faa", time > common_trajectory-1)) + 
+    common <- f %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+
+    plot <- ggplot(f %>% filter(time > common_trajectory-1)) + 
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
-        geom_line(data = f %>% filter(L1=="faa", hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
-        geom_vline(xintercept=64, linetype="dashed")+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 0.20))+
         coord_cartesian(expand=0)+
@@ -62,8 +72,10 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, comm
         plot <- plot + geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
     }
 
-    if(!is.na(v2)){
+    if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
 
     return(plot)
@@ -97,7 +109,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA){
     return(plot)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE, common_trajectory=64){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
@@ -107,7 +119,8 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE, common_traj
         reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((c %>% pull(hcr) %>% unique)[1])
-    om1 <- as.character((c %>% pull(om) %>% unique)[1])
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- c %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
     if(by_fleet){
         c <- c %>% filter(name == "catch")
@@ -115,18 +128,22 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, by_fleet=FALSE, common_traj
         c <- c %>% filter(name == "total_catch")
     }
 
-    plot <- ggplot(c %>% filter(time > common_trajectory-1))+
+    common <- c %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+    plot <- ggplot(c %>% left_join(traj, by=traj_column) %>% filter(time > common-1))+
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
-        geom_line(data = c %>% filter(hcr==hcr1, time <= common_trajectory), aes(x=time, y=median), size=0.85)+
-        geom_vline(xintercept=64, linetype="dashed")+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 60))+
         coord_cartesian(expand=0)+
         guides(fill="none")+
         theme_bw()
 
-    if(!is.na(v2)){
+    if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
     
     # if(by_fleet){
@@ -234,7 +251,7 @@ plot_atage_density_ternary <- function(data, col_names){
 
 # }
 
-plot_abc_tac <- function(data, v1="hcr", v2=NA){
+plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
@@ -244,10 +261,16 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA){
         median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
-    plot <- ggplot(q %>% filter(time > 63))+
+    hcr1 <- as.character((q %>% pull(hcr) %>% unique)[1])
+    traj_column <- v2
+    traj <- q %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- q %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(eval(rlang::parse_expr(v2))) %>% filter(time <= common)
+
+    plot <- ggplot(q %>% filter(time > common_trajectory-1))+
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=.data[[v1]], group=interaction(.data[[v1]], L1)))+
-        geom_line(data=q %>% filter(hcr=="F40", time <= 64), aes(x=time, y=median), color="black", size=0.85)+
-        geom_vline(xintercept=64, linetype="dashed")+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         coord_cartesian(expand=0)+
         theme_bw()
@@ -260,10 +283,10 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA){
 
     plot <- plot + ggh4x::facetted_pos_scales(
             y = list(
-                scale_y_continuous(limits=c(0, 100)),
-                scale_y_continuous(limits=c(0, 100)),
-                scale_y_continuous(limits=c(0, 100)),
-                scale_y_continuous(limits=c(0.5, 1))
+                scale_y_continuous(limits=c(0, 60)),
+                scale_y_continuous(limits=c(0, 60)),
+                scale_y_continuous(limits=c(0, 50)),
+                scale_y_continuous(limits=c(0.5, 1.5))
             )
         )
 
@@ -390,11 +413,16 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
                 labels = c("ABC", "Catch", "Fishing Mortality", "Spawning Biomass")
             )
         )
+    
+    hcr1 <- as.character((ad %>% pull(hcr) %>% unique)[1])
+    traj <- ad %>% distinct(om) %>% mutate(common=common_trajectory)
+
+    common <- ad %>% left_join(traj, by="om") %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
 
     plot <- ggplot(ad %>% filter(time > common_trajectory-1), aes(x=time, y=median, color=hcr))+
         geom_line(size=0.85)+
-        geom_vline(xintercept = common_trajectory, linetype="dashed")+
-        geom_line(data=ad %>% filter(hcr=="F40", time <= common_trajectory), color="black", size=0.85)+
+        geom_line(data = common, aes(x=time, y=median), size=0.85, color="black")+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
         facetted_pos_scales(
             y = list(
@@ -412,14 +440,14 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
     return(plot)
 }
 
-plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE){
+plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_var="om"){
 
-    # om_summary <- perf_data %>% filter(.width == 0.50) %>% 
-    #     group_by(om, name) %>% 
-    #     summarise(value = mean(median))
+    summary <- perf_data %>% filter(.width == 0.50) %>% 
+        group_by(across(all_of(c(summary_var, "name")))) %>% 
+        summarise(value = mean(median))
 
     plot <- ggplot(perf_data)+
-                # geom_vline(data=om_summary, aes(xintercept = value), color="black")+
+                geom_vline(data=summary, aes(xintercept = value), color="black")+
                 scale_shape_discrete()+
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="HCR")+
@@ -475,7 +503,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
 }
 
 
-custom_theme <- theme(
+custom_theme <- theme_bw()+theme(
     panel.spacing.y = unit(0.5, "cm"),
     panel.grid.minor = element_blank(),
     axis.title = element_text(size=14),
