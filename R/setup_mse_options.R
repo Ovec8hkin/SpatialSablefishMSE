@@ -1,6 +1,6 @@
-#' Setup MSE Options List
+#' Setup Management Procedure Object
 #' 
-#' Set MSE options list items to reasonable default values.
+#' Set MP object list items to reasonable default values.
 #'
 #' @export setup_mse_options
 #'
@@ -17,7 +17,9 @@ setup_mp_options <- function(){
             management = list(
                 abc_tac_reduction = 1,
                 tac_land_reduciton = 1
-            )
+            ),
+            survey_frequency = c(1, 1),
+            assessment_frequency = 1
         )
     )
 

@@ -1,6 +1,6 @@
 run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnostics=FALSE, ...){
 
-    outputs <- setup_output_arrays(nyears, nsims, seeds, spinup_years)
+    outputs <- setup_output_arrays(nyears, nsims, seeds, mse_options$n_spinup_years)
 
     cores <- min(parallel::detectCores()-2, nsims)
     cl <- parallel::makeCluster(cores, outfile="")

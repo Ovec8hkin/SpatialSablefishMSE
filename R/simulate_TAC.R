@@ -55,5 +55,5 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ta
     }
     
 
-    return(afscOM::listN(abc, tac, land))
+    return(afscOM::listN(abc, tac, land, proj_N_new$naa))
 }

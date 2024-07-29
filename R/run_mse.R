@@ -24,6 +24,21 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
    
     spinup_years <- mse_options$n_spinup_years
 
+    # Setup what years to perform assessment in based on assessment_frequency
+    # input. If input as a vector, use the vector literally. If input as a single
+    # number, assumes an annual frequency.
+    do_assessment <- rep(1, nyears_input+1)
+    if(length(mp$assessment_frequency) > 1){
+        do_assessment <- mp$assessment_frequency
+    }else if(length(mp$assessment_frequency) == 1){
+        assessment_years <- rep(0, nyears_input+1)
+        assessment_years[1:spinup_years] <- 1
+        assessment_years[seq(spinup_years+1, nyears_input, mp$assessment_frequency)] <- 1
+        assessment_years[nyears_input+1] <- 1
+        do_assessment <- assessment_years
+    }
+    assessment_years <- which(do_assessment == 1)
+
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
     # Load OM parameters into global environment
@@ -149,7 +164,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
 
         
-        if((y+1) > spinup_years){
+        if((y+1) > spinup_years && do_assessment[y]){
 
             naa_proj <- out_vars$naa_tmp
             rec <- full_recruitment[1:y]
@@ -228,63 +243,68 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
             }
 
+            n_proj_years <- min(assessment_years[assessment_years > y]) - y - 1
+            for(y2 in y:(y+n_proj_years)){
+                # Solve for reference points, F from the HCR,
+                # and compute TAC for the next year. Note that
+                # selectivity for RP calculations is weighted
+                # by terminal year F.
+                joint_selret <- calculate_joint_selret(sel, dp_y$ret, prop_fs)
 
-            # Solve for reference points, F from the HCR,
-            # and compute TAC for the next year. Note that
-            # selectivity for RP calculations is weighted
-            # by terminal year F.
-            joint_selret <- calculate_joint_selret(sel, dp_y$ret, prop_fs)
-
-            # reference points are all female based
-            ref_pts <- calculate_ref_points(
-                nages=nages,
-                mort = dp_y$mort[,,1,],
-                mat = dp_y$mat[,,1,],
-                waa = dp_y$waa[,,1,],
-                sel =  joint_selret$sel[,,1,,drop=FALSE],
-                ret = joint_selret$ret[,,1,,drop=FALSE],
-                avg_rec = mean(rec)/2,
-                spr_target = mp$ref_points$spr_target
-            )
-
-            hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
-            if(!is.na(mp$hcr$extra_pars)){
-                hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
-            }
-
-            hcr_out <- do.call(mp$hcr$func, hcr_parameters)
-            if(mp$hcr$units != "F"){
-                hcr_out <- afscOM::find_F(
-                    f_guess=0.10,
-                    naa = naa_proj,
-                    waa = dp_y$waa,
-                    mort = dp_y$mort,
-                    selex = joint_selret$sel,
-                    ret = joint_selret$ret,
-                    dmr = afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE),
-                    prov_catch = hcr_out
+                # reference points are all female based
+                ref_pts <- calculate_ref_points(
+                    nages=nages,
+                    mort = dp_y$mort[,,1,],
+                    mat = dp_y$mat[,,1,],
+                    waa = dp_y$waa[,,1,],
+                    sel =  joint_selret$sel[,,1,,drop=FALSE],
+                    ret = joint_selret$ret[,,1,,drop=FALSE],
+                    avg_rec = mean(rec)/2,
+                    spr_target = mp$ref_points$spr_target
                 )
+
+                hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
+                if(!is.na(mp$hcr$extra_pars)){
+                    hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
+                }
+
+                hcr_out <- do.call(mp$hcr$func, hcr_parameters)
+                if(mp$hcr$units != "F"){
+                    hcr_out <- afscOM::find_F(
+                        f_guess=0.10,
+                        naa = naa_proj,
+                        waa = dp_y$waa,
+                        mort = dp_y$mort,
+                        selex = joint_selret$sel,
+                        ret = joint_selret$ret,
+                        dmr = afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE),
+                        prov_catch = hcr_out
+                    )
+                }
+
+                # hcr_F[y+1] <- hcr_out
+                #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
+                
+                mgmt_out <- simulate_TAC(
+                    hcr_F = hcr_out, 
+                    naa = naa_proj, 
+                    recruitment = mean(rec)/2, 
+                    joint_sel = joint_selret$sel, 
+                    dem_params = dp_y,
+                    hist_tac = tac[y2,1,1,1],
+                    hcr_options = mp$hcr$extra_options,
+                    options = mp$management
+                )
+
+                abc[y2+1,1,1,1] <- mgmt_out$abc
+                tac[y2+1,1,1,1] <- mgmt_out$tac
+                exp_land[y2+1,1,1,1] <- mgmt_out$land
+                landings[y2+1] <- mgmt_out$land
+                hcr_f[y2+1,,,] <- hcr_out
+
+                naa_proj <- mgmt_out$proj_N_new
             }
-
-            # hcr_F[y+1] <- hcr_out
-            #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
-
-            mgmt_out <- simulate_TAC(
-                hcr_F = hcr_out, 
-                naa = naa_proj, 
-                recruitment = mean(rec)/2, 
-                joint_sel = joint_selret$sel, 
-                dem_params = dp_y, 
-                hist_tac = tac[y,1,1,1],
-                hcr_options = mp$hcr$extra_options,
-                options = mp$management
-            )
-
-            abc[y+1,1,1,1] <- mgmt_out$abc
-            tac[y+1,1,1,1] <- mgmt_out$tac
-            exp_land[y+1,1,1,1] <- mgmt_out$land
-            landings[y+1] <- mgmt_out$land
-            hcr_f[y+1,,,] <- hcr_out
+   
         }
 
         if(y %% 10 == 0){
