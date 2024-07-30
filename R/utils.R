@@ -107,3 +107,16 @@ extend_vec_last_val <- function(vector, n){
     new_vec = c(vector, rep(vector[length(vector)], n))
     return(new_vec)
 }
+
+generate_annual_frequency <- function(frequency, len){
+    do <- rep(1, len+1)
+    if(length(frequency) > 1){
+        do <- frequency
+    }else if(length(frequency) == 1){
+        survey_years <- rep(0, len+1)
+        survey_years[seq(1, length(survey_years), frequency)] <- 1
+        survey_years[length(survey_years)+1] <- 1
+        do <- survey_years
+    }
+    return(do)
+}

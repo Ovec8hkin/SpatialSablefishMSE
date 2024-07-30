@@ -327,6 +327,7 @@ simulate_em_data <- function(
     ll_ac_obs, 
     tw_ac_obs, 
     ll_srv_indic,
+    tw_srv_indic,
     model_options, 
     added_years=1, 
     file_suffix=""
@@ -467,7 +468,6 @@ simulate_em_data <- function(
     srv_ll_caa_indic <- new_data$srv_dom_ll_age_indicator
     srv_ll_caa_indic[length(srv_ll_caa_indic)] <- 1
     srv_ll_caa_indic <- extend_vec_last_val(srv_ll_caa_indic, n=extra_years)
-    # srv_ll_caa_indic[length(new_data$srv_dom_ll_age_indicator[year_idxs]):(nyears-1)] <- 1
     srv_ll_caa_indic[min(length(new_data$srv_dom_ll_age_indicator), length(year_idxs)):(nyears-1)] <- ll_srv_indic
     srv_ll_caa_indic[nyears] <- 0
     new_data$srv_dom_ll_age_indicator <- srv_ll_caa_indic
@@ -481,9 +481,16 @@ simulate_em_data <- function(
     srv_jpll_caa_indic <- extend_vec_last_val(new_data$srv_jap_ll_age_indicator, n=extra_years)
     new_data$srv_jap_ll_age_indicator <- srv_jpll_caa_indic
 
-    srv_tw_caa_indic <- extend_vec_last_val(new_data$srv_nmfs_trwl_age_indicator, n=extra_years)
-    srv_tw_caa_indic[length(new_data$srv_nmfs_trwl_age_indicator[year_idxs]):(nyears-1)] <- 1
+    srv_tw_caa_indic <- new_data$srv_nmfs_trwl_age_indicator
+    srv_tw_caa_indic[length(srv_tw_caa_indic)] <- 1
+    srv_tw_caa_indic <- extend_vec_last_val(srv_tw_caa_indic, n=extra_years)
+    srv_tw_caa_indic[min(length(new_data$srv_nmfs_trwl_age_indicator), length(year_idxs)):(nyears-1)] <- tw_srv_indic
+    srv_tw_caa_indic[nyears] <- 0
     new_data$srv_nmfs_trwl_age_indicator <- srv_tw_caa_indic
+
+    # srv_tw_caa_indic <- extend_vec_last_val(new_data$srv_nmfs_trwl_age_indicator, n=extra_years)
+    # srv_tw_caa_indic[length(new_data$srv_nmfs_trwl_age_indicator[year_idxs]):(nyears-1)] <- 1
+    # new_data$srv_nmfs_trwl_age_indicator <- srv_tw_caa_indic
 
     # Be really careful here, because we actually need to pass the PREVIOUS
     # years age composition observations, because they are always one year
@@ -554,11 +561,15 @@ simulate_em_data <- function(
 
     # Be careful here. The trawl survey technically only happens ever other
     # year, but its being simulated occurring in every year.
-    if(extra_years > 0){
-        srv_tw_rpw_indic <- c(new_data$srv_nmfs_trwl_bio_indicator, rep(1, length.out=extra_years))#c(new_data$srv_nmfs_trwl_bio_indicator, rep(c(0, 1), length.out=extra_years))
-    }else{
-        srv_tw_rpw_indic <- new_data$srv_nmfs_trwl_bio_indicator[year_idxs]
-    }
+    # if(extra_years > 0){
+    #     srv_tw_rpw_indic <- c(new_data$srv_nmfs_trwl_bio_indicator, rep(1, length.out=extra_years))#c(new_data$srv_nmfs_trwl_bio_indicator, rep(c(0, 1), length.out=extra_years))
+    # }else{
+    #     srv_tw_rpw_indic <- new_data$srv_nmfs_trwl_bio_indicator[year_idxs]
+    # }
+    srv_tw_rpw_indic <- new_data$srv_nmfs_trwl_bio_indicator
+    srv_tw_rpw_indic <- extend_vec_last_val(srv_tw_rpw_indic, n=extra_years)
+    srv_tw_rpw_indic[min(length(new_data$srv_nmfs_trwl_bio_indicator), length(year_idxs)):(nyears)] <- tw_srv_indic
+
     
     srv_tw_rpw_obs <- survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
     srv_tw_rpw_ses <- model_options$obs_pars$rpw_cv[4]*survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
@@ -730,11 +741,12 @@ simulate_em_data_sex_disaggregate <- function(
     ll_ac_obs, 
     tw_ac_obs, 
     ll_srv_indic,
+    tw_srv_indic,
     model_options, 
     added_years=1, 
     file_suffix=""
 ){
-    out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs,  tw_ac_obs, ll_srv_indic, model_options, added_years, file_suffix)
+    out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, ll_srv_indic, tw_srv_indic, model_options, added_years, file_suffix)
 
     out$new_data$obs_ll_catchatage <- t(abind::abind(fxfish_caa_obs[,,2,], fxfish_caa_obs[,,1,], along=2))
     out$new_data$obs_srv_dom_ll_age <- t(abind::abind(ll_ac_obs[,,2,], ll_ac_obs[,,1,], along=2))

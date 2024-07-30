@@ -27,31 +27,15 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     # Setup what years to perform assessment in based on assessment_frequency
     # input. If input as a vector, use the vector literally. If input as a single
     # number, assumes an annual frequency.
-    do_assessment <- rep(1, nyears_input+1)
-    if(length(mp$assessment_frequency) > 1){
-        do_assessment <- mp$assessment_frequency
-    }else if(length(mp$assessment_frequency) == 1){
-        assessment_years <- rep(0, nyears_input+1)
-        assessment_years[1:spinup_years] <- 1
-        assessment_years[seq(spinup_years+1, nyears_input, mp$assessment_frequency)] <- 1
-        assessment_years[nyears_input+1] <- 1
-        do_assessment <- assessment_years
-    }
+    do_assessment <- generate_annual_frequency(mp$assessment_frequency, nyears_input)
+    do_assessment[spinup_years] <- 1
     assessment_years <- which(do_assessment == 1)
 
-    # Setup what years to perform assessment in based on assessment_frequency
-    # input. If input as a vector, use the vector literally. If input as a single
+    # Setup what years to perform surveys in based on *_survey_frequency
+    # inputs. If input as a vector, use the vector literally. If input as a single
     # number, assumes an annual frequency.
-    do_survey <- rep(1, nyears_input-spinup_years+1)
-    if(length(mp$survey_frequency) > 1){
-        do_survey <- mp$survey_frequency
-    }else if(length(mp$survey_frequency) == 1){
-        survey_years <- rep(0, nyears_input-spinup_years+1)
-        survey_years[seq(1, length(survey_years), mp$survey_frequency)] <- 1
-        survey_years[length(survey_years)+1] <- 1
-        do_survey <- survey_years
-    }
-    survey_years <- which(do_survey == 1)+spinup_years-1
+    do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
+    do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
@@ -197,7 +181,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     twfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     ll_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     tw_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    ll_srv_indic = do_survey[(spinup_years:y)-spinup_years+1],
+                    ll_srv_indic = do_survey_ll[(spinup_years:y)-spinup_years+1],
+                    tw_srv_indic = do_survey_tw[(spinup_years:y)-spinup_years+1],
                     model_options = om$model_options,
                     added_years = y-spinup_years+1,
                     file_suffix = y
