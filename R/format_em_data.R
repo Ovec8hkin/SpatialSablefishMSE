@@ -317,7 +317,20 @@ format_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_
 #'
 #' @example
 #'
-simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, model_options, added_years=1, file_suffix=""){
+simulate_em_data <- function(
+    nyears, 
+    dem_params, 
+    land_caa, 
+    survey_indices, 
+    fxfish_caa_obs, 
+    twfish_caa_obs, 
+    ll_ac_obs, 
+    tw_ac_obs, 
+    ll_srv_indic,
+    model_options, 
+    added_years=1, 
+    file_suffix=""
+){
 
     extra_years <- nyears-63
     year_idxs <- 1:(63+extra_years)
@@ -438,8 +451,8 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     obs_ll_caa <- apply(fxfish_caa_obs[as.logical(new_data$ll_catchatage_indicator),,,,drop=FALSE], c(1, 2), sum)
     new_data$obs_ll_catchatage <- apply(obs_ll_caa, 1, as.double)
     
-    new_data$ll_catchatlgth_indicator
-    new_data$obs_ll_catchatlgth_m
+    # new_data$ll_catchatlgth_indicator
+    # new_data$obs_ll_catchatlgth_m
 
     tw_caa_indic <- extend_vec_last_val(new_data$trwl_catchatlgth_indicator, n=extra_years)
     tw_caa_indic[length(new_data$trwl_catchatlgth_indicator[year_idxs]):(nyears-1)] <- 1
@@ -451,9 +464,12 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     obs_tw_caa <- apply(twfish_caa_obs[as.logical(new_data$trwl_catchatage_indicator),,,,drop=FALSE], c(1, 2), sum)
     new_data$obs_trwl_catchatage <- apply(obs_tw_caa, 1, as.double)
 
-
-    srv_ll_caa_indic <- extend_vec_last_val(new_data$srv_dom_ll_age_indicator, n=extra_years)
-    srv_ll_caa_indic[length(new_data$srv_dom_ll_age_indicator[year_idxs]):(nyears-1)] <- 1
+    srv_ll_caa_indic <- new_data$srv_dom_ll_age_indicator
+    srv_ll_caa_indic[length(srv_ll_caa_indic)] <- 1
+    srv_ll_caa_indic <- extend_vec_last_val(srv_ll_caa_indic, n=extra_years)
+    # srv_ll_caa_indic[length(new_data$srv_dom_ll_age_indicator[year_idxs]):(nyears-1)] <- 1
+    srv_ll_caa_indic[min(length(new_data$srv_dom_ll_age_indicator), length(year_idxs)):(nyears-1)] <- ll_srv_indic
+    srv_ll_caa_indic[nyears] <- 0
     new_data$srv_dom_ll_age_indicator <- srv_ll_caa_indic
 
     # Be really careful here, because we actually need to pass the PREVIOUS
@@ -514,7 +530,18 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
     new_data$srv_jap_fishery_ll_lgth_indicator <- jp_ll_cal_indic
 
     # Survey new_data
-    srv_ll_rpn_indic <- extend_vec_last_val(new_data$srv_dom_ll_bio_indicator, n=extra_years)
+
+    # srv_ll_caa_indic <- new_data$srv_dom_ll_age_indicator
+    # srv_ll_caa_indic[length(srv_ll_caa_indic)] <- 1
+    # srv_ll_caa_indic <- extend_vec_last_val(srv_ll_caa_indic, n=extra_years)
+    # # srv_ll_caa_indic[length(new_data$srv_dom_ll_age_indicator[year_idxs]):(nyears-1)] <- 1
+    # srv_ll_caa_indic[min(length(new_data$srv_dom_ll_age_indicator), length(year_idxs)):(nyears-1)] <- ll_srv_indic
+    # srv_ll_caa_indic[nyears] <- 0
+
+    srv_ll_rpn_indic <- new_data$srv_dom_ll_bio_indicator
+    srv_ll_rpn_indic <- extend_vec_last_val(srv_ll_rpn_indic, n=extra_years)
+    srv_ll_rpn_indic[min(length(new_data$srv_dom_ll_bio_indicator), length(year_idxs)):(nyears)] <- ll_srv_indic
+
     srv_ll_rpn_obs <- survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
     srv_ll_rpn_ses <- model_options$obs_pars$rpn_cv[3]*survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
 
@@ -693,8 +720,21 @@ simulate_em_data <- function(nyears, dem_params, land_caa, survey_indices, fxfis
 #'
 #' @example
 #'
-simulate_em_data_sex_disaggregate <- function(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs, tw_ac_obs, model_options, added_years=1, file_suffix=""){
-    out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs,  tw_ac_obs, model_options, added_years, file_suffix)
+simulate_em_data_sex_disaggregate <- function(
+    nyears, 
+    dem_params, 
+    land_caa, 
+    survey_indices, 
+    fxfish_caa_obs, 
+    twfish_caa_obs, 
+    ll_ac_obs, 
+    tw_ac_obs, 
+    ll_srv_indic,
+    model_options, 
+    added_years=1, 
+    file_suffix=""
+){
+    out <- simulate_em_data(nyears, dem_params, land_caa, survey_indices, fxfish_caa_obs, twfish_caa_obs, ll_ac_obs,  tw_ac_obs, ll_srv_indic, model_options, added_years, file_suffix)
 
     out$new_data$obs_ll_catchatage <- t(abind::abind(fxfish_caa_obs[,,2,], fxfish_caa_obs[,,1,], along=2))
     out$new_data$obs_srv_dom_ll_age <- t(abind::abind(ll_ac_obs[,,2,], ll_ac_obs[,,1,], along=2))

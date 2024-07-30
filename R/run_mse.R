@@ -39,6 +39,20 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     }
     assessment_years <- which(do_assessment == 1)
 
+    # Setup what years to perform assessment in based on assessment_frequency
+    # input. If input as a vector, use the vector literally. If input as a single
+    # number, assumes an annual frequency.
+    do_survey <- rep(1, nyears_input-spinup_years+1)
+    if(length(mp$survey_frequency) > 1){
+        do_survey <- mp$survey_frequency
+    }else if(length(mp$survey_frequency) == 1){
+        survey_years <- rep(0, nyears_input-spinup_years+1)
+        survey_years[seq(1, length(survey_years), mp$survey_frequency)] <- 1
+        survey_years[length(survey_years)+1] <- 1
+        do_survey <- survey_years
+    }
+    survey_years <- which(do_survey == 1)+spinup_years-1
+
     assessment <- dget("data/sablefish_assessment_2023.rdat")
    
     # Load OM parameters into global environment
@@ -183,6 +197,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     twfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     ll_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     tw_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    ll_srv_indic = do_survey[(spinup_years:y)-spinup_years+1],
                     model_options = om$model_options,
                     added_years = y-spinup_years+1,
                     file_suffix = y
@@ -190,8 +205,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
 
                 mod_out <- fit_TMB_model(
-                    assess_inputs$new_data, 
-                    assess_inputs$new_parameters, 
+                    data = assess_inputs$new_data, 
+                    parameters = assess_inputs$new_parameters,
                     model_name = "CurrentAssessmentDisaggregated"
                 )  
                 mod_report <- mod_out$report

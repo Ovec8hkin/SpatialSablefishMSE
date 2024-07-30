@@ -18,7 +18,7 @@ setup_mp_options <- function(){
                 abc_tac_reduction = 1,
                 tac_land_reduciton = 1
             ),
-            survey_frequency = c(1, 1),
+            survey_frequency = 1,
             assessment_frequency = 1
         )
     )
