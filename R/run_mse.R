@@ -30,6 +30,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     do_assessment <- generate_annual_frequency(mp$assessment_frequency, nyears_input)
     do_assessment[spinup_years] <- 1
     assessment_years <- which(do_assessment == 1)
+    assessment_years[length(assessment_years)] <- nyears_input+1
 
     # Setup what years to perform surveys in based on *_survey_frequency
     # inputs. If input as a vector, use the vector literally. If input as a single
