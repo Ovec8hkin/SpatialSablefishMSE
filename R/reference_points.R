@@ -1,3 +1,13 @@
+compute_naapr <- function(nages, mort, mat, waa, sel, ret, F){
+    naa <- rep(NA, nages)
+    naa[1] <- 1
+    zaa <- mort + sel*ret*F
+    for(a in 2:(nages)){
+        naa[a] <- naa[a-1]*exp(-zaa[a-1])
+    }
+    return(naa)
+}
+
 #' Compute Spawning Biomass per Recruit (SBPR)
 #'
 #' Compute SBPR under a given level of fishing mortality.
@@ -15,12 +25,7 @@
 #' @example
 #'
 compute_sbpr <- function(nages, mort, mat, waa, sel, ret, F){
-    naa <- rep(NA, nages)
-    naa[1] <- 1
-    zaa <- mort + sel*ret*F
-    for(a in 2:(nages-1)){
-        naa[a] <- naa[a-1]*exp(-zaa[a-1])
-    }
+    naa <- compute_naapr(nages, mort, mat, waa, sel, ret, F)
     ssb <- sum(naa*mat*waa, na.rm = TRUE)
     return(ssb)
 }
@@ -146,7 +151,10 @@ calculate_npfmc_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec)
 #' @param sel total selectivity-at-age vector
 #' @param ret total retention-at-age vector
 #' @param avg_rec average recruitment
-#' @param spr_target target SPR level
+#' @param spr_target target SPR level. If length(spr_target) == 1, same
+#' target SPR level assumed for the F and B reference points. If 
+#' length(spr_target) == 2, element 1 corresponds to the spr target for 
+#' F, while element 2 corresponds to the spr target for B.
 #'
 #' @return list of F reference point and biomass reference point
 #' @export calculate_ref_points
@@ -154,8 +162,15 @@ calculate_npfmc_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec)
 #' @example
 #'
 calculate_ref_points <- function(nages, mort, mat, waa, sel, ret, avg_rec, spr_target){
-  Fref <- spr_x(nages, mort, mat, waa, sel, ret, target_x=spr_target)
-  Bref <- compute_bx(nages, mort, mat, waa, sel, ret, F=Fref, avg_rec=avg_rec)
+  if(length(spr_target) == 1){
+    spr_target = rep(spr_target, 2)
+  }
+
+  Fmax <- spr_x(nages, mort, mat, waa, sel, ret, target_x=0.35) # this is F_OFL which can't be eclipsed
+  Fref <- spr_x(nages, mort, mat, waa, sel, ret, target_x=spr_target[1])
+
+  f2 <- spr_x(nages, mort, mat, waa, sel, ret, target_x=spr_target[2])
+  Bref <- compute_bx(nages, mort, mat, waa, sel, ret, F=f2, avg_rec=avg_rec)
   B0 <- compute_bx(nages, mort, mat, waa, sel, ret, F=0, avg_rec=avg_rec)
-  return(list(Fref=Fref, Bref=Bref, B0=B0))
+  return(list(Fmax=Fmax, Fref=Fref, Bref=Bref, B0=B0))
 }
