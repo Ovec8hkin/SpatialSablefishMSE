@@ -108,10 +108,38 @@ beverton_holt <- function(h, R0, S0, sigR, seed){
     # outside of the returned function, or else there
     # will be no random variability in recruitment draws
     set.seed(seed)
-    function(ssb){
+    function(ssb, y){
         bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
         return(
-            bh + rnorm(1, mean=0, sd=sigR)
+            bh + exp(rnorm(1, mean=0, sd=sigR)) # lognormal
+        )
+    }
+}
+
+bevholt_regimes <- function(h, sbpr, R0s, sigRs, nyears, regime_length, starting_regime, seed){
+    set.seed(seed)
+    function(ssb, y){
+        regs <- rep(NA, nyears)
+        curr_regime <- starting_regime
+        y1 <- 1
+        while(y1 < nyears){
+            reg_len <- regime_length[curr_regime+1]
+            regs[y1:(y1+reg_len-1)] <- curr_regime+1
+            curr_regime <- !curr_regime
+            y1 <- y1+reg_len
+        }
+        R0s <- R0s[regs]
+        sigRs <- sigRs[regs]
+        # print(regs)
+        # print(R0s)
+        # print(sigRs)
+
+        R0 <- R0s[y]
+        sigR <- sigRs[y]
+        S0 <- sbpr*R0
+        bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
+        return(
+            bh + exp(rnorm(1, mean=0, sd=sigR)) # lognormal
         )
     }
 }
