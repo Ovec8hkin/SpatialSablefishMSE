@@ -123,14 +123,15 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         dp_y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
         removals_input <- landings[y]
         fleet.props <- subset_matrix(model_options$fleet_apportionment, y, d=1, drop=FALSE)
-        region_props <- as.matrix(1)
+        removals_input <- array(removals_input*fleet.props, dim=c(1, nfleets, nregions))
+        # region_props <- as.matrix(1)
         # rec_props <- as.matrix(1)
 
         # will work for any recruitment function that only requires
         # ssb as a yearly input (beverton holt and ricker should work fine)
         if(is.na(full_recruitment[y+1])){
             ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
-            full_recruitment[y+1] <- projected_recruitment(ssb) 
+            full_recruitment[y+1] <- projected_recruitment(ssb, y-spinup_years+1) 
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
@@ -139,8 +140,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             dem_params=dp_y,
             prev_naa=prev_naa,
             recruitment=full_recruitment[y+1],
-            fleet_props = fleet.props,
-            region_props = region_props,
+            # fleet_props = fleet.props,
+            # region_props = region_props,
             # rec_props = rec_props,
             options=model_options
         )
@@ -265,7 +266,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 )
 
                 hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
-                if(!is.na(mp$hcr$extra_pars)){
+                if(all(!is.na(mp$hcr$extra_pars))){
                     hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
                 }
 
