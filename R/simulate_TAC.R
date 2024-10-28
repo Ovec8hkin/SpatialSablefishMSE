@@ -29,7 +29,7 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ta
     if(!is.list(options$abc_tac_reduction)){
         tac <- abc * options$abc_tac_reduction
     }else{
-        tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc), options$abc_tac_reduction$pars))
+        tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
     }
 
     # Implements symmetric stability constraints
