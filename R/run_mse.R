@@ -23,6 +23,7 @@
 run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix=""){
    
     spinup_years <- mse_options$n_spinup_years
+    nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
 
     # Setup what years to perform assessment in based on assessment_frequency
     # input. If input as a vector, use the vector literally. If input as a single

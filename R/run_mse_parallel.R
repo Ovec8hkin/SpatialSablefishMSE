@@ -1,6 +1,6 @@
 run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnostics=FALSE, ...){
 
-    outputs <- setup_output_arrays(nyears, nsims, seeds, mse_options$n_spinup_years)
+    outputs <- setup_output_arrays(mse_options$n_proj_years+mse_options$n_spinup_years, nsims, seeds, mse_options$n_spinup_years)
 
     cores <- min(parallel::detectCores()-2, nsims)
     cl <- parallel::makeCluster(cores, outfile="")
@@ -12,9 +12,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
             library(TMB)
             library(devtools)
             library(abind)
-
+            # library(afscOM)
             lapply(list.files("R", full.names = TRUE), source)
             devtools::load_all("~/Desktop/Projects/afscOM")
+
         })
         
         seed <- seeds[s]
