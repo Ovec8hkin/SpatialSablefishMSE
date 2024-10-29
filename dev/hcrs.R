@@ -74,6 +74,10 @@ age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, breakp
 
 }
 
+chr <- function(ref_pts, naa, dem_params){
+    return(constant_F(ref_pts$Fref))
+}
+
 # Going to start an MSE Options list distinct from everything else
 mp_base <- setup_mp_options() # get default values
 
@@ -294,7 +298,7 @@ mp_25cap$management$tac_land_reduction <- 1
 
 mp_20cap_cons <- mp_base
 mp_20cap_cons$name <- "B30 20k Harvest Cap"
-mp_20cap_cons$ref_points$spr_target <- c(0.5, 0.4)
+mp_20cap_cons$ref_points$spr_target <- c(0.4, 0.3)
 mp_20cap_cons$hcr <- list(
     func = tier3,
     extra_pars = NA,
@@ -327,6 +331,49 @@ mp_25cap_cons$management$tac_land_reduction <- 1
 #         phase_ins = 0
 #     )
 # )
+
+#'
+#' Constant Fishing Mortality Rules
+#' 
+mp_f40chr <- mp_base
+mp_f40chr$name <- "Constant F40"
+mp_f40chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+mp_f40chr$ref_points$spr_target <- c(0.40, 0.40)
+
+mp_f50chr <- mp_base
+mp_f50chr$name <- "Constant F50"
+mp_f50chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+mp_f50chr$ref_points$spr_target <- c(0.50, 0.50)
+
+
+mp_f55chr <- mp_base
+mp_f55chr$name <- "Constant F55"
+mp_f55chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+mp_f55chr$ref_points$spr_target <- c(0.55, 0.55)
 
 #'
 #' Other HCRs
