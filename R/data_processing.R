@@ -193,6 +193,7 @@ get_management_quantities <- function(model_runs, extra_columns, spinup_years=64
         tac = c(rep(NA, length(hist_tacs) - length(hist_tacs)), hist_tacs/1000),
         exp_land = c(rep(NA, length(hist_tacs) - length(hist_land)), hist_land/1000)
     ) %>% as_tibble() %>%
+    filter(time <= spinup_years) %>%
     mutate(attainment = exp_land/tac) %>%
     pivot_longer(abc:attainment, names_to="L1", values_to="value")
 
@@ -206,7 +207,7 @@ get_management_quantities <- function(model_runs, extra_columns, spinup_years=64
 
     return(
         bind_rows(
-            cross_join(mgmt %>% distinct(sim, om, hcr), historical_management) %>% filter(time < spinup_years+1),
+            cross_join(mgmt %>% distinct(across(all_of(c("sim", colnames(extra_columns))))), historical_management) %>% filter(time < spinup_years+1),
             mgmt
         )
     )
@@ -248,7 +249,7 @@ get_numbers_at_age <- function(model_runs, extra_columns){
 #'
 #' @example
 #'
-get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_names, group_abbs, summarise=FALSE, make_segments=FALSE){
+get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
     data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
             as_tibble() %>%
             mutate(
@@ -261,7 +262,7 @@ get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_nam
             ) %>%
             group_by(time, class, sim, L1, hcr, om) %>%
             summarise(value=sum(value)) %>%
-            filter(time > 64) %>%
+            filter(time > spinup_years) %>%
             select(time, class, sim, hcr, om, value) %>%
             pivot_wider(names_from="hcr", values_from="value") %>%
             group_by(time, sim, om) %>%
@@ -272,7 +273,7 @@ get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_nam
 
     if(summarise){
         data <- data %>% group_by(time, hcr, om) %>%
-            filter(time > 64) %>%
+            filter(time > spinup_years) %>%
             summarise(across((ncol(.)-2-3):(ncol(.)-3), ~ mean(.)))
     }
 
@@ -314,10 +315,14 @@ get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_nam
 #'
 #' @example
 #'
-get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
+get_reference_points <- function(model_runs, extra_columns, om_list, hcr_list){
 
-    get_rps <- function(om_name, recruitment, prop_fs){
+    om_names <- unlist(lapply(om_list, \(x) x$name))
+    hcr_names <- unlist(lapply(hcr_list, \(x) x$name))
+
+    get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
         om <- om_list[[which(om_names == om_name)]]
+        hcr <- hcr_list[[which(hcr_names == hcr_name)]]
         year <- 64
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
@@ -332,9 +337,9 @@ get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
             joint_selret$sel[,,1,,drop=FALSE],
             joint_selret$ret[,,1,,drop=FALSE],
             recruitment/2,
-            spr_target = 0.40
+            spr_target = hcr$ref_points$spr_target
         )
-        return(c(ref_pts$Fref, ref_pts$Bref, ref_pts$B0))
+        return(c(ref_pts$Fref, ref_pts$Fmax, ref_pts$Bref, ref_pts$B0))
     }
 
     avg_recruitment <- get_recruits(model_runs, extra_columns) %>%
@@ -357,11 +362,11 @@ get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
     ref_pts_df <- prop_fs_df %>% 
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
-        reframe(rps = get_rps(om, rec, c(Fixed, Trawl))) %>%
-        mutate(rp_name = rep(c("F40", "B40", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
+        reframe(rps = get_rps(om, hcr, rec, c(Fixed, Trawl))) %>%
+        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
-        median_qi(F40, B40, B0, .width=interval_widths, .simple_names=TRUE) %>%
+        median_qi(Fref, Fmax, Bref, B0, .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=2) %>% 
         filter(.width == 0.5) %>%
         select(om, hcr, name, median) %>%
@@ -371,4 +376,34 @@ get_reference_points <- function(model_runs, extra_columns, om_list, om_names){
 
     return(ref_pts_df)
 
+}
+
+get_phaseplane_data <- function(model_runs, extra_columns, dem_params){
+    return(
+        get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
+            ungroup() %>%
+            select(-L1) %>%
+            left_join(
+                get_fishing_mortalities(model_runs, extra_columns) %>% filter(L1 == "faa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_F),
+                by = c("time", "sim", "hcr", "om"),
+            )
+    )
+}
+
+get_hcrphase_data <- function(model_runs, extra_columns, dem_params){
+    return(
+        get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
+            # SSB is females only
+            # filter(sex == "F", L1 == "naa") %>%
+            # summarise SSB across year and sim 
+            # group_by(time, hcr, sim, L1) %>%
+            # summarise(spbio=sum(spbio)) %>%
+            ungroup() %>%
+            select(-L1) %>%
+            left_join(
+                bind_mse_outputs(model_runs, "hcr_f", extra_columns),
+                by = c("time", "sim", "hcr", "om"),
+            ) %>%
+            select(-c(Var2, Var3, region, L1))
+    )
 }

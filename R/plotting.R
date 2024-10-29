@@ -40,7 +40,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
     return(plot)
 }
 
-plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
+plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "F", "total_F")]
@@ -51,7 +51,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, comm
         reformat_ggdist_long(n=length(group_columns)) %>%
         filter(name == "total_F")
 
-    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+    hcr1 <- as.character((f %>% pull(hcr) %>% unique)[1])
     traj_column <- ifelse(is.na(v3), v2, v3)
     traj <- f %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
@@ -81,7 +81,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, show_est=FALSE, comm
     return(plot)
 }
 
-plot_recruitment <- function(data, v1="hcr", v2=NA){
+plot_recruitment <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "rec")]
 
@@ -95,12 +95,16 @@ plot_recruitment <- function(data, v1="hcr", v2=NA){
 
     plot <- ggplot(r %>% filter(L1 == "naa")) + 
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
-        geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
+        # geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_hline(yintercept = mean_rec, linetype="dashed") + 
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 120))+
         coord_cartesian(expand=0)+
         theme_bw()
+
+    if(show_est){
+        plot <- plot + geom_pointrange(data = f %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+    }
 
     if(!is.na(v2)){
         plot <- plot + facet_wrap(~.data[[v2]])
@@ -293,27 +297,20 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64){
     return(plot)
 }
 
-plot_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears){
-    d <- get_ssb_biomass(model_runs, extra_columns) %>%
-        # SSB is females only
-        filter(sex == "F", L1 == "naa") %>%
-        # summarise SSB across year and sim 
-        group_by(time, hcr, sim, L1) %>%
-        summarise(spbio=sum(spbio)) %>%
-        left_join(
-            bind_mse_outputs(model_runs, "out_f", extra_columns),
-            by = c("time", "sim", "hcr"),
-        ) %>%
-        group_by(time, hcr) %>%
-        median_qi(spbio, value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-        filter(.width == 0.50)
+plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "total_F")]
 
-    ref_pts <- get_reference_points(model_runs[1], list(hcr="test"), dem_params, year=nyears)
+    d <- data %>%
+            group_by(across(all_of(group_columns))) %>%
+            filter(time > common_trajectory) %>%
+            median_qi(spbio, total_F, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            filter(.width == 0.50)
 
     segments <- d %>% as_tibble() %>% 
-        select(spbio, value, hcr) %>% 
-        rename(x=spbio, y=value) %>%
-        group_by(hcr) %>%
+        select(spbio, total_F, hcr, om) %>% 
+        rename(x=spbio, y=total_F) %>%
+        group_by(hcr, om) %>%
         mutate(
             xend = lead(x, 1),
             yend = lead(y, 1)
@@ -322,44 +319,39 @@ plot_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears){
         arrange(hcr) %>%
         drop_na()
 
-    plot <- ggplot(d, aes(x=spbio, y=value, color=hcr, group=hcr))+
+    plot <- ggplot(d, aes(x=spbio, y=total_F, color=hcr, group=hcr))+
         geom_point(size=1.5)+
         geom_segment(
             data = segments, 
             aes(x=x, y=y, xend=xend, yend=yend, group=hcr),
             arrow=arrow(length = unit(3, "mm"))
         )+
-        geom_hline(yintercept=ref_pts$Fref, linetype="dashed")+
-        geom_vline(xintercept=ref_pts$Bref, linetype="dashed")+
-        scale_x_continuous(limits=c(0, 300))+
-        scale_y_continuous(limits=c(0, 0.20))+
+        geom_hline(data=ref_pts, aes(yintercept=Fref), linetype="dashed")+
+        geom_vline(data=ref_pts, aes(xintercept=Bref), linetype="dashed")+
+        scale_x_continuous(limits=c(0, 200))+
+        scale_y_continuous(limits=c(0, 0.125))+
         coord_cartesian(expand=0)+
-        theme_bw()
+        facet_grid(cols=vars(hcr), rows=vars(om))
 
     return(plot)
 }
 
-plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears){
+plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
 
-    d <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params) %>%
-        # SSB is females only
-        filter(sex == "F", L1 == "naa") %>%
-        # summarise SSB across year and sim 
-        group_by(time, hcr, sim, L1) %>%
-        summarise(spbio=sum(spbio)) %>%
-        left_join(
-            bind_mse_outputs(model_runs, "hcr_f", extra_columns),
-            by = c("time", "sim", "hcr"),
-        ) %>%
-        group_by(time, hcr) %>%
-        median_qi(spbio, value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-        drop_na() %>%
-        filter(.width == 0.50)
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "value")]
+
+    d <- data %>%
+            rename(out_F=value) %>%
+            group_by(across(all_of(group_columns))) %>%
+            filter(time > common_trajectory) %>%
+            median_qi(spbio, out_F, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            filter(.width == 0.50)
 
     segments <- d %>% as_tibble() %>% 
-        select(spbio, value, hcr) %>% 
-        rename(x=spbio, y=value) %>%
-        group_by(hcr) %>%
+        select(spbio, out_F, hcr, om) %>% 
+        rename(x=spbio, y=out_F) %>%
+        group_by(hcr, om) %>%
         mutate(
             xend = lead(x, 1),
             yend = lead(y, 1)
@@ -368,25 +360,19 @@ plot_hcr_phase_diagram <- function(model_runs, extra_columns, dem_params, nyears
         arrange(hcr) %>%
         drop_na()
 
-    ref_pts <- get_reference_points(model_runs[1], list(hcr="test"), dem_params, year=nyears)
-
-    ssbs <- seq(0, 300, 1)
-    ssbs_df <- data.frame(spbio=ssbs, Fs=sapply(ssbs, \(x) npfmc_tier3_F(x, ref_pts$Bref, ref_pts$Fref)))
-
-    plot <- ggplot(d)+
-        geom_point(aes(x=spbio, y=value, color=hcr, group=hcr), size=1.5)+
+    plot <- ggplot(d, aes(x=spbio, y=out_F, color=hcr, group=hcr))+
+        geom_point(size=1.5)+
         geom_segment(
             data = segments, 
-            aes(x=x, y=y, xend=xend, yend=yend, color=hcr, group=hcr),
+            aes(x=x, y=y, xend=xend, yend=yend, group=hcr),
             arrow=arrow(length = unit(3, "mm"))
         )+
-        geom_line(data=ssbs_df, aes(x=spbio, y=Fs), size=0.75)+
-        geom_hline(yintercept=ref_pts$Fref, linetype="dashed")+
-        geom_vline(xintercept=ref_pts$Bref, linetype="dashed")+
-        scale_x_continuous(limits=c(0, 300))+
-        scale_y_continuous(limits=c(0, 0.20))+
+        geom_hline(data=ref_pts, aes(yintercept=Fref), linetype="dashed")+
+        geom_vline(data=ref_pts, aes(xintercept=Bref), linetype="dashed")+
+        scale_x_continuous(limits=c(0, 200))+
+        scale_y_continuous(limits=c(0, 0.125))+
         coord_cartesian(expand=0)+
-        theme_bw()
+        facet_grid(cols=vars(hcr), rows=vars(om))
 
     return(plot)
 
@@ -402,15 +388,15 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
     )
 
     ad <- all_data %>% 
-        filter(L1 %in% c("abc", "faa", "naa", "land_caa")) %>%
+        filter(L1 %in% c("tac", "faa", "naa", "land_caa")) %>%
         group_by(time, L1, om, hcr) %>%
         median_qi(value, .width = interval_widths) %>%
         reformat_ggdist_long(n=4) %>%
         mutate(
             L1 = factor(
                 L1,
-                levels = c("abc", "land_caa", "faa", "naa"),
-                labels = c("ABC", "Catch", "Fishing Mortality", "Spawning Biomass")
+                levels = c("tac", "land_caa", "faa", "naa"),
+                labels = c("TAC", "Catch", "Fishing Mortality", "Spawning Biomass")
             )
         )
     
@@ -441,6 +427,9 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
 }
 
 plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_var="om"){
+
+    metric_minmax = perf_data %>% group_by(name) %>% summarise(min=min(lower), max=max(upper))
+    axis_scalar <- c(0.9, 1.1)
 
     summary <- perf_data %>% filter(.width == 0.50) %>% 
         group_by(across(all_of(c(summary_var, "name")))) %>% 
@@ -475,15 +464,13 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
         plot <- plot + 
                 ggh4x::facetted_pos_scales(
                     x = list(
-                        # scale_x_continuous(limits=c(0, 65), breaks=seq(0, 60, 20), labels = seq(0, 60, 20)),
-                        scale_x_continuous(limits=c(500, 2500), breaks=seq(500, 2500, 500), labels = seq(500, 2500, 500)),
-                        # scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.2), labels = seq(0, 1, 0.2)),
-                        scale_x_continuous(limits=c(0, 600), breaks=seq(0, 600, 200), labels=seq(0, 600, 200)),
-                        scale_x_continuous(limits=c(0, 0.07), breaks=seq(0, 0.06, 0.02), labels=seq(0, 0.06, 0.02)),
-                        scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25), labels=seq(0, 100, 25)),
-                        scale_x_continuous(limits=c(0, 0.25), breaks=seq(0, 0.25, 0.05), labels=seq(0, 25, 5)),
-                        # scale_x_continuous(limits=c(0, 45), breaks=seq(0, 40, 10), labels=seq(0, 40, 10)),
-                        scale_x_continuous(limits=c(5, 15), breaks=seq(5, 15, 5), labels=seq(5, 15, 5))
+                        scale_x_continuous(limits=c(0, 40)),
+                        scale_x_continuous(limits=c(50, 300)),
+                        scale_x_continuous(limits=c(0, 0.04)),
+                        scale_x_continuous(limits=c(0, 1)),
+                        scale_x_continuous(limits=c(0, 0.3)),
+                        scale_x_continuous(limits=c(5, 15))
+                    
                     )
                 )
     }else{
