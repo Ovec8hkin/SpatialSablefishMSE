@@ -219,6 +219,70 @@ average_ssb <- function(
     )
 }
 
+#' Compute Average AGe across projection period
+#' 
+#' Compute average age (median and CIs) per year across all years and 
+#' simulation seeds, for each combination of operating models and management 
+#' procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param dem_params demographic parameters matrices from OM
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_age
+#'
+#' @example
+#'
+average_age <- function(
+    model_runs, 
+    extra_columns,
+    interval_widths=c(0.50, 0.80), 
+    time_horizon=c(65, NA), 
+    extra_filter=NULL, 
+    relative=NULL, 
+    summarise_by=c("om", "hcr")
+){
+    
+    group_columns <- c("sim", summarise_by)
+
+    avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns2) %>%
+            as_tibble() %>%
+            ungroup() %>%
+            group_by(time, age, sim, om, hcr) %>%
+            mutate(value = sum(value)) %>%
+            filter(sex == "F") %>%
+            ungroup() %>%
+            group_by(time, sim, hcr, om) %>%
+            summarise(
+                avg_age = compute_average_age(value, 2:31)
+            ) %>%
+            filter_times(time_horizon=time_horizon) %>%
+            relativize_performance(
+                rel_column = "hcr",
+                value_column = "avg_age",
+                rel_value = relative,
+                grouping = group_columns
+            )
+            
+    if(!is.null(extra_filter)){
+        avg_age <- avg_age %>% filter(eval(extra_filter))
+    }
+
+    return(
+         avg_age %>%
+            group_by(across(all_of(summarise_by))) %>%
+            median_qi(avg_age, .width=interval_widths, .simple_names=FALSE)
+    )
+}
+
+
+
 #' Compute Average Annual Catch Variation (AAV) across projection period
 #' 
 #' Compute average annual catch variation (median and CIs) per year 
@@ -556,8 +620,9 @@ average_annual_dynamic_value <- function(
     price_data_max <- matrix(c(price_age_f_max, price_age_m_max), nrow=length(price_age_f_max), ncol=2)
     dimnames(price_data_max) <- list("age"=2:31, "sex"=c("F", "M"))
     
+    max_price <- max(c(price_age_f_max, price_age_m_max))
     price_data_low <- price_data_low/price_data_max
-    price_data_max <- apply(price_data_max, 2, \(x) x/max(x))
+    price_data_max <- price_data_max/max_price
     price_data_low <- price_data_max*price_data_low
 
     group_columns <- c("sim", summarise_by)
@@ -669,7 +734,7 @@ performance_metric_summary <- function(
 
     dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
-    perf_data <- bind_rows(tot_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, dynamic_value) %>%
+    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, dynamic_value) %>%
         mutate(name=factor(
                         name, 
                         levels=c("annual_catch", "total_catch", "num_years", "spbio", "aav", "catch", "bio", "annual_value", "dyn_annual_value"), 

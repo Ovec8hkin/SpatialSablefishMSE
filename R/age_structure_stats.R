@@ -18,18 +18,18 @@ shannon_diversity <- function(naa){
 }
 
 #' Compute average age of a population
-#' #'
+#' 
 #' Calculate the average age of a population
 #' given its age structure.
 #'
 #' @param naa numbers-at-age vector
 #' @param ages vector of ages
 #'
-#' @export average_age
+#' @export compute_average_age
 #'
 #' @example
 #'
-average_age <- function(naa, ages){
+compute_average_age <- function(naa, ages){
     return(weighted.mean(ages, naa))
 }
 
@@ -52,7 +52,7 @@ prop_mature <- function(naa, mat){
 }
 
 #' Compute proportion of population that is fully mature
-#' #'
+#' 
 #' Calculate the proportion of a population
 #' in age classes that are "fully mature" (e.g.
 #' mat > 0.995).
@@ -71,7 +71,7 @@ prop_fully_mature <- function(naa, mat){
 }
 
 #' Compute Age-Based Indicator
-#' #'
+#' 
 #' Compute ABI (Griffiths et al. 2023) given a
 #' population age structure and an age structure
 #' to use as a reference.
@@ -85,13 +85,26 @@ prop_fully_mature <- function(naa, mat){
 #'
 #' @example
 #'
-abi <- function(naa, ref, threshold=0.90, start_age=3){
-    ref_naa <- ref[(start_age-1):length(ref)]
-    ref_naa_prop <- ref_naa/sum(ref_naa)
-    A_ref <- min(which(cumsum(ref_naa_prop) > threshold))-1
-    P_ref <- sum(ref_naa_prop[(A_ref+1):length(ref_naa_prop)])
+abi <- function(naa, ref, threshold=0.90, start_age=2){
+    
+    if(length(ref) > length(naa)){
+        ref_mat <- matrix(ref, ncol=length(naa), byrow=TRUE)
+        ref <- apply(ref_mat, 2, mean)
+    }
 
-    naa <- naa[(start_age-1):length(naa)]
-    naa_ref <- naa[(A_ref+1):length(naa)]
-    return((sum(naa_ref)/sum(naa))/P_ref)
+    if(sum(naa) > 1){
+        naa <- naa / sum(naa)
+    }
+
+    ref_naa <- ref[start_age:length(ref)]
+    ref_naa_prop <- ref_naa/sum(ref_naa)
+    A_ref <- min(which(cumsum(ref_naa_prop) > threshold))
+    P_ref <- sum(ref_naa_prop[(A_ref+1):length(ref_naa_prop)], na.rm=TRUE)
+
+    naa2 <- naa[start_age:length(naa)]
+    Pt <- naa2[(A_ref+1):length(naa2)]
+
+    # sum(Pt)/sum(naa2)/P_ref
+    return((sum(Pt)/sum(naa2))/P_ref)
+
 }
