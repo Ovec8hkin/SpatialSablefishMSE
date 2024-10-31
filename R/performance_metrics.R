@@ -219,7 +219,7 @@ average_ssb <- function(
     )
 }
 
-#' Compute Average AGe across projection period
+#' Compute Average Age across projection period
 #' 
 #' Compute average age (median and CIs) per year across all years and 
 #' simulation seeds, for each combination of operating models and management 
@@ -251,7 +251,7 @@ average_age <- function(
     
     group_columns <- c("sim", summarise_by)
 
-    avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns2) %>%
+    avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
             as_tibble() %>%
             ungroup() %>%
             group_by(time, age, sim, om, hcr) %>%
@@ -278,6 +278,69 @@ average_age <- function(
          avg_age %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(avg_age, .width=interval_widths, .simple_names=FALSE)
+    )
+}
+
+#' Compute Average ABI across projection period
+#' 
+#' Compute average ABI (median and CIs; Griffiths et al. 2024) per year 
+#' across all years and simulation seeds, for each combination of operating 
+#' models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param ref_naa reference age structure for ABI computation
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export average_abi
+#'
+#' @example
+#'
+average_abi <- function(
+    model_runs, 
+    extra_columns,
+    ref_naa,
+    interval_widths=c(0.50, 0.80), 
+    time_horizon=c(65, NA), 
+    extra_filter=NULL, 
+    relative=NULL, 
+    summarise_by=c("om", "hcr")
+){
+    
+    group_columns <- c("sim", summarise_by)
+
+    avg_abi <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+            as_tibble() %>%
+            ungroup() %>%
+            group_by(time, age, sim, om, hcr) %>%
+            mutate(value = sum(value)) %>%
+            filter(sex == "F") %>%
+            ungroup() %>%
+            group_by(time, sim, hcr, om) %>%
+            summarise(
+                avg_abi = abi(value, ref_naa)
+            ) %>%
+            filter_times(time_horizon=time_horizon) %>%
+            relativize_performance(
+                rel_column = "hcr",
+                value_column = "avg_abi",
+                rel_value = relative,
+                grouping = group_columns
+            )
+            
+    if(!is.null(extra_filter)){
+        avg_abi <- avg_abi %>% filter(eval(extra_filter))
+    }
+
+    return(
+         avg_abi %>%
+            group_by(across(all_of(summarise_by))) %>%
+            median_qi(avg_abi, .width=interval_widths, .simple_names=FALSE)
     )
 }
 
