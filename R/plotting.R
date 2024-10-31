@@ -382,7 +382,7 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
 plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_trajectory=64){
     all_data <- bind_rows(
         get_ssb_biomass(model_runs, extra_columns, dem_params) %>% select(time, sim, L1, om, hcr, value=spbio),
-        get_management_quantities(model_runs, extra_columns),
+        get_management_quantities(model_runs, extra_columns, spinup_years = common_trajectory),
         get_landed_catch(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_catch),
         get_fishing_mortalities(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_F)
     )
@@ -412,10 +412,10 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
         facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
         facetted_pos_scales(
             y = list(
-                scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25)),
+                scale_y_continuous(limits=c(0, 50), breaks=seq(0, 50, 10)),
                 scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
                 scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.20, 0.05)),
-                scale_y_continuous(limits=c(0, 650, breaks=seq(0, 650, 100)))
+                scale_y_continuous(limits=c(0, 320, breaks=seq(0, 320, 50)))
             )
         )+
         scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
@@ -466,9 +466,10 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
                     x = list(
                         scale_x_continuous(limits=c(0, 40)),
                         scale_x_continuous(limits=c(50, 300)),
-                        scale_x_continuous(limits=c(0, 0.04)),
+                        scale_x_continuous(limits=c(0, 0.07)),
                         scale_x_continuous(limits=c(0, 1)),
-                        scale_x_continuous(limits=c(0, 0.3)),
+                        scale_x_continuous(limits=c(0, 5)),
+                        scale_x_continuous(limits=c(2, 15)),
                         scale_x_continuous(limits=c(5, 15))
                     
                     )

@@ -764,7 +764,8 @@ average_annual_dynamic_value <- function(
 performance_metric_summary <- function(
     model_runs, 
     extra_columns, 
-    dem_params, 
+    dem_params,
+    ref_naa, 
     interval_widths,
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
@@ -783,6 +784,12 @@ performance_metric_summary <- function(
     # Average SSB Across Projection Period
     avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
+    # Average SSB Across Projection Period
+    avg_age <- average_age(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
+
+    # Average SSB Across Projection Period
+    avg_abi <- average_abi(model_runs, extra_columns, ref_naa, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
+
     # Average Annual Catch Variation Across Projection Period
     avg_variation <- average_annual_catch_variation(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
@@ -797,14 +804,14 @@ performance_metric_summary <- function(
 
     dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
-    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, dynamic_value) %>%
+    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_age, avg_abi, dynamic_value) %>%
         mutate(name=factor(
                         name, 
-                        levels=c("annual_catch", "total_catch", "num_years", "spbio", "aav", "catch", "bio", "annual_value", "dyn_annual_value"), 
-                        labels=c("Annual Catch", "Total Catch", "Years High Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "Annual Value", "Dynamic Annual Value")
+                        levels=c("annual_catch", "total_catch", "num_years", "spbio", "aav", "catch", "bio", "avg_abi", "avg_age", "annual_value", "dyn_annual_value"), 
+                        labels=c("Annual Catch", "Total Catch", "Years High Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "ABI", "Population Age", "Annual Value", "Dynamic Annual Value")
                     )
         )
 
-    return(afscOM::listN(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value, perf_data))
+    return(afscOM::listN(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, avg_age, avg_abi, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value, perf_data))
 
 }
