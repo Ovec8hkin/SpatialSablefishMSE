@@ -120,3 +120,15 @@ om_bhcyclic_recruit$recruitment$pars <- list(
     regime_length = c(20, 5),
     starting_regime = 0
 )
+
+# Immediate Recruitment Crash
+om_immcrash_recruit <- sable_om
+om_immcrash_recruit$name <- "Immediate Crash Recruitment"
+om_immcrash_recruit$recruitment$func <- recruits_crash
+om_immcrash_recruit$recruitment$pars <- list(
+    crash_start_year = 1,
+    crash_length = 20,
+    crash_value = min(hist_recruits),
+    hist_recruits = hist_recruits,
+    nyears = 10*nyears
+)
