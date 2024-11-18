@@ -158,6 +158,68 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
 }
 
+
+plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, v1="hcr", v2=NA, v3=NA, common_trajectory=64){
+    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter=publication_hcrs, om_filter=om_names)
+    catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=om_names)
+
+    group_columns <- colnames(ssb_data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
+    # Plot spawning biomass from OM and EM
+    ssb_d <- ssb_data %>%
+        # Compute quantiles of SSB distribution
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        # Reformat ggdist tibble into long format
+        reformat_ggdist_long(n=length(group_columns))
+
+    hcr1 <- as.character((ssb_d %>% pull(hcr) %>% unique)[1])
+
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- ssb_d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    ssb_common <- ssb_d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+
+    group_columns <- colnames(catch_data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
+
+    catch_d <- catch_data %>%
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        reformat_ggdist_long(n=length(group_columns))
+    
+    hcr1 <- as.character((catch_d %>% pull(hcr) %>% unique)[1])
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- catch_d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    catch_common <- catch_d %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+    d <- bind_rows(ssb_d, catch_d) %>% filter(L1 != "naa_est") %>% mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
+    common <- bind_rows(ssb_common, catch_common) %>% filter(L1 != "naa_est") %>% mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
+
+    plot <- ggplot(d) + 
+        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
+        # geom_hline(yintercept=121.4611, linetype="dashed")+
+        scale_fill_brewer(palette="Blues")+
+        # scale_y_continuous(limits=c(0, 320))+
+        labs(x="Year", y="SSB")+
+        coord_cartesian(expand=0)+
+        guides(fill="none")+
+        theme_bw()+
+        facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")+
+        ggh4x::facetted_pos_scales(
+            y = list(
+                scale_y_continuous(limits=c(0, 60)),
+                scale_y_continuous(limits=c(0, 320))
+            )
+        )
+    return(plot)
+}
+
+
 plot_atage_trajectory_ternary <- function(data, segments, col_names){
     axis_names = names(data)[6:8]
     return(
