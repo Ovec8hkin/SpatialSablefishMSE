@@ -165,7 +165,7 @@ bevholt_regimes <- function(h, sbpr, R0s, sigRs, nyears, regime_length, starting
 #'
 recruits_crash <- function(crash_start_year, crash_length, crash_value, hist_recruits, nyears, seed){
     rec <- resample_recruits(hist_recruits, nyears, seed)
-    rec[crash_start_year:(crash_start_year+crash_length-1)] <- crash_value
+    rec[crash_start_year:(crash_start_year+crash_length-1)] <- rlnorm(crash_length, log(crash_value), sdlog=0.1)
     return(rec)
 }
 
