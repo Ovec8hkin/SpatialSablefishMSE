@@ -19,11 +19,12 @@
 #'      get_ssb_biomass(model_runs, extra_columns, dem_params)
 #' }
 #'
-get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
+get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             drop_na() %>%
             # join WAA and maturity-at-age for computing SSB
             left_join(
@@ -67,12 +68,13 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params){
 #'      get_fishing_mortalities(model_runs, extra_columns)
 #' }
 #'
-get_fishing_mortalities <- function(model_runs, extra_columns){
+get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
     
     return(
         bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             drop_na() %>%
             group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
@@ -107,11 +109,12 @@ get_fishing_mortalities <- function(model_runs, extra_columns){
 #'      get_recruits(model_runs, extra_columns)
 #' }
 #'
-get_recruits <- function(model_runs, extra_columns){
+get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             drop_na() %>%
             filter(age == 2) %>%
             group_by(across(all_of(group_columns))) %>%
@@ -138,11 +141,12 @@ get_recruits <- function(model_runs, extra_columns){
 #'      get_landed_catch(model_runs, extra_columns)
 #' }
 #'
-get_landed_catch <- function(model_runs, extra_columns){
+get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             drop_na() %>%
             group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
@@ -181,7 +185,7 @@ get_landed_catch <- function(model_runs, extra_columns){
 #'      get_management_quantities(model_runs, extra_columns)
 #' }
 #'
-get_management_quantities <- function(model_runs, extra_columns, spinup_years=64){
+get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=64){
     cols <- c("time", "sim", "value", "L1", names(extra_columns))
 
     hist_abcs <- c(44200, 37100, 33400, 28800, 25200, 25000, 28800, 25300, 19600, 17200, 16800, 15900, 17200, 16900, 17300, 20900, 23000, 21000, 21000, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 22000, 29600, 34500, 40500)
@@ -199,11 +203,12 @@ get_management_quantities <- function(model_runs, extra_columns, spinup_years=64
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
                 as_tibble() %>%
+                filter(hcr %in% hcr_filter, om %in% om_filter) %>%
                 drop_na() %>%
                 select(cols) %>%
                 pivot_wider(names_from=L1, values_from=value) %>%
                 mutate(attainment = exp_land/tac) %>%
-                pivot_longer(abc:attainment, names_to="L1", values_to="value")
+                pivot_longer(abc:attainment, names_to="L1", values_to="value") 
 
     return(
         bind_rows(
@@ -213,11 +218,12 @@ get_management_quantities <- function(model_runs, extra_columns, spinup_years=64
     )
 }
 
-get_numbers_at_age <- function(model_runs, extra_columns){
+get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("naa"), extra_columns) %>%
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             mutate(
                 class = factor(
                     case_when(age < 3 ~ "1/2", age < 5 ~ "2/3", age < 7 ~ "3/4", age < 9 ~ "4/5", age < 15 ~ "5/7", age > 14 ~ "7+"), 
@@ -249,9 +255,10 @@ get_numbers_at_age <- function(model_runs, extra_columns){
 #'
 #' @example
 #'
-get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
+get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
     data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
             as_tibble() %>%
+            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             mutate(
                 class = factor(
                     case_when(age < age_groups[1] ~ group_names[1], age < age_groups[2] ~ group_names[2], TRUE ~ group_names[3]), 
@@ -315,10 +322,10 @@ get_atage_groups <- function(model_runs, extra_columns, q, age_groups, group_nam
 #'
 #' @example
 #'
-get_reference_points <- function(model_runs, extra_columns, om_list, hcr_list){
+get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list){
 
-    om_names <- unlist(lapply(om_list, \(x) x$name))
-    hcr_names <- unlist(lapply(hcr_list, \(x) x$name))
+    om_names <- hcr_filter
+    hcr_names <- om_filter
 
     get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
         om <- om_list[[which(om_names == om_name)]]
@@ -342,11 +349,11 @@ get_reference_points <- function(model_runs, extra_columns, om_list, hcr_list){
         return(c(ref_pts$Fref, ref_pts$Fmax, ref_pts$Bref, ref_pts$B0))
     }
 
-    avg_recruitment <- get_recruits(model_runs, extra_columns) %>%
+    avg_recruitment <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter) %>%
         group_by(sim, om) %>%
         summarise(rec=mean(rec))
 
-    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns) %>%
+    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>%
         filter(L1 != "faa_est") %>%
         group_by(time, sim, om, hcr, fleet) %>%
         mutate(
@@ -363,7 +370,7 @@ get_reference_points <- function(model_runs, extra_columns, om_list, hcr_list){
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
         reframe(rps = get_rps(om, hcr, rec, c(Fixed, Trawl))) %>%
-        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
+        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list)*4)) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
         median_qi(Fref, Fmax, Bref, B0, .width=interval_widths, .simple_names=TRUE) %>%
@@ -378,21 +385,21 @@ get_reference_points <- function(model_runs, extra_columns, om_list, hcr_list){
 
 }
 
-get_phaseplane_data <- function(model_runs, extra_columns, dem_params){
+get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
-        get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
+        get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
             ungroup() %>%
             select(-L1) %>%
             left_join(
-                get_fishing_mortalities(model_runs, extra_columns) %>% filter(L1 == "faa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_F),
+                get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>% filter(L1 == "faa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_F),
                 by = c("time", "sim", "hcr", "om"),
             )
     )
 }
 
-get_hcrphase_data <- function(model_runs, extra_columns, dem_params){
+get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
-        get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
+        get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
             # SSB is females only
             # filter(sex == "F", L1 == "naa") %>%
             # summarise SSB across year and sim 
@@ -401,9 +408,21 @@ get_hcrphase_data <- function(model_runs, extra_columns, dem_params){
             ungroup() %>%
             select(-L1) %>%
             left_join(
-                bind_mse_outputs(model_runs, "hcr_f", extra_columns),
+                bind_mse_outputs(model_runs, "hcr_f", extra_columns) %>% as_tibble() %>% filter(hcr %in% hcr_filter, om %in% om_filter),
                 by = c("time", "sim", "hcr", "om"),
             ) %>%
             select(-c(Var2, Var3, region, L1))
+    )
+}
+
+get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
+    return(
+        get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
+            ungroup() %>%
+            select(-L1) %>%
+            left_join(
+                get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>% filter(L1 == "land_caa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_catch),
+                by = c("time", "sim", "hcr", "om"),
+            )
     )
 }
