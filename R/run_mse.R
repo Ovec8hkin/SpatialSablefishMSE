@@ -266,7 +266,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     spr_target = mp$ref_points$spr_target
                 )
 
-                hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y)
+                hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y, avgrec=mean(rec))
                 if(all(!is.na(mp$hcr$extra_pars))){
                     hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
                 }

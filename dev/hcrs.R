@@ -1,4 +1,4 @@
-tier3 <- function(ref_pts, naa, dem_params, cutoff_age=1){
+tier3 <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- cutoff_age-1
     ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
@@ -7,7 +7,7 @@ tier3 <- function(ref_pts, naa, dem_params, cutoff_age=1){
     )
 }
 
-new_hcr <- function(ref_pts, naa, dem_params, cutoff_age=1, alpha=0.05, beta=0.34){
+new_hcr <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1, alpha=0.05, beta=0.34){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- cutoff_age-1
     ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
@@ -16,7 +16,7 @@ new_hcr <- function(ref_pts, naa, dem_params, cutoff_age=1, alpha=0.05, beta=0.3
     )
 }
 
-pfmc4010 <- function(ref_pts, naa, dem_params, pstar=0.45, OFLsigma=0.32){
+pfmc4010 <- function(ref_pts, naa, dem_params, avgrec, pstar=0.45, OFLsigma=0.32){
 
     ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
     dep <- ssb/ref_pts$B0
@@ -34,7 +34,7 @@ pfmc4010 <- function(ref_pts, naa, dem_params, pstar=0.45, OFLsigma=0.32){
     return(TAC)
 }
 
-age_structure_percentage <- function(ref_pts, naa, dem_params, desired_abi, ref_naa){
+age_structure_percentage <- function(ref_pts, naa, dem_params, avgrec, desired_abi, ref_naa){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- 2-1
     ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
@@ -44,11 +44,11 @@ age_structure_percentage <- function(ref_pts, naa, dem_params, desired_abi, ref_
     abi_perc <- abi_y/desired_abi
 
     new_f <- f_default * abi_perc
-    new_f <- ifelse(new_f > ref_pts$Fmax, ref_pts$Fmax*0.95, new_f)
+    new_f <- ifelse(new_f > 0.95*ref_pts$Fmax & new_f > ref_pts$Fref, ref_pts$Fmax*0.95, new_f)
     return(new_f)
 }
 
-age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, breakpoints=c(0.4, 0.8, 1.5), levels=c(0.75, 0.85, 1.0)){
+age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, avgrec, breakpoints=c(0.4, 0.8, 1.5), levels=c(0.75, 0.85, 1.0)){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- 2-1
     ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
@@ -65,7 +65,7 @@ age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, breakp
     }
 
 
-    new_fmax <- ref_pts$Fref * abi_perc
+    new_fmax <- ref_pts$Fref * reduction_factor
     new_fmax <- ifelse(new_fmax > ref_pts$Fmax*0.99, ref_pts$Fmax*0.99, new_fmax)
 
     f <- npfmc_tier3_F(ssb, ref_pts$Bref, new_fmax)
@@ -74,7 +74,7 @@ age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, breakp
 
 }
 
-chr <- function(ref_pts, naa, dem_params){
+chr <- function(ref_pts, naa, dem_params, avgrec){
     return(constant_F(ref_pts$Fref))
 }
 
@@ -374,6 +374,19 @@ mp_f55chr$hcr <- list(
     units = "F"
 )
 mp_f55chr$ref_points$spr_target <- c(0.55, 0.55)
+
+mp_f00chr <- mp_base
+mp_f00chr$name <- "No Fishing"
+mp_f00chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "TAC"
+)
+mp_f00chr$ref_points$spr_target <- c(1, 0.001)
 
 #'
 #' Other HCRs
