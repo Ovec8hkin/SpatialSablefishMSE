@@ -199,6 +199,20 @@ ggsave(filename=file.path("~/Desktop/", "summary2.png"), width=10, height=7, uni
 ssb_data <- get_ssb_biomass(model_runs, extra_columns2, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=om_names)
 plot_ssb(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)+custom_theme+guides(color=guide_legend(title="HCR", nrow=4))
 
+nofish_ssbb_data <- ssb_data %>% filter(hcr == "No Fishing")
+rel_ssb <- ssb_data %>% left_join(nofish_ssbb_data, by=c("time", "sim", "L1", "om"), suffix=c("", ".nofish")) %>%
+    filter(time > common_trajectory) %>%
+    mutate(
+        rel_ssb = spbio/spbio.nofish
+    ) %>%
+    filter(L1 == "naa", hcr %in% publication_hcrs) %>%
+    group_by(time, om, hcr) %>%
+    median_qi(rel_ssb, .width=interval_widths)
+
+ggplot(rel_ssb) +
+    geom_line(aes(x=time, y=rel_ssb, color=hcr, group=hcr), size=0.85)+
+    scale_y_continuous(limits=c(0, 1))+
+    facet_wrap(~om)+
     custom_theme
 
 ggsave(filename=file.path("~/Desktop/sablefish_plots", "ssb.png"), width=8, height=8, units=c("in"))
