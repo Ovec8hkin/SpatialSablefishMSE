@@ -54,7 +54,7 @@ hist_recruits <- assessment$natage.female[,1]*2
 om7 <- sable_om
 om7$recruitment$func <- special_recruitment
 om7$recruitment$pars <- list(
-    hist_recruits = hist_recruits[55:64],
+    hist_recruits = hist_recruits[54:64],
     nyears = nyears - length(hist_recruits[1:54]) + 1
 )
 
@@ -140,7 +140,14 @@ tier3_selected <- function(ref_pts, naa, dem_params){
 
 # Going to start an MSE Options list distinct from everything else
 mse_options <- setup_mse_options() # get default values
-mse_options$management$tac_land_reduction = 0.80 # only ~80% of TAC is used annually
+mse_options$management$tac_land_reduction = list(
+    func = stairstep_attainment,
+    pars = list(
+        breakpoints = c(20, 30),
+        levels = c(0.874, 0.786, 0.647),
+        phase_ins = 2
+    )
+)
 
 mp1 <- mse_options
 mp1$hcr <- list(
@@ -307,7 +314,7 @@ hcr_list <- listN(mp1, mp2, mp3, mp4, mp5, mp6, mp7, mp8, mp9, mp10, mp11)
 #' It is recommended to always use `run_mse_multiple(...)` even
 #' when only a single MSE simulation is required.
 set.seed(1007)
-nsims <- 9
+nsims <- 18
 seed_list <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
@@ -327,10 +334,19 @@ extra_columns <- data.frame(
     om = "om1",
     hcr = hcr_names
 )
+
+mse_runs <- listN(om_list, hcr_list, seed_list, model_runs, extra_columns)
+saveRDS(mse_runs, "data/mse_retrosective_2014.RDS")
+
 interval_widths=c(0.50, 0.80)
 
-plot_mse_summary(model_runs, extra_columns, common_trajectory = 54)+
+mse_runs <- readRDS("data/mse_retrosective_2014.RDS")
+model_runs <- mse_runs$model_runs
+extra_columns <- mse_runs$extra_columns
+
+plot_mse_summary(model_runs, extra_columns, sable_om$dem_params, common_trajectory = 54)+
     geom_vline(xintercept=64, linetype="longdash")+
+    facet_wrap(~L1, scales="free_y")+
     ggh4x::facetted_pos_scales(
         y = list(
             scale_y_continuous(limits=c(0, 60)),
@@ -340,30 +356,59 @@ plot_mse_summary(model_runs, extra_columns, common_trajectory = 54)+
         )
     )+
     custom_theme
-
+ggsave(file.path("~/Desktop/sablefish_plots", "retrospective_hcrs.png"), height=12, width=8, units="in")
+ 
 ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params)
-plot_ssb(ssb_data, v1="hcr", v2="om")+labs(x="Year", y="SSB")+scale_y_continuous(limits=c(0, max(ssb_data$spbio)))
+plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=40)+labs(x="Year", y="SSB")+scale_y_continuous(limits=c(0, max(ssb_data$spbio)))
 
 catch_data <- get_landed_catch(model_runs, extra_columns)
-plot_landed_catch(catch_data, v1="hcr")
+plot_landed_catch(catch_data, v1="hcr", common_trajectory = 40)
 
-abctac <- get_management_quantities(model_runs, extra_columns)
-group_columns <- colnames(abctac)
-group_columns <- group_columns[! group_columns %in% c("sim", "value")]
-v1 <- "hcr"
-
-q <- abctac %>%
-    filter(L1 != "exp_land") %>%
-    group_by(across(all_of(group_columns))) %>%
-    median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
-    reformat_ggdist_long(n=length(group_columns))
-
-ggplot(q %>% filter(time > 53))+
-    geom_line(aes(x=time, y=median, color=.data[[v1]], group=interaction(.data[[v1]], L1)), size=1)+
-    geom_line(data=q %>% filter(hcr=="F40", time <= 54), aes(x=time, y=median), color="black", size=0.85)+
-    geom_vline(xintercept=64, linetype="dashed")+
-    scale_y_continuous(limits=c(0, 100))+
-    scale_fill_brewer(palette="Blues")+
-    coord_cartesian(expand=0)+
-    theme_bw()+ facet_wrap(~L1)
+abctac <- get_management_quantities(model_runs, extra_columns, spinup_years = 54)
+plot_abc_tac(abctac, v1="hcr", common_trajectory = 54)+
+    facet_wrap(~L1, scales="free_y")+
+    ggh4x::facetted_pos_scales(
+        y=list(
+            scale_y_continuous(limits=c(0, 100)),
+            scale_y_continuous(limits=c(0.5, 1.5)),
+            scale_y_continuous(limits=c(0, 100)),
+            scale_y_continuous(limits=c(0, 100))
+        )
+    )+custom_theme
 ggsave(filename=file.path("~/Desktop/sablefish_plots/", "retrospetive_hcr_trajectories.png"), width=5*1.7, height=8*1.7, units="in")
+
+perf_summ <- performance_metric_summary(model_runs, extra_columns, sable_om$dem_params, interval_widths=c(0.50, 0.80))
+perf_data <- perf_summ$perf_data
+
+om_summary <- perf_data %>% filter(.width == 0.50) %>% 
+    group_by(om, name) %>% 
+    summarise(value = mean(median))
+
+ggplot(perf_data)+
+    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr, shape=om), point_size=3, position="dodge")+
+    geom_vline(data=om_summary, aes(xintercept = value), color="black")+
+    scale_shape_discrete()+
+    facet_wrap(~name, scales="free_x")+
+    ggh4x::facetted_pos_scales(
+        x = list(
+            scale_x_continuous(limits=c(0, 300), breaks=seq(0, 300, 50), labels = seq(0, 300, 50)),
+            scale_x_continuous(limits=c(0, 400), breaks=seq(0, 600, 200), labels=seq(0, 600, 200)),
+            scale_x_continuous(limits=c(0, 0.07), breaks=seq(0, 0.06, 0.02), labels=seq(0, 0.06, 0.02)),
+            scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25), labels=seq(0, 100, 25)),
+            scale_x_continuous(limits=c(0, 0.25), breaks=seq(0, 0.25, 0.05), labels=seq(0, 25, 5)),
+            scale_x_continuous(limits=c(0, 20), breaks=seq(0, 40, 10), labels=seq(0, 40, 10)),
+            scale_x_continuous(limits=c(250, 1000))
+        )
+    )+
+    # facet_wrap(vars(name), scales="free_x")+
+    labs(y="", x="", shape="OM", color="HCR")+
+    coord_cartesian(expand=0)+
+    guides(shape=guide_legend(nrow=3), color=guide_legend(nrow=4))+
+    theme_bw()+
+    theme(
+        plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
+        panel.spacing.x = unit(0.5, "cm"),
+        plot.title = element_text(size=18),
+        legend.spacing.x = unit(1.5, "cm")
+    )+
+    custom_theme
