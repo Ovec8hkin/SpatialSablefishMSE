@@ -20,9 +20,10 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
-        geom_hline(yintercept=121.4611, linetype="dashed")+
+        # geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 320))+
+        labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
         guides(fill="none")+
         theme_bw()
@@ -140,6 +141,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
         scale_y_continuous(limits=c(0, 60))+
+        labs(x="Year", y="Catch (mt)", color="HCR")+
         coord_cartesian(expand=0)+
         guides(fill="none")+
         theme_bw()
@@ -322,6 +324,9 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64){
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
     q <- data %>%
+        mutate(
+            L1 = factor(L1, levels=c("abc", "tac", "exp_land", "attainment"), labels=c("ABC", "TAC", "Expected Landings", "Attainment"))
+        ) %>%
         # filter(L1 != "Expected Landings") %>%
         group_by(across(all_of(group_columns))) %>%
         median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
@@ -480,12 +485,12 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
 }
 
 
-plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_trajectory=64){
+plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, common_trajectory=64){
     all_data <- bind_rows(
-        get_ssb_biomass(model_runs, extra_columns, dem_params) %>% select(time, sim, L1, om, hcr, value=spbio),
-        get_management_quantities(model_runs, extra_columns, spinup_years = common_trajectory),
-        get_landed_catch(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_catch),
-        get_fishing_mortalities(model_runs, extra_columns) %>% select(time, sim, L1, om, hcr, value=total_F)
+        get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=spbio),
+        get_management_quantities(model_runs, extra_columns, hcr_filter, om_filter, spinup_years = common_trajectory),
+        get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=total_catch),
+        get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=total_F)
     )
 
     ad <- all_data %>% 
@@ -527,7 +532,7 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, common_traje
     return(plot)
 }
 
-plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_var="om"){
+plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_hcr="F40"){
 
     metric_minmax = perf_data %>% group_by(name) %>% summarise(min=min(lower), max=max(upper))
     axis_scalar <- c(0.9, 1.1)
