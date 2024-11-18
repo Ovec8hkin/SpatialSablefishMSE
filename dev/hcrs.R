@@ -74,6 +74,30 @@ age_structure_rt_reduction <- function(ref_pts, naa, dem_params, ref_naa, avgrec
 
 }
 
+ref_point_switch <- function(ref_pts, naa, dem_params, avgrec, abi_switch, ref_naa, new_refpts){
+    nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
+    a <- 2-1
+    ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
+
+    abi_y <- abi(naa[,,1,], ref_naa, threshold = 0.90)
+    if(abi_y < abi_switch){
+        joint_selret <- calculate_joint_selret(dem_params$sel, dem_params$ret, c(0.80, 0.20))
+        ref_pts <- calculate_ref_points(
+            nages = nages,
+            mort = dem_params$mort[,,1,],
+            mat = dem_params$mat[,,1,],
+            waa = dem_params$waa[,,1,],
+            sel =  joint_selret$sel[,,1,,drop=FALSE],
+            ret = joint_selret$ret[,,1,,drop=FALSE],
+            avg_rec = avgrec/2,
+            spr_target = new_refpts
+        )
+    }
+
+    f_default <- npfmc_tier3_F(ssb, ref_pts$Bref, ref_pts$Fref)
+    return(f_default)
+}
+
 chr <- function(ref_pts, naa, dem_params, avgrec){
     return(constant_F(ref_pts$Fref))
 }
@@ -414,6 +438,22 @@ mp_ageblocks$hcr <- list(
         ref_naa = ref_naa,
         breakpoints=c(0.4, 0.8, 1.5), 
         levels=c(0.75, 0.85, 1.0)
+    ),
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp_ageswitch <- mp_base
+mp_ageswitch$name <- "Age Structure RP Switch"
+mp_ageswitch$hcr <- list(
+    func = ref_point_switch,
+    extra_pars = list(
+        abi_switch = 0.8,
+        ref_naa = ref_naa,
+        new_refpts = c(0.50, 0.40)
     ),
     extra_options = list(
         max_stability = NA,
