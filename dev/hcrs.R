@@ -22,8 +22,8 @@ pfmc4010 <- function(ref_pts, naa, dem_params, avgrec, pstar=0.45, OFLsigma=0.32
     dep <- ssb/ref_pts$B0
 
     # From Maia
-    OFL <- ref_pts$Fref*ssb
-    ABC <- OFL*exp(qnorm(pstar, 0, OFLsigma))
+    ABC <- afscOM::F_to_mu(ref_pts$Fref)*ssb
+    # ABC <- OFL*exp(qnorm(pstar, 0, OFLsigma))
     if(dep < 0.1){TAC <- 0}
     if(dep > 0.40) {TAC <- ABC}
     if(dep <= 0.40 & dep >= 0.1){
