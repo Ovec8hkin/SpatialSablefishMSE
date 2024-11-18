@@ -398,6 +398,45 @@ plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory
     return(plot)
 }
 
+plot_catch_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "total_catch")]
+
+    d <- data %>%
+            group_by(across(all_of(group_columns))) %>%
+            filter(time > common_trajectory) %>%
+            median_qi(spbio, total_catch, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            filter(.width == 0.50)
+
+    segments <- d %>% as_tibble() %>% 
+        select(spbio, total_catch, hcr, om) %>% 
+        rename(x=spbio, y=total_catch) %>%
+        group_by(hcr, om) %>%
+        mutate(
+            xend = lead(x, 1),
+            yend = lead(y, 1)
+        ) %>%
+        ungroup() %>%
+        arrange(hcr) %>%
+        drop_na()
+
+    plot <- ggplot(d, aes(x=spbio, y=total_catch, color=hcr, group=hcr))+
+        geom_point(size=1.5)+
+        geom_segment(
+            data = segments, 
+            aes(x=x, y=y, xend=xend, yend=yend, group=hcr),
+            arrow=arrow(length = unit(3, "mm"))
+        )+
+        geom_hline(data=ref_pts, aes(yintercept=Fref), linetype="dashed")+
+        geom_vline(data=ref_pts, aes(xintercept=Bref), linetype="dashed")+
+        scale_x_continuous(limits=c(0, 200))+
+        scale_y_continuous(limits=c(0, 35))+
+        coord_cartesian(expand=0)+
+        facet_grid(cols=vars(hcr), rows=vars(om))
+
+    return(plot)
+}
+
 plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
 
     group_columns <- colnames(data)
