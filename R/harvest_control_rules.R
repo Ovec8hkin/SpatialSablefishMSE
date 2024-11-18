@@ -40,8 +40,8 @@ constant_F <- function(F){
 #'
 #' @examples
 #' 
-threshold_cap <- function(ssb,B_ref,F_ref,alpha) {
-  if(ssb/B_ref >= 1)  F <- F_ref  / (ssb/B_ref)  # if stock status >= 1
+threshold_cap <- function(ssb,B_ref,F_ref,alpha, beta=1) {
+  if(ssb/B_ref >= 1)  F <- F_ref  / (ssb/B_ref)^beta  # if stock status >= 1
   if(ssb/B_ref > alpha && ssb/B_ref < 1) F <- F_ref * ((ssb/B_ref)-alpha)/(1-alpha) # if stock status > alpha & stock status < 1
   if(ssb/B_ref <= alpha) F <- 0 # if stock stats <= alpha
   return(F)
