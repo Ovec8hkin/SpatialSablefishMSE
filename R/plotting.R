@@ -532,12 +532,12 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     metric_minmax = perf_data %>% group_by(name) %>% summarise(min=min(lower), max=max(upper))
     axis_scalar <- c(0.9, 1.1)
 
-    summary <- perf_data %>% filter(.width == 0.50) %>% 
-        group_by(across(all_of(c(summary_var, "name")))) %>% 
-        summarise(value = mean(median))
+    summary <- perf_data %>% filter(.width == 0.50, hcr == summary_hcr)
+        # group_by(across(all_of(c(summary_var, "name")))) %>% 
+        # summarise(value = mean(median))
 
     plot <- ggplot(perf_data)+
-                geom_vline(data=summary, aes(xintercept = value), color="black")+
+                geom_vline(data=summary, aes(xintercept = median), color="black")+
                 scale_shape_discrete()+
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="HCR")+
@@ -565,13 +565,13 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
         plot <- plot + 
                 ggh4x::facetted_pos_scales(
                     x = list(
-                        scale_x_continuous(limits=c(0, 40)),
+                        scale_x_continuous(limits=c(0, 30)),
                         scale_x_continuous(limits=c(50, 300)),
-                        scale_x_continuous(limits=c(0, 0.07)),
+                        scale_x_continuous(limits=c(0, 0.06)),
                         scale_x_continuous(limits=c(0, 1)),
                         scale_x_continuous(limits=c(0, 5)),
                         scale_x_continuous(limits=c(2, 15)),
-                        scale_x_continuous(limits=c(5, 15))
+                        scale_x_continuous(limits=c(5, 12))
                     
                     )
                 )
