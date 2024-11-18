@@ -40,7 +40,7 @@ sbpr <- compute_sbpr(
 
 
 
-# OM1: Normal recruitment
+# Normal recruitment
 om_rand_recruit <- sable_om
 om_rand_recruit$name <- "Random Recruitment"
 om_rand_recruit$recruitment$func <- resample_recruits
@@ -49,7 +49,7 @@ om_rand_recruit$recruitment$pars <- list(
     nyears = 10*nyears
 )
 
-# OM2: Cyclic recruiment
+# Cyclic recruiment
 om_cylic_recruit <- sable_om
 om_cylic_recruit$name <- "Cyclic Recruitment"
 om_cylic_recruit$recruitment$func <- resample_regime_recruits
@@ -61,18 +61,18 @@ om_cylic_recruit$recruitment$pars <- list(
     starting_regime = 0
 )
 
-# OM3: B-H recruitment
+# B-H recruitment
 om_bh_recruit <- sable_om
 om_bh_recruit$name <- "Beverton-Holt Recruitment"
 om_bh_recruit$recruitment$func <- beverton_holt
 om_bh_recruit$recruitment$pars <- list(
-    h = 0.85,
+    h = 0.85, # could do 0.80
     R0 = 25,
     S0 = sbpr*25,
     sigR = 1.20
 )
 
-# OM4: Low recruitment
+# Low recruitment
 om_low_recruit <- sable_om
 om_low_recruit$name <- "Low Recruitment"
 om_low_recruit$recruitment$func <- regime_recruits
@@ -84,6 +84,7 @@ om_low_recruit$recruitment$pars <- list(
     starting_regime = 0
 )
 
+# High Recruitment
 om_high_recruit <- sable_om
 om_high_recruit$name <- "High Recruitment"
 om_high_recruit$recruitment$func <- regime_recruits
@@ -107,7 +108,7 @@ om_crash_recruit$recruitment$pars <- list(
     nyears = 10*nyears
 )
 
-# OM3: B-H recruitment
+# OM7: B-H recruitment
 om_bhcyclic_recruit <- sable_om
 om_bhcyclic_recruit$name <- "Beverton-Holt Cyclic Recruitment"
 om_bhcyclic_recruit$recruitment$func <- bevholt_regimes
