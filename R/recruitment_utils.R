@@ -111,7 +111,7 @@ beverton_holt <- function(h, R0, S0, sigR, seed){
     function(ssb, y){
         bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
         return(
-            bh + exp(rnorm(1, mean=0, sd=sigR)) # lognormal
+            bh * exp(rnorm(1, mean=-sigR*sigR/2, sd=sigR)) # lognormal
         )
     }
 }
@@ -139,7 +139,7 @@ bevholt_regimes <- function(h, sbpr, R0s, sigRs, nyears, regime_length, starting
         S0 <- sbpr*R0
         bh <- (4*R0*h*ssb)/((1-h)*R0*(S0/R0) + (5*h - 1)*ssb)
         return(
-            bh + exp(rnorm(1, mean=0, sd=sigR)) # lognormal
+            bh * exp(rnorm(1, mean=-sigR*sigR/2, sd=sigR)) # lognormal
         )
     }
 }
