@@ -104,15 +104,16 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
 
 # Going to start an MSE Options list distinct from everything else
 mp_base <- setup_mp_options() # get default values
+mp_base$management$tac_land_reduction <- 1
 
-mp_base$management$tac_land_reduction <- list(
-    func = stairstep_attainment,
-    pars = list(
-        breakpoints = c(20, 30),
-        levels = c(0.874, 0.786, 0.647),
-        phase_ins = 2
-    )
-)
+# mp_base$management$tac_land_reduction <- list(
+#     func = stairstep_attainment,
+#     pars = list(
+#         breakpoints = c(20, 30),
+#         levels = c(0.874, 0.786, 0.647),
+#         phase_ins = 2
+#     )
+# )
 
 #'
 #' Alternative Reference Point HCRs
