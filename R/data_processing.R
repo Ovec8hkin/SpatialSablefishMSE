@@ -385,6 +385,58 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 
 }
 
+get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
+
+    get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
+        om <- om_list[[which(om_names == om_name)]]
+        hcr <- hcr_list[[which(hcr_names == hcr_name)]]
+        year <- 64
+        joint_selret <- calculate_joint_selret(
+            sel=om$dem_params$sel[year,,,,,drop=FALSE],
+            ret=om$dem_params$ret[year,,,,,drop=FALSE],
+            prop_fs = prop_fs
+        )
+        ref_pts <- calculate_ref_points(
+            30,
+            om$dem_params$mort[year,,1,1],
+            om$dem_params$mat[year,,1,1],
+            om$dem_params$waa[year,,1,1],
+            joint_selret$sel[,,1,,drop=FALSE],
+            joint_selret$ret[,,1,,drop=FALSE],
+            recruitment/2,
+            spr_target = 0.40
+        )
+        return(ref_pts$Bref)
+    }
+
+    avg_recruitment <- get_recruits(model_runs, extra_columns2, hcr_filter, om_filter) %>% 
+        filter(L1 == "naa") %>% 
+        group_by(sim, om, hcr) %>%
+        mutate(avg_rec = unlist(lapply(slide(rec, ~.x, .before=Inf), \(x) mean(x)))) %>%
+        arrange(hcr, om, sim)
+
+    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns2, hcr_filter, om_filter) %>%
+        filter(L1 != "faa_est") %>%
+        group_by(time, sim, om, hcr, fleet) %>%
+        mutate(
+            prop_f = F/total_F
+        ) %>%
+        select(time, sim, fleet, om, hcr, prop_f) %>%
+        distinct() %>%
+        pivot_wider(names_from = "fleet", values_from="prop_f") %>%
+        group_by(time, sim, om, hcr) %>%
+        summarise(Fixed = mean(Fixed), Trawl=mean(Trawl))
+
+    b40s <- prop_fs_df %>% 
+        left_join(avg_recruitment %>% select(-c(L1)), by=c("time", "sim", "om", "hcr")) %>%
+        mutate(B40 = get_rps(om, hcr, avg_rec, c(Fixed, Trawl))) %>% 
+        group_by(time, om, hcr) %>%
+        median_qi(B40, .width=interval_widths)
+
+    return(b40s)
+
+}
+
 get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
