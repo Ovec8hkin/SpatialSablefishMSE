@@ -1,4 +1,4 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
+plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
@@ -16,8 +16,11 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
 
     common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
 
+    base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
+
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         # geom_hline(yintercept=121.4611, linetype="dashed")+
@@ -162,14 +165,17 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
     common <- c %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
 
+    base_hcr_c <- c %>% filter(hcr == base_hcr)
+
     plot <- ggplot(c %>% left_join(traj, by=traj_column) %>% filter(time > common-1))+
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
+        geom_lineribbon(data = base_hcr_c, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 60))+
+        # scale_y_continuous(limits=c(0, 60))+
         labs(x="Year", y="Catch (mt)", color="HCR")+
-        coord_cartesian(expand=0)+
+        coord_cartesian(expand=0, ylim=c(0, 60))+
         guides(fill="none")+
         theme_bw()
 
@@ -189,8 +195,8 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
 
 plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, v1="hcr", v2=NA, v3=NA, common_trajectory=64){
-    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter=publication_hcrs, om_filter=om_names)
-    catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=om_names)
+    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter=hcr_filter, om_filter=om_filter)
+    catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
 
     group_columns <- colnames(ssb_data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
@@ -346,7 +352,7 @@ plot_atage_density_ternary <- function(data, col_names){
 
 # }
 
-plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64){
+plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
@@ -365,8 +371,11 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64){
 
     common <- q %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(eval(rlang::parse_expr(v2))) %>% filter(time <= common)
 
+    base_hcr_q <- q %>% filter(hcr == base_hcr)
+
     plot <- ggplot(q %>% filter(time > common_trajectory-1))+
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, color=.data[[v1]], group=interaction(.data[[v1]], L1)))+
+        geom_lineribbon(data = base_hcr_q, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]], L1), color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
