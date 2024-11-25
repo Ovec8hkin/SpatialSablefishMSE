@@ -86,6 +86,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     # out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
     f           = array(NA, dim=c(nyears, 1, 1, nregions, nfleets))
+    global_rec_devs    = array(NA, dim=c(mse_options$n_proj_years, 1, 1, nregions), dimnames=list("time"=1:(mse_options$n_proj_years), 1, 1, "region"="Alaska"))
 
     survey_preds <- list(
         rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
@@ -116,6 +117,9 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     }else{
         full_recruitment <- rep(NA, nyears)
         full_recruitment[1:length(hist_recruitment)] <- hist_recruitment
+        set.seed(seed)
+        rec_devs <- rlnorm(mse_options$n_proj_years, meanlog = 0, sdlog = 1.20)
+        global_rec_devs[1:mse_options$n_proj_years, 1, 1, 1] <- rec_devs
     }
     
     for(y in 1:nyears_input){
@@ -133,6 +137,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         if(is.na(full_recruitment[y+1])){
             ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
             full_recruitment[y+1] <- projected_recruitment(ssb, y-spinup_years+1) 
+            full_recruitment[y+1] <- full_recruitment[y+1]*rec_devs[y-spinup_years+1] 
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
@@ -318,7 +323,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
     file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, global_rec_devs, survey_obs, model_outs))
 
 }
 

@@ -42,6 +42,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
         outputs$hcr_f[,,,,s] <- mse$hcr_f
         outputs$abc[,,,,s] <- mse$abc
         outputs$tac[,,,,s] <- mse$tac
+        outputs$global_rec_devs[,,,,s] <- mse$global_rec_devs
 
         if(diagnostics){
             outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$rpns[,,,,1]
@@ -92,6 +93,7 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=seeds))
     naa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "sim"=seeds))
+    global_rec_devs       = array(NA, dim=c(nyears-spinup_years, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears-spinup_years), 1, 1, "region"="Alaska", "sim"=seeds))
 
     survey_obs <- list(
         ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds)),
@@ -109,6 +111,6 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
         reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
     )
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, global_rec_devs, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 
 }
