@@ -41,6 +41,33 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
     return(plot)
 }
 
+plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="No Fishing"){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
+    
+    base_ssb_data <- data %>% filter(hcr == base_hcr)
+    rel_ssb <- data %>% left_join(base_ssb_data, by=c("time", "sim", "L1", "om"), suffix=c("", ".nofish")) %>%
+        filter(time > common_trajectory) %>%
+        mutate(
+            rel_ssb = spbio/spbio.nofish
+        ) %>%
+        filter(L1 == "naa") %>%
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(rel_ssb, .width=interval_widths)
+
+    ylim <- c(0, round(max(rel_ssb$rel_ssb)))
+
+    plot <- ggplot(rel_ssb) +
+        geom_line(aes(x=time, y=rel_ssb, color=.data[[v1]], group=.data[[v1]]), size=0.85)+
+        scale_y_continuous(limits=ylim)+
+        coord_cartesian(expand=0)+
+        labs(x="Year", y="Relative SSB")+
+        facet_wrap(~.data[[v2]])
+
+    return(plot)
+
+}
+
 plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
