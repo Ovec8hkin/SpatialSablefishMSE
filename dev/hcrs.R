@@ -34,6 +34,23 @@ pfmc4010 <- function(ref_pts, naa, dem_params, avgrec, pstar=0.45, OFLsigma=0.32
     return(TAC)
 }
 
+bc_sable <- function(ref_pts, naa, dem_params, avgrec){
+    ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
+    dep <- ssb/ref_pts$Bref
+
+    # From Maia
+    ABC <- 0.055*ssb
+    # ABC <- OFL*exp(qnorm(pstar, 0, OFLsigma))
+    if(dep < 0.1){TAC <- 0}
+    if(dep > 0.40) {TAC <- ABC}
+    if(dep <= 0.40 & dep >= 0.1){
+    #   TAC <- ref_pts$Fref*ssb*((ssb-0.1*ref_pts$B0)/(0.4*ref_pts$B0 -0.1*ref_pts$B0))
+        TAC <- ABC*(dep-0.4)/(0.6-0.4)
+    }
+
+    return(TAC)
+}
+
 age_structure_percentage <- function(ref_pts, naa, dem_params, avgrec, desired_abi, ref_naa){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- 2-1
@@ -218,7 +235,19 @@ mp_f40cons$hcr <- list(
 
 #'
 #' Stability Constraint HCRs
-#' 
+#'
+mp_5perc <- mp_base
+mp_5perc$name <- "F40 +/- 5%"
+mp_5perc$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = 0.05,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
 mp_10perc <- mp_base
 mp_10perc$name <- "F40 +/- 10%"
 mp_10perc$hcr <- list(
@@ -226,6 +255,18 @@ mp_10perc$hcr <- list(
     extra_pars = NA,
     extra_options = list(
         max_stability = 0.10,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp_10perc_up <- mp_base
+mp_10perc_up$name <- "F40 +/- 10% Up"
+mp_10perc_up$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = c(1.0, 0.10), # no constraint down, 10% up
         harvest_cap = NA
     ),
     units = "F"
@@ -258,7 +299,20 @@ mp_25perc$hcr <- list(
 
 #'
 #' Harvest Cap HCRs
-#' 
+#'
+mp_00cap <- mp_base
+mp_00cap$name <- "0k Harvest Cap"
+mp_00cap$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = 0
+    ),
+    units = "F"
+)
+mp_00cap$management$tac_land_reduction <- 1 
+
 mp_10cap <- mp_base
 mp_10cap$name <- "10k Harvest Cap"
 mp_10cap$hcr <- list(
@@ -437,8 +491,8 @@ mp_ageblocks$hcr <- list(
     func = age_structure_rt_reduction,
     extra_pars = list(
         ref_naa = ref_naa,
-        breakpoints=c(0.4, 0.8, 1.5), 
-        levels=c(0.75, 0.85, 1.0)
+        breakpoints=c(0.4, 0.8, 10), 
+        levels=c(0.50, 0.75, 1.0)
     ),
     extra_options = list(
         max_stability = NA,
@@ -465,9 +519,22 @@ mp_ageswitch$hcr <- list(
 
 mp_pfmc4010 <- mp_base
 mp_pfmc4010$name <- "PFMC 40-10"
-mp_pfmc4010$ref_points$spr_target <- 0.45
+mp_pfmc4010$ref_points$spr_target <- 0.40
 mp_pfmc4010$hcr <- list(
     func = pfmc4010,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "TAC"
+)
+
+mp_bcsable <- mp_base
+mp_bcsable$name <- "British Columbia"
+mp_bcsable$ref_points$spr_target <- 0.40
+mp_bcsable$hcr <- list(
+    func = bc_sable,
     extra_pars = NA,
     extra_options = list(
         max_stability = NA,
