@@ -324,13 +324,17 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #'
 get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list){
 
-    om_names <- hcr_filter
-    hcr_names <- om_filter
+    om_names <- om_filter
+    hcr_names <- hcr_filter
 
     get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
-        om <- om_list[[which(om_names == om_name)]]
-        hcr <- hcr_list[[which(hcr_names == hcr_name)]]
+        om <- om_list[which(om_names == om_name)]
+        hcr <- hcr_list[which(hcr_names == hcr_name)]
         year <- 64
+
+        om <- om[[1]]
+        hcr <- hcr[[1]]
+
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
             ret=om$dem_params$ret[year,,,,,drop=FALSE],
@@ -370,7 +374,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
         reframe(rps = get_rps(om, hcr, rec, c(Fixed, Trawl))) %>%
-        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list)*4)) %>%
+        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
         median_qi(Fref, Fmax, Bref, B0, .width=interval_widths, .simple_names=TRUE) %>%
@@ -388,8 +392,11 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
     get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
-        om <- om_list[[which(om_names == om_name)]]
-        hcr <- hcr_list[[which(hcr_names == hcr_name)]]
+        om <- om_list[which(om_names == om_name)]
+        hcr <- hcr_list[which(hcr_names == hcr_name)]
+
+        om <- om[[1]]
+
         year <- 64
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
@@ -430,7 +437,7 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
     b40s <- prop_fs_df %>% 
         left_join(avg_recruitment %>% select(-c(L1)), by=c("time", "sim", "om", "hcr")) %>%
         mutate(B40 = get_rps(om, hcr, avg_rec, c(Fixed, Trawl))) %>% 
-        group_by(time, om, hcr) %>%
+        group_by(time, om) %>%
         median_qi(B40, .width=interval_widths)
 
     return(b40s)
