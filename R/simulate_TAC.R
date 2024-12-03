@@ -22,31 +22,39 @@
 #'
 #' @example
 #'
-simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_tac, hcr_options, options){
+simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_abc, hcr_options, options){
     proj_faa <- joint_sel*hcr_F
     proj_N_new <- afscOM::simulate_population(naa, proj_faa, recruitment, dem_params, options=list())
     abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
+
+    # Implements symmetric stability constraints
+    if(!all(is.na(hcr_options$max_stability)) & !is.na(hist_abc)){
+        if(length(hcr_options$max_stability) == 1){
+            hcr_options$max_stability <- rep(hcr_options$max_stability, 2)
+        }
+        max_abc <- hist_abc*(1+hcr_options$max_stability[2])
+        min_abc <- hist_abc*(1-hcr_options$max_stability[1])
+        if(abc > max_abc){
+            abc <- max_abc
+        }else if(abc < min_abc){
+            abc <- min_abc
+        }
+    }
+
     if(!is.list(options$abc_tac_reduction)){
         tac <- abc * options$abc_tac_reduction
     }else{
         tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
     }
 
-    # Implements symmetric stability constraints
-    if(!is.na(hcr_options$max_stability) & !is.na(hist_tac)){
-        max_tac <- hist_tac*(1+hcr_options$max_stability)
-        min_tac <- hist_tac*(1-hcr_options$max_stability)
-        if(tac > max_tac){
-            tac <- max_tac
-        }else if(tac < min_tac){
-            tac <- min_tac
-        }
-    }
-
     # Implements a maximum tac cap
     if(!is.na(hcr_options$harvest_cap)){
         tac <- ifelse(tac > hcr_options$harvest_cap, hcr_options$harvest_cap, tac)
     }
+
+    # if(abc == 0 && tac > abc){
+    #     tac <- 0
+    # }
 
     if(!is.list(options$tac_land_reduction)){
         land <- tac * options$tac_land_reduction

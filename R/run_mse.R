@@ -299,7 +299,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     recruitment = mean(rec)/2, 
                     joint_sel = joint_selret$sel, 
                     dem_params = dp_y,
-                    hist_tac = tac[y2,1,1,1],
+                    hist_abc = abc[y2,1,1,1],
                     hcr_options = mp$hcr$extra_options,
                     options = mp$management
                 )
