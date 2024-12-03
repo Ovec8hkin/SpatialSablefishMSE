@@ -632,6 +632,117 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     return(plot)
 }
 
+plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
+    # Plot spawning biomass from OM and EM
+    d <- data %>%
+        # Compute quantiles of SSB distribution
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        # Reformat ggdist tibble into long format
+        reformat_ggdist_long(n=length(group_columns))
+
+    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common, time >= 40) %>% select(-hcr)
+
+    base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr) %>% select(-hcr)
+
+    ps <- lapply(om_names, function(o){
+
+        d2 <- d %>% filter(om == o)
+        base_hcr_d2 <- base_hcr_d %>% filter(om == o)
+
+        ggplot(d2 %>% filter(L1 == "naa")) + 
+            geom_lineribbon(data = base_hcr_d2, aes(x=time, y=median, ymin=lower, ymax=upper, group=1), color="black", size=0.85)+
+            geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+            geom_line(data = common, aes(x=time, y=median), size=0.85)+
+            geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
+            # geom_hline(yintercept=121.4611, linetype="dashed")+
+            scale_fill_brewer(palette="Blues")+
+            scale_y_continuous(limits=c(0, max(d2 %>% pull(median))*1.2))+
+            scale_x_continuous(limits=c(40, max(base_hcr_d2 %>% pull(time))))+
+            facet_wrap(~ hcr, ncol=4, nrow=7)+
+            labs(x="Year", y="SSB", title=o)+
+            coord_cartesian(expand=0)+
+            guides(fill="none", color="none")+
+            theme_bw()+
+            custom_theme+
+            theme(
+                plot.title = element_text(size=20)
+            )
+    })
+
+    ggsave(
+        filename = "~/Desktop/ssb_paginated.pdf", 
+        plot = marrangeGrob(ps, nrow=1, ncol=1), 
+        width = 8.5, height = 11
+    )
+
+    return(ps)
+}
+
+plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
+
+    c2 <- data %>%
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        reformat_ggdist_long(n=length(group_columns))
+    
+    hcr1 <- as.character((c2 %>% pull(hcr) %>% unique)[1])
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- c2 %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    if(by_fleet){
+        c2 <- c2 %>% filter(name == "catch")
+    }else{
+        c2 <- c2 %>% filter(name == "total_catch")
+    }
+
+    common <- c2 %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common, time >= 40) %>% select(-hcr)
+
+    base_hcr_c <- c2 %>% filter(hcr == base_hcr) %>% select(-hcr)
+
+    ps <- lapply(om_names, function(o){
+
+        c3 <- c2 %>% filter(om == o)
+        base_hcr_c2 <- base_hcr_c %>% filter(om == o)
+
+        ggplot(c3 %>% filter(L1 == "land_caa")) + 
+            geom_lineribbon(data = base_hcr_c2, aes(x=time, y=median, ymin=lower, ymax=upper, group=1), color="black", size=0.85)+
+            geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+            geom_line(data = common, aes(x=time, y=median), size=0.85)+
+            geom_vline(data=common, aes(xintercept=common_trajectory), linetype="dashed")+
+            # geom_hline(yintercept=121.4611, linetype="dashed")+
+            scale_fill_brewer(palette="Blues")+
+            # scale_y_continuous(limits=c(0, max(c3 %>% pull(median))*1.2))+
+            scale_x_continuous(limits=c(40, max(base_hcr_c2 %>% pull(time))))+
+            facet_wrap(~ hcr, ncol=4, nrow=7)+
+            labs(x="Year", y="Catch (mt)", title=o)+
+            coord_cartesian(expand=0, ylim=c(0, 60))+
+            guides(fill="none", color="none")+
+            theme_bw()+
+            custom_theme+
+            theme(
+                plot.title = element_text(size=20)
+            )
+    })
+
+    ggsave(
+        filename = "~/Desktop/catch_paginated.pdf", 
+        plot = marrangeGrob(ps, nrow=1, ncol=1), 
+        width = 8.5, height = 11
+    )
+
+    return(ps)
+}
+
 
 custom_theme <- theme_bw()+theme(
     panel.spacing.y = unit(0.5, "cm"),
