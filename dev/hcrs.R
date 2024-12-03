@@ -18,11 +18,14 @@ new_hcr <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1, alpha=0.05, 
 
 pfmc4010 <- function(ref_pts, naa, dem_params, avgrec, pstar=0.45, OFLsigma=0.32){
 
+    joint_selret <- calculate_joint_selret(dem_params$sel, dem_params$ret, c(0.80, 0.20))
     ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
+    exploit_bio <- naa*dem_params$waa*joint_selret$sel
     dep <- ssb/ref_pts$B0
 
     # From Maia
-    ABC <- afscOM::F_to_mu(ref_pts$Fref)*ssb
+    ABC <- afscOM::F_to_mu(ref_pts$Fref)*sum(exploit_bio)
+        # ABC <- ref_pts$Fref
     # ABC <- OFL*exp(qnorm(pstar, 0, OFLsigma))
     if(dep < 0.1){TAC <- 0}
     if(dep > 0.40) {TAC <- ABC}
@@ -39,11 +42,11 @@ bc_sable <- function(ref_pts, naa, dem_params, avgrec){
     dep <- ssb/ref_pts$Bref
 
     # From Maia
-    ABC <- 0.055*ssb
+    ABC <- 0.055
     # ABC <- OFL*exp(qnorm(pstar, 0, OFLsigma))
-    if(dep < 0.1){TAC <- 0}
-    if(dep > 0.40) {TAC <- ABC}
-    if(dep <= 0.40 & dep >= 0.1){
+    if(dep < 0.4){TAC <- 0}
+    if(dep > 0.60) {TAC <- ABC}
+    if(dep <= 0.60 & dep >= 0.40){
     #   TAC <- ref_pts$Fref*ssb*((ssb-0.1*ref_pts$B0)/(0.4*ref_pts$B0 -0.1*ref_pts$B0))
         TAC <- ABC*(dep-0.4)/(0.6-0.4)
     }
@@ -425,7 +428,7 @@ mp_f40chr$hcr <- list(
     ),
     units = "F"
 )
-mp_f40chr$ref_points$spr_target <- c(0.40, 0.40)
+mp_f40chr$ref_points$spr_target <- c(0.40, 0.001)
 
 mp_f50chr <- mp_base
 mp_f50chr$name <- "Constant F50"
@@ -438,7 +441,7 @@ mp_f50chr$hcr <- list(
     ),
     units = "F"
 )
-mp_f50chr$ref_points$spr_target <- c(0.50, 0.50)
+mp_f50chr$ref_points$spr_target <- c(0.50, 0.001)
 
 
 mp_f55chr <- mp_base
@@ -452,7 +455,7 @@ mp_f55chr$hcr <- list(
     ),
     units = "F"
 )
-mp_f55chr$ref_points$spr_target <- c(0.55, 0.55)
+mp_f55chr$ref_points$spr_target <- c(0.55, 0.001)
 
 mp_f00chr <- mp_base
 mp_f00chr$name <- "No Fishing"
@@ -519,7 +522,7 @@ mp_ageswitch$hcr <- list(
 
 mp_pfmc4010 <- mp_base
 mp_pfmc4010$name <- "PFMC 40-10"
-mp_pfmc4010$ref_points$spr_target <- 0.40
+mp_pfmc4010$ref_points$spr_target <- c(0.45, 0.40)
 mp_pfmc4010$hcr <- list(
     func = pfmc4010,
     extra_pars = NA,
@@ -532,7 +535,7 @@ mp_pfmc4010$hcr <- list(
 
 mp_bcsable <- mp_base
 mp_bcsable$name <- "British Columbia"
-mp_bcsable$ref_points$spr_target <- 0.40
+mp_bcsable$ref_points$spr_target <- c(0.45, 0.45)
 mp_bcsable$hcr <- list(
     func = bc_sable,
     extra_pars = NA,
@@ -540,5 +543,5 @@ mp_bcsable$hcr <- list(
         max_stability = NA,
         harvest_cap = NA
     ),
-    units = "TAC"
+    units = "F"
 )
