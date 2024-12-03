@@ -318,7 +318,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         }
 
         if(y %% 10 == 0){
-            print(paste0("Sim ", seed, ": ", y, "/", nyears_input, " complete."))
+            print(paste0("OM: ", om$name, "; MP: ", mp$name, "; Sim ", seed, ": ", y, "/", nyears_input, " complete."))
         }   
     }
 
