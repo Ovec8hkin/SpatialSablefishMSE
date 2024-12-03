@@ -551,6 +551,7 @@ simulate_em_data <- function(
 
     srv_ll_rpn_obs <- survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
     srv_ll_rpn_ses <- model_options$obs_pars$rpn_cv[3]*survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
+    srv_ll_rpn_ses[srv_ll_rpn_ses == 0] <- 0.1 
 
     new_data$srv_dom_ll_bio_indicator <- srv_ll_rpn_indic
     new_data$obs_dom_ll_bio <- as.vector(srv_ll_rpn_obs)
@@ -573,6 +574,7 @@ simulate_em_data <- function(
     
     srv_tw_rpw_obs <- survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
     srv_tw_rpw_ses <- model_options$obs_pars$rpw_cv[4]*survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
+    srv_tw_rpw_ses[srv_tw_rpw_ses == 0] <- 0.1 
 
     new_data$srv_nmfs_trwl_bio_indicator <- srv_tw_rpw_indic
     new_data$obs_nmfs_trwl_bio <- as.vector(srv_tw_rpw_obs)

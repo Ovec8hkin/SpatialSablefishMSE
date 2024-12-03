@@ -176,8 +176,9 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             rec <- full_recruitment[1:y]
             sel <- dp_y$sel
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
+            bio <- sum(naa_proj*dp_y$waa, na.rm=TRUE)
 
-            if(mse_options$run_estimation){
+            if(mse_options$run_estimation && bio > 1){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
                 assess_inputs <- simulate_em_data_sex_disaggregate(
@@ -271,6 +272,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     spr_target = mp$ref_points$spr_target
                 )
 
+                naa_proj[is.na(naa_proj)] <- 0
                 hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y, avgrec=mean(rec))
                 if(all(!is.na(mp$hcr$extra_pars))){
                     hcr_parameters <- c(hcr_parameters, mp$hcr$extra_pars)
