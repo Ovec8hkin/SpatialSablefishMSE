@@ -120,3 +120,50 @@ generate_annual_frequency <- function(frequency, len){
     }
     return(do)
 }
+
+#' Load Saved MSE Model Runs from Disk
+#' 
+#' Read all saved RDS files present in data/active and coerce into proper
+#' model_runs list object. Also setup correctly specified extra_columns
+#' object for use with bind_mse_outputs. 
+#'
+#' @param om_order vector of correct order of OMs (used to set OM factor level)
+#' @param hcr_order vector of correct order of HCRs (used to set HCR factor level)
+#'
+#' @export get_saved_model_runs
+#'
+#' @example
+#'
+get_saved_model_runs <- function(om_order=NULL, hcr_order=NULL){
+    fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+    model_runs <- unlist(lapply(fs, function(x){
+        m <- readRDS(x)
+        mse <- m$mse_objects
+        mse[(length(mse)-3):length(mse)]
+    }), recursive=FALSE)
+
+    om_names <- sapply(fs, function(x){
+        m <- readRDS(x)
+        lapply(m$om_list, function(om){
+            om$name
+        })
+    })
+    om_names_formatted <- unlist(c(om_names))
+
+    hcr_names <- sapply(fs, function(x){
+        m <- readRDS(x)
+        m$hcr$name
+    })
+    hcr_names_repped <- rep(hcr_names, each=length(unique(om_names_formatted)))
+
+    extra_columns2 <- data.frame(om=om_names_formatted, hcr=hcr_names_repped)
+
+    if(!is.null(om_order))
+        extra_columns2$om <- factor(extra_columns2$om, levels=om_order)
+    
+    if(!is.null(hcr_order))
+        extra_columns2$hcr <- factor(extra_columns2$hcr, levels=hcr_order)
+
+    return(listN(model_runs, extra_columns2))
+
+}
