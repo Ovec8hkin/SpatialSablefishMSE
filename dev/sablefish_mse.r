@@ -146,47 +146,9 @@ extra_columns2 <- expand.grid(
 ) %>% as_tibble() %>%
 as.data.frame
 
-mse_runs <- listN(om_list, hcr_list, seed_list, model_runs, extra_columns2, mse_options_list)
-saveRDS(mse_runs, "data/mse_runs_full_oct_nofish.RDS")
-
-###########
-
-mse_runs1 <- readRDS("data/mse_runs_full_oct1.RDS")
-model_runs1 <- mse_runs1$model_runs
-ec1 <- mse_runs1$extra_columns2
-
-mse_runs2 <- readRDS("data/mse_runs_full_oct2.RDS")
-model_runs2 <- mse_runs2$model_runs
-ec2 <- mse_runs2$extra_columns2
-
-mse_runs3 <- readRDS("data/mse_runs_full_oct3.RDS")
-model_runs3 <- mse_runs3$model_runs
-ec3 <- mse_runs3$extra_columns2
-
-mse_runs4 <- readRDS("data/mse_runs_full_oct4.RDS")
-model_runs4 <- mse_runs4$model_runs
-ec4 <- mse_runs4$extra_columns2
-
-mse_runs5 <- readRDS("data/mse_runs_full_oct_nofish.RDS")
-model_runs5 <- mse_runs5$model_runs
-ec5 <- mse_runs5$extra_columns2
-
-model_runs <- c(model_runs1, model_runs2, model_runs3, model_runs4, model_runs5)
-extra_columns2 <- rbind(ec1, ec2, ec3, ec4, ec5)
-publication_hcrs <- c(
-    "F40", 
-    "F50", 
-    "B40/F50", 
-    "F40 +/- 10%", 
-    "15k Harvest Cap", 
-    "25k Harvest Cap", 
-    "Constant F50", 
-    "PFMC 40-10", 
-    "Age Structure Deviations",
-    # "Age Structure Blocks",
-    # "Age Structure RP Switch"
-    "No Fishing"
-)
+mse_runs <- get_saved_model_runs(om_order=om_names, hcr_order=hcr_names)
+model_runs <- mse_runs$model_runs
+extra_columns2 <- mse_runs$extra_columns2
 
 interval_widths <- c(0.50, 0.80)
 common_trajectory <- 54
