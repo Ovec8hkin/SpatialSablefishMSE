@@ -244,20 +244,66 @@ performance_metrics <- performance_metric_summary(
 )
 
 # perf_data <- performance_metrics$perf_data %>% filter(hcr %in% publication_hcrs)
-perf_data2 <- perf_data %>% filter(hcr %in% publication_hcrs)
-plot_performance_metric_summary(perf_data2, v2="om", is_relative=FALSE)+custom_theme+guides(color="none", shape="none")
-ggsave(filename=file.path("~/Desktop", "performance.png"), width=16, height=18, units=c("in"))
+crash_time <- biomass_crash_time(
+    model_runs, 
+    extra_columns2, 
+    sable_om$dem_params, 
+    interval_widths=c(0.50, 0.80),
+    time_horizon = time_horizon, 
+    extra_filter = NULL,
+    relative=NULL, 
+    summarise_by=c("om", "hcr"),
+    hcr_filter=hcr_names,
+    om_filter=c("Immediate Crash Recruitment")
+)
 
-performance_metrics
-ggplot(perf_data) + 
-    geom_point(aes(y=hcr, x=median, color=om, shape=om), size=3)+
+recovery_time <- biomass_recovery_time(
+    model_runs, 
+    extra_columns2, 
+    sable_om$dem_params, 
+    interval_widths=c(0.50, 0.80),
+    time_horizon = time_horizon, 
+    extra_filter = NULL,
+    relative=NULL, 
+    summarise_by=c("om", "hcr"),
+    hcr_filter=hcr_names,
+    om_filter=c("Immediate Crash Recruitment")
+)
+
+publication_hcrs <- c("F40", "F50", "B40/F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
+
+crash_recovery_time <- crash_time %>% reformat_ggdist_long(n=2) %>%
+     bind_rows(recovery_time %>% reformat_ggdist_long(n=2)) %>%
+     filter(hcr %in% publication_hcrs) %>%
+     mutate(
+            name=factor(name, labels=c("Crash Time", "Recovery Time")),
+            hcr = factor(hcr, levels=publication_hcrs)
+    )
+     
+
+hcr_colors <- hue_pal()(length(publication_hcrs))
+hcr_colors[length(publication_hcrs)] <- "#000000"
+names(hcr_colors) <- publication_hcrs
+
+ggplot(crash_recovery_time)+
+    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr), point_size=3, position="dodge")+
     facet_wrap(~name, scales="free_x")+
-    theme_bw()+
-    custom_theme
+    # geom_vline(data=summary, aes(xintercept = median), color="black")+
+    scale_shape_discrete()+
+    scale_color_manual(values=hcr_colors)+
+    scale_x_continuous("Years", limits=c(0, 20))+
+    # facet_wrap(vars(name), scales="free_x")+
+    labs(y="", x="", shape="OM", color="HCR")+
+    coord_cartesian(expand=0)+
+    guides(shape=guide_legend(nrow=3), color="none")+
+    custom_theme+
+    theme(
+        plot.title = element_text(size=16),
+        plot.margin = margin(0.24, 1, 0.25, 0.25, unit="cm"),
+        panel.spacing.x = unit(1, "cm"),
+    )
+ggsave(file.path(here::here(), "figures", "resilience_metrics.jpeg"), width=12, height=8, units="in")
 
-om_summ <- perf_data %>% filter(.width == 0.50) %>% 
-    group_by(om, name) %>% 
-    summarise(value = mean(median))
 
 perf_data %>% filter(.width == 0.50) %>%
     left_join(om_summ, by=c("om", "name")) %>%
