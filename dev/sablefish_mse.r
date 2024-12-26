@@ -304,35 +304,50 @@ ggplot(crash_recovery_time)+
     )
 ggsave(file.path(here::here(), "figures", "resilience_metrics.jpeg"), width=12, height=8, units="in")
 
+f_ssb_data <- ssb_data %>% filter(L1 == "naa") %>% 
+    left_join(f_data %>% filter(L1 == "faa", fleet=="Fixed") %>% select(-c(F)), by=c("time", "sim", 'om', "hcr")) %>% 
+    filter(time >= 54) %>%
+    group_by(om, hcr) %>%
+    median_qi(total_F, spbio, .width=interval_widths, na.rm=TRUE)
 
-perf_data %>% filter(.width == 0.50) %>%
-    left_join(om_summ, by=c("om", "name")) %>%
-    mutate(
-        distance = median - value
-    ) %>%
-    group_by(hcr, name) %>%
+model_preds <- ssb_data %>% filter(L1 == "naa") %>% 
+    left_join(f_data %>% filter(L1 == "faa", fleet=="Fixed") %>% select(-c(F)), by=c("time", "sim", 'om', "hcr")) %>% 
+    filter(time >= 54, !is.na(total_F)) %>%
+    group_by(om, hcr, sim) %>%
     summarise(
-        avg = mean(distance)/mean(value)
+        spbio=median(spbio),
+        total_F=median(total_F, na.rm=TRUE)
     ) %>%
-    pivot_wider(names_from="name", values_from="avg")
+    nest(data = -c("om")) %>%
+    mutate(
+        model = map(data, ~lm(spbio ~ total_F, data=.))
+    ) %>%
+    mutate(
+        glanced = map(model, glance),
+        preds = map(model, ~predict(., newdata=data.frame(total_F=seq(0, 0.15, 0.001))))
+    ) %>%
+    unnest(c(glanced, preds)) %>%
+    select(c(om, r.squared, preds)) %>%
+    ungroup() %>%
+    mutate(
+        total_F=rep(seq(0, 0.15, 0.001), 4)
+    )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ggplot(model_preds)+
+    geom_pointrange(data=f_ssb_data, aes(x=total_F, xmin=total_F.lower, xmax=total_F.upper, y=spbio, ymin=spbio.lower, ymax=spbio.upper, color=hcr, label=hcr), size=1)+
+    geom_line(aes(x=total_F, y=preds), linetype="dashed")+
+    geom_label(aes(x=0.016, y=25, label=paste0("R^2=",round(r.squared, 3))), size=6)+
+    scale_x_continuous("FIshing Mortality Rate", limits = c(-0.005, 0.1), breaks=seq(0, 0.1, 0.025), labels=c("0", "0.025", "0.050", "0.075", "0.1"))+
+    scale_y_continuous("Spawning Biomass (1000s mt)", limits = c(0,350))+
+    coord_cartesian(expand=0)+
+    labs(color="HCR")+
+    facet_wrap(~om)+
+    custom_theme+
+    theme(
+        panel.spacing.x = unit(1, "cm"),
+        plot.margin = margin(0.5, 1, 0.5, 0.5, "cm")
+    )
+ggsave(filename=file.path(here::here(), "figures", "ssb_v_f.jpeg"))
 
 caa_groups <- get_atage_groups(
     model_runs, 
