@@ -153,6 +153,9 @@ extra_columns2 <- mse_runs$extra_columns2
 interval_widths <- c(0.50, 0.80)
 common_trajectory <- 54
 
+publication_hcrs <- c("F40", "F50", "B40/F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
+hcr_colors <- set_hcr_colors(publication_hcrs)
+
 # model_runs <- mse_runs$model_runs
 plot_mse_summary(model_runs, extra_columns2, dem_params=sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=om_names, common_trajectory = common_trajectory)+custom_theme
 ggsave(filename=file.path("~/Desktop/", "summary2.png"), width=10, height=7, units="in")
@@ -270,7 +273,6 @@ recovery_time <- biomass_recovery_time(
     om_filter=c("Immediate Crash Recruitment")
 )
 
-publication_hcrs <- c("F40", "F50", "B40/F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
 
 crash_recovery_time <- crash_time %>% reformat_ggdist_long(n=2) %>%
      bind_rows(recovery_time %>% reformat_ggdist_long(n=2)) %>%
@@ -279,11 +281,6 @@ crash_recovery_time <- crash_time %>% reformat_ggdist_long(n=2) %>%
             name=factor(name, labels=c("Crash Time", "Recovery Time")),
             hcr = factor(hcr, levels=publication_hcrs)
     )
-     
-
-hcr_colors <- hue_pal()(length(publication_hcrs))
-hcr_colors[length(publication_hcrs)] <- "#000000"
-names(hcr_colors) <- publication_hcrs
 
 ggplot(crash_recovery_time)+
     geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=hcr, color=hcr), point_size=3, position="dodge")+
