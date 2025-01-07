@@ -390,9 +390,9 @@ examp_rec <- get_recruits(model_runs, extra_columns2, hcr_filter=c("F40"), om_fi
 
 mean_rec <- examp_rec %>%
     group_by(om) %>%
-    summarise(r=mean(rec))
+    summarise(r=median(rec))
 
-summ_rec <- get_recruits(model_runs, extra_columns2) %>%
+summ_rec <- get_recruits(model_runs, extra_columns2, hcr_filter=c("F40"), om_filter=om_names) %>%
     as_tibble() %>%
     filter(time > 54, hcr == "F40") %>%
     group_by(time, om) %>%
@@ -400,9 +400,7 @@ summ_rec <- get_recruits(model_runs, extra_columns2) %>%
 
 ggplot(examp_rec) +
     geom_line(aes(x=time, y=rec, color=om, group=sim), size=0.5, alpha=0.6)+
-    geom_line(data=summ_rec, aes(x=time, y=rec), color="black")+
-    # geom_line(data=summ_rec, aes(x=time, y=.lower), linetype="dashed", color="black")+
-    # geom_line(data=summ_rec, aes(x=time, y=.upper), linetype="dashed", color="black")+
+    geom_line(data=summ_rec, aes(x=time, y=rec), color="black", size=1)+
     geom_hline(data=mean_rec, aes(yintercept=r), linetype="dashed")+
     geom_text(data=mean_rec, aes(x=123, y=110, label=round(r, 2)), size=6)+
     scale_y_continuous(limits=c(0, 120))+
@@ -413,4 +411,5 @@ ggplot(examp_rec) +
     facet_wrap(~om, ncol=2)+
     theme_bw()+
     custom_theme
-ggsave(filename=file.path("~/Desktop", "example_recruitment.png"), width=13, height=10, units = "in")
+ggsave(filename=file.path(here::here(), "figures", "example_recruitment.png"), width=13, height=10, units = "in")
+
