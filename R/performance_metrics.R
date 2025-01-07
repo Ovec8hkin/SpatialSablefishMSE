@@ -282,6 +282,123 @@ prop_low_biomass <- function(
             median_qi(prop_years, .width=interval_widths, .simple_names=FALSE)
     )
 }
+#' Compute number of years requied for SSB to crash
+#' 
+#' Compute average number of years required for SSB to decline below
+#' 50% of starting SSB (median and CIs) for each combination of operating 
+#' models and management procedures.  
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export biomass_crash_time
+#'
+#' @example
+#'
+biomass_crash_time <- function(
+    model_runs, 
+    extra_columns, 
+    dem_params, 
+    interval_widths=c(0.50, 0.80), 
+    time_horizon=c(55, NA), 
+    extra_filter=NULL, 
+    relative=NULL, 
+    summarise_by=c("om", "hcr"),
+    ...
+){
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
+                        ungroup() %>%
+                        filter(L1 != "naa_est") %>%
+                        select(-L1)
+
+    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+
+    crash_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1], time_horizon[1]+20)) %>%
+        filter(spbio <= 0.5*threshold) %>%
+        group_by(sim, om, hcr) %>%
+        summarise(crash_time=min(time)-time_horizon[1]) %>%
+        relativize_performance(
+            rel_column = "hcr",
+            value_column = "crash_time",
+            rel_value = NULL,
+            grouping = group_columns
+        )
+    
+    if(!is.null(extra_filter)){
+        crash_time <- crash_time %>% filter(eval(extra_filter))
+    }
+
+    return(
+        crash_time %>% 
+            group_by(across(all_of(summarise_by))) %>%
+            median_qi(crash_time, .width=interval_widths, .simple_names=FALSE)
+    )
+}
+
+#' Compute number of years requied for SSB to recover
+#' 
+#' Compute average number of years required for SSB to recover above
+#' 50% of starting SSB (median and CIs) following a known SSB crash
+#' for each combination of operating models and management procedures.  
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export biomass_recovery_time
+#'
+#' @example
+#'
+biomass_recovery_time <- function(
+    model_runs, 
+    extra_columns, 
+    dem_params, 
+    interval_widths=c(0.50, 0.80), 
+    time_horizon=c(55, NA), 
+    extra_filter=NULL, 
+    relative=NULL, 
+    summarise_by=c("om", "hcr"),
+    ...
+){
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
+                        ungroup() %>%
+                        filter(L1 != "naa_est") %>%
+                        select(-L1)
+
+    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+
+    recovery_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1]+20, time_horizon[2])) %>%
+        filter(spbio >= 0.5*threshold) %>%
+        group_by(sim, om, hcr) %>%
+        summarise(recovery_time=min(time)-(time_horizon[1]+20)) %>%
+        relativize_performance(
+            rel_column = "hcr",
+            value_column = "recovery_time",
+            rel_value = NULL,
+            grouping = group_columns
+        )
+    
+    if(!is.null(extra_filter)){
+        recovery_time <- recovery_time %>% filter(eval(extra_filter))
+    }
+
+    return(
+        recovery_time %>% 
+            group_by(across(all_of(summarise_by))) %>%
+            median_qi(recovery_time, .width=interval_widths, .simple_names=FALSE)
+    )
+}
 
 #' Compute Average Age across projection period
 #' 
