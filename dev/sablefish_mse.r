@@ -157,39 +157,26 @@ publication_hcrs <- c("F40", "F50", "B40/F50", "F40 +/- 5%", "F40 +/- 10%", "15k
 hcr_colors <- set_hcr_colors(publication_hcrs)
 
 # model_runs <- mse_runs$model_runs
-plot_mse_summary(model_runs, extra_columns2, dem_params=sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=om_names, common_trajectory = common_trajectory)+custom_theme
+plot_mse_summary(model_runs, extra_columns2, dem_params=sable_om$dem_params, hcr_filter=hcr_names, om_filter=om_names, common_trajectory = common_trajectory)+custom_theme
 ggsave(filename=file.path("~/Desktop/", "summary2.png"), width=10, height=7, units="in")
 
 # Plot spawning biomass
 ssb_data <- get_ssb_biomass(model_runs, extra_columns2, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=om_names)
-plot_ssb(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)+custom_theme+guides(color=guide_legend(title="HCR", nrow=4))
+plot_ssb(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)+custom_theme+guides(color=guide_legend(title="HCR", ncol=4))
+plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")+custom_theme+guides(color=guide_legend(title="HCR", ncol=4))
+plot_ssb_paginate(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)
 
-nofish_ssbb_data <- ssb_data %>% filter(hcr == "No Fishing")
-rel_ssb <- ssb_data %>% left_join(nofish_ssbb_data, by=c("time", "sim", "L1", "om"), suffix=c("", ".nofish")) %>%
-    filter(time > common_trajectory) %>%
-    mutate(
-        rel_ssb = spbio/spbio.nofish
-    ) %>%
-    filter(L1 == "naa", hcr %in% publication_hcrs) %>%
-    group_by(time, om, hcr) %>%
-    median_qi(rel_ssb, .width=interval_widths)
 
-ggplot(rel_ssb) +
-    geom_line(aes(x=time, y=rel_ssb, color=hcr, group=hcr), size=0.85)+
-    scale_y_continuous(limits=c(0, 1))+
-    facet_wrap(~om)+
-    custom_theme
-
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "ssb.png"), width=8, height=8, units=c("in"))
+ggsave(filename=file.path(here::here(), "figures", "rel_ssb.png"), width=8, height=8, units=c("in"))
 
 
 # Plot fishing mortality rates from OM and EM
-f_data <- get_fishing_mortalities(model_runs, extra_columns2, hcr_filter=publication_hcrs, om_filter=om_names)
-plot_fishing_mortalities(f_data, v1="hcr", v2="om", common_trajectory = common_trajectory, show_est=TRUE)+custom_theme
+f_data <- get_fishing_mortalities(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names)
+plot_fishing_mortalities(f_data, v1="hcr", v2="om", common_trajectory = common_trajectory, show_est=FALSE)+custom_theme
 ggsave(filename=file.path("~/Desktop/sablefish_plots", "fishing_mortality.png"), width=8, height=8, units=c("in"))
 
 # Plot management quantities (ABC, TAC, Expected Landings, and Attainment)
-abctac <- get_management_quantities(model_runs, extra_columns2, spinup_years=common_trajectory, hcr_filter=publication_hcrs, om_filter=om_names)
+abctac <- get_management_quantities(model_runs, extra_columns2, spinup_years=common_trajectory, hcr_filter=hcr_names, om_filter=om_names)
 plot_abc_tac(abctac, v1="hcr", v2="om", common_trajectory=common_trajectory)+custom_theme
 ggsave(filename=file.path("~/Desktop/sablefish_plots", "abc_tac.png"), width=10*1.7, height=6*1.7, units=c("in"))
 
@@ -198,31 +185,33 @@ abctac %>% filter(time > 64) %>%
     median_qi(value, .width=c(0.50)) %>%
     select(om, hcr, L1, value) %>%
     filter(L1 %in% c("ABC")) %>%
-    pivot_wider(names_from=hcr, values_from=value) %>%
+    pivot_wider(names_from=hcr, values_from=value)
+
 # Plot landed catch
 catch_data <- get_landed_catch(model_runs, extra_columns2, hcr_filter=publication_hcrs, om_filter=om_names)
 plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+custom_theme
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "catch.png"), width=8, height=8, units=c("in"))
+plot_catch_paginate(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr="F40")
+ggsave(filename=file.path(here::here(), "figures", "catch.png"), width=8, height=8, units=c("in"))
 
 for(g in hcr_groups){
     plot_ssb_catch(
         model_runs, extra_columns2, sable_om$dem_params, 
         v1="hcr", v2="om", v3=NA, common_trajectory = common_trajectory,
-        hcr_filter = publication_hcrs
+        hcr_filter = publication_hcrs, om_filter=om_names
     )+custom_theme
     ggsave(filename=file.path("~/Desktop/sablefish_plots", paste0("ssb_catch_", g ,".png")), width=13, height=10, units=c("in"))
 }
 
 # Plot phase-plane diagrams (F vs SSB, HCR v SSB, Catch v SSB)
-ref_pts <- get_reference_points(model_runs, extra_columns2, om_list, hcr_list, seed_list)
+ref_pts <- get_reference_points(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names, seed_list)
 
 phaseplane_data <- get_phaseplane_data(model_runs, extra_columns2, sable_om$dem_params)
 phaseplane_data2 <- phaseplane_data
 plot_phase_diagram(phaseplane_data2, ref_pts, common_trajectory = common_trajectory)+custom_theme
 
-hcrphase_data <- get_hcrphase_data(model_runs, extra_columns2, sable_om$dem_params)
+hcrphase_data <- get_hcrphase_data(model_runs, extra_columns2, sable_om$dem_params, hcr_filter=hcr_names, om_filter=om_names)
 hcrphase_data2 <- hcrphase_data
-plot_hcr_phase_diagram(hcrphase_data2, ref_pts, common_trajectory = common_trajectory)+custom_theme
+plot_hcr_phase_diagram(hcrphase_data, ref_pts, common_trajectory = common_trajectory)+custom_theme
 
 catchphase_data <- get_phaseplane_catch_data(model_runs, extra_columns2, sable_om$dem_params)
 plot_catch_phase_diagram(catchphase_data, ref_pts, common_trajectory = common_trajectory)+custom_theme
@@ -236,11 +225,11 @@ ggplot(b40s)+
     custom_theme
 
 # Plot recruitment
-rec_data <- get_recruits(model_runs, extra_columns2)
-plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)
+rec_data <- get_recruits(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names)
+plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)+custom_theme
 
 ###### Performance Metrics
-time_horizon <- c(55, 135)
+time_horizon <- c(55, 130)
 
 performance_metrics <- performance_metric_summary(
     model_runs, 
@@ -251,7 +240,9 @@ performance_metrics <- performance_metric_summary(
     time_horizon = time_horizon, 
     extra_filter = NULL,
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    hcr_filter=hcr_names,
+    om_filter=om_names
 )
 
 # perf_data <- performance_metrics$perf_data %>% filter(hcr %in% publication_hcrs)
@@ -279,6 +270,8 @@ plot_performance_metric_summary(perf_data2, v2="om", is_relative=FALSE)+
     )
 ggsave(filename=file.path(here::here(), "figures", "performance2.png"), width=18, height=12, units=c("in"))
 
+
+##### Resiliency Metrics
 crash_time <- biomass_crash_time(
     model_runs, 
     extra_columns2, 
@@ -333,6 +326,8 @@ ggplot(crash_recovery_time)+
     )
 ggsave(file.path(here::here(), "figures", "resilience_metrics.jpeg"), width=12, height=8, units="in")
 
+
+#### F vs SSB Relationship
 f_ssb_data <- ssb_data %>% filter(L1 == "naa") %>% 
     left_join(f_data %>% filter(L1 == "faa", fleet=="Fixed") %>% select(-c(F)), by=c("time", "sim", 'om', "hcr")) %>% 
     filter(time >= 54) %>%
