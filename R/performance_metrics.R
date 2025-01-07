@@ -218,6 +218,70 @@ average_ssb <- function(
             median_qi(spbio, .width=interval_widths, .simple_names=FALSE)
     )
 }
+#' Compute proportion of years SSB is below a threshold level across projection period
+#' 
+#' Compute average proportion of years where SSB is below a threshold level
+#' (median and CIs) across all years and simulation seeds, 
+#' for each combination of operating models and management procedures. 
+#'
+#' @param model_runs list of completed MSE simulations runs
+#' @param extra_columns data.frame specifying names for OM and HCR to attach
+#' to each model_run (see `bind_mse_outputs` for more details)
+#' @param interval_widths confidence intevrals to compute
+#' @param time_horizon periof of years over which to calculate metric
+#' @param extra_filter an additional set of filters to apply before computing 
+#' medians and confidence intervals
+#' @param relative a management procedure to compute metric relative to
+#' @param summarise_by vector of columns to summarise metric by
+#' 
+#' @export prop_low_biomass
+#'
+#' @example
+#'
+prop_low_biomass <- function(
+    model_runs, 
+    extra_columns, 
+    dem_params, 
+    interval_widths=c(0.50, 0.80), 
+    time_horizon=c(55, NA), 
+    extra_filter=NULL, 
+    relative=NULL, 
+    summarise_by=c("om", "hcr"),
+    ...
+){
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, publication_hcrs, om_names) %>%
+                        ungroup() %>%
+                        filter(L1 != "naa_est") %>%
+                        select(-L1)
+
+    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+
+    prop_years_low_biomass <- all_ssb %>% filter_times(time_horizon=time_horizon) %>%
+        mutate(
+            low_bio = spbio <= threshold
+        ) %>%
+        group_by(sim, om, hcr) %>%
+        summarise(
+            total_low_bio = sum(low_bio),
+            prop_years = total_low_bio/(time_horizon[2]-time_horizon[1])
+        ) %>%
+        relativize_performance(
+            rel_column = "hcr",
+            value_column = "crash_time",
+            rel_value = NULL,
+            grouping = group_columns
+        )
+    
+    if(!is.null(extra_filter)){
+        prop_years_low_biomass <- prop_years_low_biomass %>% filter(eval(extra_filter))
+    }
+
+    return(
+        prop_years_low_biomass %>% 
+            group_by(across(all_of(summarise_by))) %>%
+            median_qi(prop_years, .width=interval_widths, .simple_names=FALSE)
+    )
+}
 
 #' Compute Average Age across projection period
 #' 
