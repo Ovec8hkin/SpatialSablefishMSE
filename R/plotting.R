@@ -743,6 +743,13 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
     return(ps)
 }
 
+set_hcr_colors <- function(hcrs){
+    hcr_colors <- hue_pal()(length(hcrs))
+    hcr_colors[which(hcrs == "No Fishing")] <- "#000000"
+    names(hcr_colors) <- hcrs
+    return(hcr_colors)
+}
+
 
 custom_theme <- theme_bw()+theme(
     panel.spacing.y = unit(0.5, "cm"),
