@@ -255,6 +255,30 @@ performance_metrics <- performance_metric_summary(
 )
 
 # perf_data <- performance_metrics$perf_data %>% filter(hcr %in% publication_hcrs)
+publication_metrics = c("Annual Catch", "Catch AAV", "Large Catch", "SSB", "Average Age", "Proprtion Years Low SSB")
+perf_data2 <- performance_metrics$perf_data %>% 
+    filter(hcr %in% publication_hcrs, name %in% publication_metrics) %>%
+    mutate(
+            hcr = factor(hcr, levels=publication_hcrs),
+            om = factor(om, labels=c("Random Recruitment", "BH Recruitment", "BH Regime Recruitment", "Crash Recruitment")),
+            name = factor(name, levels=publication_metrics)
+    )
+
+plot_performance_metric_summary(perf_data2, v2="om", is_relative=FALSE)+
+    custom_theme+guides(color="none", shape="none")+
+    theme(panel.spacing.x = unit(1.25, "cm"))+ 
+    ggh4x::facetted_pos_scales(
+        x = list(
+            scale_x_continuous(limits=c(0, 55)),
+            scale_x_continuous(limits=c(0, 0.06), breaks=c(0, 0.02, 0.04, 0.06)),
+            scale_x_continuous(limits=c(0, 1), breaks=c(0, 0.50, 1.0)),
+            scale_x_continuous(limits=c(0, 550), breaks=c(0, 150, 300, 450)),
+            scale_x_continuous(limits=c(0, 15)),
+            scale_x_continuous(limits=c(0, 0.60), breaks=c(0.0, 0.20, 0.40, 0.60))
+        )
+    )
+ggsave(filename=file.path(here::here(), "figures", "performance2.png"), width=18, height=12, units=c("in"))
+
 crash_time <- biomass_crash_time(
     model_runs, 
     extra_columns2, 
