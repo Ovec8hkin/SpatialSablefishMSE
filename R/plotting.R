@@ -660,7 +660,7 @@ plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, comm
 
     base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr) %>% select(-hcr)
 
-    ps <- lapply(om_names, function(o){
+    ps <- lapply(unlist(unique(c(om_names))), function(o){
 
         d2 <- d %>% filter(om == o)
         base_hcr_d2 <- base_hcr_d %>% filter(om == o)
@@ -707,17 +707,13 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
     traj_column <- ifelse(is.na(v3), v2, v3)
     traj <- c2 %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
-    if(by_fleet){
-        c2 <- c2 %>% filter(name == "catch")
-    }else{
         c2 <- c2 %>% filter(name == "total_catch")
-    }
 
     common <- c2 %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common, time >= 40) %>% select(-hcr)
 
     base_hcr_c <- c2 %>% filter(hcr == base_hcr) %>% select(-hcr)
 
-    ps <- lapply(om_names, function(o){
+    ps <- lapply(unlist(unique(c(om_names))), function(o){
 
         c3 <- c2 %>% filter(om == o)
         base_hcr_c2 <- base_hcr_c %>% filter(om == o)
