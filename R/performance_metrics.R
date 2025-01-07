@@ -191,12 +191,13 @@ average_ssb <- function(
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    ...
 ){
     
     group_columns <- c("sim", summarise_by)
 
-    agv_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params) %>%
+    agv_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
             ungroup() %>%
             filter(L1 != "naa_est") %>%
             select(-L1) %>%
@@ -218,6 +219,7 @@ average_ssb <- function(
             median_qi(spbio, .width=interval_widths, .simple_names=FALSE)
     )
 }
+
 #' Compute proportion of years SSB is below a threshold level across projection period
 #' 
 #' Compute average proportion of years where SSB is below a threshold level
@@ -282,6 +284,7 @@ prop_low_biomass <- function(
             median_qi(prop_years, .width=interval_widths, .simple_names=FALSE)
     )
 }
+
 #' Compute number of years requied for SSB to crash
 #' 
 #' Compute average number of years required for SSB to decline below
@@ -498,6 +501,7 @@ average_abi <- function(
     avg_abi <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
             as_tibble() %>%
             ungroup() %>%
+            filter_times(time_horizon=time_horizon) %>%
             group_by(time, age, sim, om, hcr) %>%
             mutate(value = sum(value)) %>%
             filter(sex == "F") %>%
@@ -506,7 +510,6 @@ average_abi <- function(
             summarise(
                 avg_abi = abi(value, ref_naa)
             ) %>%
-            filter_times(time_horizon=time_horizon) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_abi",
@@ -553,11 +556,12 @@ average_annual_catch_variation <- function(
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    ...
 ){
     
     group_columns <- c("sim", summarise_by)
-    avg_catch_var <- get_landed_catch(model_runs, extra_columns) %>%
+    avg_catch_var <- get_landed_catch(model_runs, extra_columns, ...) %>%
         filter_times(time_horizon = time_horizon) %>%
         group_by(across(all_of(group_columns))) %>%
         summarise(
@@ -951,7 +955,8 @@ performance_metric_summary <- function(
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    ...
 ){
     # Average Catch Across Projection Period
     avg_catch <- average_catch(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
@@ -963,7 +968,10 @@ performance_metric_summary <- function(
     prop_years_high_catch <- prop_years_catch(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, catch_threshold = 30, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
     # Average SSB Across Projection Period
-    avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
+    avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, ...) %>% reformat_ggdist_long(n=length(summarise_by))
+
+    # Average SSB Across Projection Period
+    prop_years_lowssb <- prop_low_biomass(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, ...) %>% reformat_ggdist_long(n=length(summarise_by))
 
     # Average SSB Across Projection Period
     avg_age <- average_age(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
@@ -972,7 +980,7 @@ performance_metric_summary <- function(
     avg_abi <- average_abi(model_runs, extra_columns, ref_naa, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
     # Average Annual Catch Variation Across Projection Period
-    avg_variation <- average_annual_catch_variation(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
+    avg_variation <- average_annual_catch_variation(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, ...) %>% reformat_ggdist_long(n=length(summarise_by))
 
     # Average proportion of catch that is "large"
     avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
@@ -983,16 +991,21 @@ performance_metric_summary <- function(
     # Average annual value
     annual_value <- average_annual_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
+    # Dynamic annual value
     dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by) %>% reformat_ggdist_long(n=length(summarise_by))
 
-    perf_data <- bind_rows(avg_catch, avg_ssb, avg_variation, avg_catch_lg, avg_age, avg_abi, dynamic_value) %>%
+    # crash_time <- biomass_crash_time(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, ...) %>% reformat_ggdist_long(n=length(summarise_by))
+
+    # recovery_time <- biomass_recovery_time(model_runs, extra_columns, dem_params, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, ...) %>% reformat_ggdist_long(n=length(summarise_by))
+
+    perf_data <- bind_rows(avg_catch, avg_ssb, prop_years_lowssb, avg_variation, avg_catch_lg, dynamic_value, avg_abi, avg_age) %>%
         mutate(name=factor(
                         name, 
-                        levels=c("annual_catch", "total_catch", "num_years", "spbio", "aav", "catch", "bio", "avg_abi", "avg_age", "annual_value", "dyn_annual_value"), 
-                        labels=c("Annual Catch", "Total Catch", "Years High Catch", "SSB", "Catch AAV", "Large Catch", "Old SSB", "ABI", "Population Age", "Annual Value", "Dynamic Annual Value")
+                        levels=c("annual_catch", "total_catch", "num_years", "spbio", "prop_years", "aav", "catch", "bio", "annual_value", "dyn_annual_value", "avg_abi", "avg_age"), 
+                        labels=c("Annual Catch", "Total Catch", "Years High Catch", "SSB", "Proprtion Years Low SSB", "Catch AAV", "Large Catch", "Old SSB", "Annual Value", "Dynamic Annual Value", "ABI", "Average Age")
                     )
         )
 
-    return(afscOM::listN(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, avg_age, avg_abi, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value, perf_data))
+    return(afscOM::listN(avg_catch, tot_catch, prop_years_high_catch, avg_ssb, prop_years_lowssb, avg_age, avg_abi, avg_variation, avg_catch_lg, avg_pop_old, annual_value, dynamic_value, perf_data))
 
 }
