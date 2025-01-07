@@ -349,69 +349,10 @@ ggplot(model_preds)+
     )
 ggsave(filename=file.path(here::here(), "figures", "ssb_v_f.jpeg"))
 
-caa_groups <- get_atage_groups(
-    model_runs, 
-    extra_columns2, 
-    hcr_filter=publication_hcrs,
-    om_filter=om_names,
-    q="caa",
-    age_groups=c(5, 9, 14), 
-    group_names = c("Small", "Medium", "Large"),
-    group_abbs = c("S", "M", "L"),
-    summarise = TRUE,
-    make_segments = TRUE
-)
-col_names = c("S", "M", "L")
-plot_atage_trajectory_ternary(caa_groups$data, caa_groups$segments, col_names)
-
-caa_groups$data %>% group_by(hcr, om) %>%
-    median_qi(L, .width=c(0.50)) %>%
-    print(n=100)
-
-caa_groups2 <- get_atage_groups(
-    model_runs, 
-    extra_columns2, 
-    hcr_filter=publication_hcrs,
-    om_filter=om_names,
-    q="caa",
-    age_groups=c(5, 9, 14), 
-    group_names = c("Small", "Medium", "Large"),
-    group_abbs = c("S", "M", "L"),
-    summarise = FALSE,
-    make_segments = FALSE
-)
-plot_atage_density_ternary(caa_groups2, col_names = c("S", "M", "L"))+custom_theme
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "caa_tern.png"), width=8*1.7, height=6*1.7, units=c("in"))
-
-naa_groups <- get_atage_groups(
-    model_runs,
-    extra_columns2,
-    hcr_filter=publication_hcrs,
-    om_filter=om_names,
-    q="naa",
-    age_groups=c(7, 14, 21),
-    group_names=c("Young", "Adult", "Old"),
-    group_abbs = c("Y", "A", "O"),
-    summarise=FALSE,
-    make_segments = FALSE
-)
-col_names = c("Y", "A", "O")
-plot_atage_density_ternary(d=naa_groups, col_names=col_names)+custom_theme
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "naa_tern.png"), width=8*1.7, height=6*1.7, units=c("in"))
 
 
-filter_string <- get_big_recruitment_filter(
-    om_list, 
-    seed_list, 
-    model_runs, 
-    unlist(lapply(om_list, \(x) x$name)), 
-    large_event_thresh = 60, 
-    lags=c(8, 14)
-)
-
-
-# Example recruitment functions
-examp_rec <- get_recruits(model_runs, extra_columns2) %>%
+#### Example recruitment functions
+examp_rec <- get_recruits(model_runs, extra_columns2, hcr_filter=c("F40"), om_filter=om_names) %>%
     as_tibble() %>%
     filter(time > 54, sim %in% sample(seed_list, 5), hcr == "F40") %>%
     mutate(
