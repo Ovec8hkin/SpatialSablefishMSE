@@ -595,7 +595,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
                 theme_bw()+
                 theme(
                     plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
-                    panel.spacing.x = unit(0.5, "cm"),
+                    panel.spacing.x = unit(5, "cm"),
                     plot.title = element_text(size=18),
                     legend.spacing.x = unit(1.5, "cm")
                 )
@@ -614,13 +614,15 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
         plot <- plot + 
                 ggh4x::facetted_pos_scales(
                     x = list(
-                        scale_x_continuous(limits=c(0, 30)),
-                        scale_x_continuous(limits=c(50, 300)),
-                        scale_x_continuous(limits=c(0, 0.06)),
-                        scale_x_continuous(limits=c(0, 1)),
+                        scale_x_continuous(limits=c(0, 55)),
+                        scale_x_continuous(limits=c(0, 550), breaks=c(0, 150, 300, 450)),
+                        scale_x_continuous(limits=c(0, 0.06), breaks=c(0, 0.02, 0.04, 0.06)),
+                        scale_x_continuous(limits=c(0, 1), breaks=c(0, 0.50, 1.0)),
+                        # scale_x_continuous(limits=c(0, 5)),
+                        # scale_x_continuous(limits=c(2, 15)),
+                        scale_x_continuous(limits=c(5, 12)),
                         scale_x_continuous(limits=c(0, 5)),
-                        scale_x_continuous(limits=c(2, 15)),
-                        scale_x_continuous(limits=c(5, 12))
+                        scale_x_continuous(limits=c(0, 15))
                     
                     )
                 )
