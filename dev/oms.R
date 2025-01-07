@@ -67,8 +67,8 @@ om_bh_recruit$name <- "Beverton-Holt Recruitment"
 om_bh_recruit$recruitment$func <- beverton_holt
 om_bh_recruit$recruitment$pars <- list(
     h = 0.85, # could do 0.80
-    R0 = 25,
-    S0 = sbpr*25,
+    R0 = 15,
+    S0 = sbpr*15,
     sigR = 1.20
 )
 
@@ -115,7 +115,7 @@ om_bhcyclic_recruit$recruitment$func <- bevholt_regimes
 om_bhcyclic_recruit$recruitment$pars <- list(
     h = 0.85,
     sbpr = sbpr,
-    R0 = c(12.5, 90),
+    R0 = c(12.5, 50),
     sigR = c(1.20, 1.20),
     nyears = 10*nyears,
     regime_length = c(20, 5),
