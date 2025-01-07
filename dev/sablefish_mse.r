@@ -413,3 +413,141 @@ ggplot(examp_rec) +
     custom_theme
 ggsave(filename=file.path(here::here(), "figures", "example_recruitment.png"), width=13, height=10, units = "in")
 
+
+#### Pairs Plot for Catch, SSB, Large Catch, Population Age
+extra_columns=extra_columns2 
+dem_params=sable_om$dem_params
+relative=NULL
+summarise_by=c("om", "hcr")
+group_columns <- c("sim", summarise_by)
+
+avg_F <- f_data %>% ungroup() %>% filter(L1 == "faa") %>%
+    filter_times(time_horizon) %>%
+    relativize_performance(
+        rel_column = "hcr",
+        value_column = "annual_catch",
+        rel_value = relative,
+        grouping=group_columns
+    ) %>%
+    select(time, sim, om, hcr, total_F)
+
+avg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    as_tibble() %>%
+    filter_times(time_horizon) %>%
+    group_by(across(all_of(c("time", group_columns)))) %>%
+    summarise(annual_catch = sum(value)) %>%
+    relativize_performance(
+        rel_column = "hcr",
+        value_column = "annual_catch",
+        rel_value = relative,
+        grouping=group_columns
+    )
+    
+avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter = hcr_names, om_filter=om_names) %>%
+    ungroup() %>%
+    filter(L1 != "naa_est") %>%
+    select(-L1) %>%
+    filter_times(time_horizon=time_horizon) %>%
+    relativize_performance(
+        rel_column = "hcr",
+        value_column = "spbio",
+        rel_value = relative,
+        grouping = group_columns
+    )
+
+avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+    as_tibble() %>%
+    ungroup() %>%
+    group_by(time, age, sim, om, hcr) %>%
+    mutate(value = sum(value)) %>%
+    filter(sex == "F") %>%
+    ungroup() %>%
+    group_by(time, sim, hcr, om) %>%
+    summarise(
+        avg_age = compute_average_age(value, 2:31)
+    ) %>%
+    filter_times(time_horizon=time_horizon) %>%
+    relativize_performance(
+        rel_column = "hcr",
+        value_column = "avg_age",
+        rel_value = relative,
+        grouping = group_columns
+    )
+
+prop_lg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    as_tibble() %>%
+    filter_times(time_horizon = time_horizon) %>%
+    mutate(
+        size_group = case_when(
+            age < 5 ~ "Small",
+            age < 9 ~ "Medium",
+            TRUE ~ "Large"
+        )
+    ) %>%
+    group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
+    summarise(total_catch = sum(value)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = "size_group", values_from="total_catch") %>%
+    rowwise() %>%
+    mutate(
+        total_catch = sum(Large, Medium, Small)
+    ) %>%
+    mutate(across(Large:Small, ~ ./total_catch)) %>%
+    select(-total_catch) %>%
+    ungroup() %>%
+    pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
+    relativize_performance(
+        rel_column = "hcr",
+        value_column = "catch",
+        rel_value = relative,
+        grouping = c("size_group", group_columns)
+    )
+
+my_fn2 <- function(data, mapping, ...){
+    print(data)
+    p <- ggplot(data = data, mapping = mapping) + 
+        geom_point(aes(color=hcr), size=2) + 
+        geom_smooth(method=lm, aes(color=hcr), se=FALSE, ...) +
+        ggpmisc::stat_poly_line(data=data, mapping=aes(), color="black", linetype="dashed")+
+        ggpmisc::stat_poly_eq(data=data, mapping=aes(x=data$x, y=data$y), use_label("eq"))
+        # geom_smooth(method=lm, color="black", linetype="dashed", ...)
+    p
+}
+
+gpairs_lower <- function(g){
+    g$plots <- g$plots[-(1:g$nrow)]
+    g$yAxisLabels <- g$yAxisLabels[-1]
+    g$nrow <- g$nrow -1
+
+    g$plots <- g$plots[-(seq(g$ncol, length(g$plots), by = g$ncol))]
+    g$xAxisLabels <- g$xAxisLabels[-g$ncol]
+    g$ncol <- g$ncol - 1
+
+    g
+}
+
+gp <- avg_F %>%
+    left_join(avg_catch, by=c("time", "sim", "om", "hcr")) %>% 
+    left_join(avg_ssb, by=c("time", "sim", "om", "hcr")) %>%
+    left_join(avg_age, by=c("time", "sim", "om", "hcr")) %>%
+    left_join(prop_lg_catch %>% filter(size_group == "Large") %>% select(time, sim, om, hcr, catch), by=c("time", "sim", "om", "hcr")) %>%
+    filter(hcr %in% publication_hcrs, !(hcr %in% c("No Fishing"))) %>%
+    group_by(sim, hcr) %>%
+    median_qi(total_F, annual_catch, spbio, catch, avg_age, .width=c(0.50)) %>%
+    select(hcr, total_F, annual_catch, spbio, catch, avg_age) %>%
+    rename("Annual Catch"="annual_catch", "SSB"="spbio", "Large Catch"="catch", "Population Age"="avg_age") %>%
+
+    ggpairs(
+        columns=c(3:6),
+        aes(color=hcr),
+        lower=list(continuous=my_fn2),
+        # upper=list(continuous = wrap(ggally_cor, method = "pearson")),
+        legend=c(1, 1)
+    )+
+    custom_theme
+
+g1 <- gp[1, 1]
+g1 <- g1 + coord_cartesian(ylim=c(0, 1))
+gp[1, 1] <- g1
+
+ggsave(gp, filename=file.path(here::here(), "figures", "performance_pairs2.jpeg"), width=10, height=10, units="in")
