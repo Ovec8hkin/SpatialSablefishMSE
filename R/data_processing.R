@@ -45,7 +45,11 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
             filter(sex == "F") %>%
             # summarise SSB across year and sim 
             group_by(across(all_of(group_columns))) %>%
-            summarise(spbio=sum(spbio))
+            summarise(spbio=sum(spbio)) %>%
+            mutate(
+                om = factor(om, levels=om_filter),
+                hcr = factor(hcr, levels=hcr_filter)
+            )
     )
 }
 
@@ -87,7 +91,11 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
             mutate(
                 total_F = sum(F)
             ) %>%
-            ungroup()
+            ungroup() %>%
+            mutate(
+                om = factor(om, levels=om_filter),
+                hcr = factor(hcr, levels=hcr_filter)
+            )
     )
 }
 
@@ -118,7 +126,11 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
             drop_na() %>%
             filter(age == 2) %>%
             group_by(across(all_of(group_columns))) %>%
-            summarise(rec=sum(value))
+            summarise(rec=sum(value)) %>%
+            mutate(
+                om = factor(om, levels=om_filter),
+                hcr = factor(hcr, levels=hcr_filter)
+            )
     )
 }
 
@@ -159,7 +171,11 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
             mutate(
                 total_catch = sum(catch)
             ) %>%
-            ungroup()
+            ungroup() %>%
+            mutate(
+                om = factor(om, levels=om_filter),
+                hcr = factor(hcr, levels=hcr_filter)
+            )
     )
 }
 
