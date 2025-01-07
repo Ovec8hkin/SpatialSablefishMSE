@@ -227,6 +227,14 @@ plot_hcr_phase_diagram(hcrphase_data2, ref_pts, common_trajectory = common_traje
 catchphase_data <- get_phaseplane_catch_data(model_runs, extra_columns2, sable_om$dem_params)
 plot_catch_phase_diagram(catchphase_data, ref_pts, common_trajectory = common_trajectory)+custom_theme
 
+b40s <- get_b40_timeseries(model_runs, extra_columns2, hcr_names, om_names)
+ggplot(b40s)+
+    geom_lineribbon(aes(x=time, y=B40, ymin=.lower, ymax=.upper))+
+    scale_fill_brewer(palette="Blues")+
+    scale_y_continuous(limits=c(0, 200))+
+    facet_wrap(~om)+
+    custom_theme
+
 # Plot recruitment
 rec_data <- get_recruits(model_runs, extra_columns2)
 plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)
