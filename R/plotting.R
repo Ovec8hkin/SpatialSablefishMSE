@@ -25,7 +25,8 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         # geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
-        scale_y_continuous(limits=c(0, 320))+
+        scale_color_manual(values=hcr_colors)+
+        scale_y_continuous(limits=c(0, 500))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
         guides(fill="none")+
@@ -58,11 +59,12 @@ plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_
         group_by(across(all_of(group_columns))) %>%
         median_qi(rel_ssb, .width=interval_widths)
 
-    ylim <- c(0, round(max(rel_ssb$rel_ssb)))
+    ylim <- c(0, 1.1)
 
     plot <- ggplot(rel_ssb) +
         geom_line(aes(x=time, y=rel_ssb, color=.data[[v1]], group=.data[[v1]]), size=0.85)+
         scale_y_continuous(limits=ylim)+
+        scale_color_manual(values=hcr_colors)+
         coord_cartesian(expand=0)+
         labs(x="Year", y="Relative SSB")+
         facet_wrap(~.data[[v2]])
@@ -94,6 +96,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
+        scale_color_manual(values=hcr_colors)+
         scale_y_continuous(limits=c(0, 0.20))+
         coord_cartesian(expand=0)+
         guides(fill="none")+
@@ -129,6 +132,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_traje
         # geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
         geom_hline(yintercept = mean_rec, linetype="dashed") + 
         scale_fill_brewer(palette="Blues")+
+        scale_color_manual(values=hcr_colors)+
         scale_y_continuous(limits=c(0, 120))+
         coord_cartesian(expand=0)+
         theme_bw()
@@ -144,7 +148,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_traje
     return(plot)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=64){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
@@ -173,6 +177,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
+        scale_color_manual(values=hcr_colors)+
         # scale_y_continuous(limits=c(0, 60))+
         labs(x="Year", y="Catch (mt)", color="HCR")+
         coord_cartesian(expand=0, ylim=c(0, 60))+
@@ -379,6 +384,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
+        scale_color_manual(values=hcr_colors)+
         coord_cartesian(expand=0)+
         theme_bw()
 
@@ -561,6 +567,7 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, 
             )
         )+
         scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
+        scale_color_manual(values=hcr_colors)+
         labs(y="", x="Year", color="HCR")+
         coord_cartesian(expand=0)+
         theme_bw()
@@ -580,6 +587,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     plot <- ggplot(perf_data)+
                 geom_vline(data=summary, aes(xintercept = median), color="black")+
                 scale_shape_discrete()+
+                scale_color_manual(values=hcr_colors)+
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="HCR")+
                 coord_cartesian(expand=0)+
