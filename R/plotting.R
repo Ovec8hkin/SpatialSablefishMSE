@@ -200,9 +200,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 }
 
 
-plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
-    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter=hcr_filter, om_filter=om_filter)
-    catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
+plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
 
     group_columns <- colnames(ssb_data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
@@ -212,11 +210,7 @@ plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om
         group_by(across(all_of(group_columns))) %>%
         median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
-        reformat_ggdist_long(n=length(group_columns))  %>%
-        mutate(
-            om = factor(om, levels=om_filter),
-            hcr = factor(hcr, levels=hcr_filter)
-        )
+        reformat_ggdist_long(n=length(group_columns))
 
     hcr1 <- as.character((ssb_d %>% pull(hcr) %>% unique)[1])
 
@@ -232,11 +226,7 @@ plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om
     catch_d <- catch_data %>%
         group_by(across(all_of(group_columns))) %>%
         median_qi(total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-        reformat_ggdist_long(n=length(group_columns))  %>%
-        mutate(
-            om = factor(om, levels=om_filter),
-            hcr = factor(hcr, levels=hcr_filter)
-        )
+        reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((catch_d %>% pull(hcr) %>% unique)[1])
     traj_column <- ifelse(is.na(v3), v2, v3)
@@ -244,8 +234,10 @@ plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om
 
     catch_common <- catch_d %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
 
-    d <- bind_rows(ssb_d, catch_d) %>% filter(L1 != "naa_est") %>% mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
-    common <- bind_rows(ssb_common, catch_common) %>% filter(L1 != "naa_est") %>% mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
+    d <- bind_rows(ssb_d, catch_d) %>% filter(L1 != "naa_est") %>% 
+            mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
+    common <- bind_rows(ssb_common, catch_common) %>% filter(L1 != "naa_est") %>% 
+            mutate(L1 = factor(L1, labels=c("Landed Catch", "SSB")))
 
     base_hcr <- d %>% filter(hcr == base_hcr)
 
