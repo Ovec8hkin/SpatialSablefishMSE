@@ -756,6 +756,23 @@ set_hcr_colors <- function(hcrs){
     return(hcr_colors)
 }
 
+set_hcr_colors2 <- function(hcrs){
+    hcr_colors <- c(
+        "F40" = "#E31C39",
+        "F50" = "#EA8115",
+        "B40/F50" = "#1C39E3",
+        "No Fishing" = "#000000",
+        "F40 +/- 5%" = "#30AF6C",
+        "F40 +/- 10%" = "#8115EA",
+        "15k Harvest Cap" = "#29C1D6",
+        "25k Harvest Cap" = "#AC7A53",
+        "Constant F50" = "#f3ac0c",
+        "PFMC 40-10" = "#83c738",
+        "British Columbia" = "#FA5CCC"
+    )
+    return(hcr_colors)
+}
+
 
 custom_theme <- theme_bw()+theme(
     panel.spacing.y = unit(0.5, "cm"),
