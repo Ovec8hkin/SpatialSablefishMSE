@@ -146,3 +146,43 @@ round_to_zero <- function(data, col_name, zero_threshold=1e-2){
     )
 }
 
+#' Scale and Rank dataframe columns within groups
+#' 
+#' Computes 0-1 scaled version of dataframe column, within
+#' groups, and ranks (1-N) entries within group based on
+#' scaled values (where 1 is highest in-group scaled value, and
+#' N is the lowest in-group scaled value). 
+#' 
+#' Intended for use on performance metric data only. Note that
+#' "Catch AAV, "Proportion of Years with Low SSB", and "Recovery
+#' Time" performance metrics use inverse ranking system (smaller
+#' scaled values are better), as the intention is to minimize
+#' these metrics.
+#' 
+#' @param data dataframe of processed MSE data
+#' @param col_name name of data column to scale and rank
+#' 
+#' @export scale_and_rank
+#' 
+scale_and_rank <- function(data, col_name){
+    return(
+        data %>%
+            mutate(
+                scaled = eval(rlang::parse_expr(col_name))/inf_max(eval(rlang::parse_expr(col_name)))
+            ) %>%
+            arrange(desc(scaled), .by_group=TRUE) %>%
+            mutate(
+                rank = ifelse(
+                            name %in% c(
+                                "Catch AAV", 
+                                "Proportion of Years with Low SSB", 
+                                "Recovery Time"
+                            ), 
+                            factor(desc(row_number())), 
+                            factor(row_number())
+                        ),
+                rank = factor(rank)
+            )
+    )
+}
+
