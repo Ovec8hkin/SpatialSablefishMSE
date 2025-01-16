@@ -585,16 +585,15 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     metric_minmax = perf_data %>% group_by(name) %>% summarise(min=min(lower), max=max(upper))
     axis_scalar <- c(0.9, 1.1)
 
-    summary <- perf_data %>% filter(.width == 0.50, hcr == summary_hcr)
-        # group_by(across(all_of(c(summary_var, "name")))) %>% 
-        # summarise(value = mean(median))
+    summary <- perf_data %>% filter(!is.infinite(median)) %>% summarise(median=mean(median))
 
     plot <- ggplot(perf_data)+
                 geom_vline(data=summary, aes(xintercept = median), color="black")+
                 scale_shape_discrete()+
-                scale_color_manual(values=hcr_colors)+
+                scale_color_manual(values=rank_colors)+
+                # scale_color_manual(values=hcr_colors)+
                 # facet_wrap(vars(name), scales="free_x")+
-                labs(y="", x="", shape="OM", color="HCR")+
+                labs(y="", x="", shape="OM", color="Performance Order")+
                 coord_cartesian(expand=0)+
                 guides(shape="none", color=guide_legend(nrow=1))+
                 theme_bw()+
@@ -607,11 +606,11 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
 
     if(is.character(v2)){
         plot <- plot + 
-                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=.data[[v1]], shape=.data[[v2]]), point_size=3, position="dodge")+
+                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=rank, shape=.data[[v2]]), point_size=3, position="dodge")+
                     facet_grid(rows=vars(.data[[v2]]), cols=vars(name), scales="free_x")
     }else{
         plot <- plot + 
-                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=.data[[v1]]), point_size=3, position="dodge")+
+                    geom_pointinterval(aes(x=median, xmin=lower, xmax=upper, y=.data[[v1]], color=rank), point_size=3, position="dodge")+
                     facet_wrap(~name, scales="free_x")
     }
 
@@ -620,15 +619,11 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
                 ggh4x::facetted_pos_scales(
                     x = list(
                         scale_x_continuous(limits=c(0, 55)),
-                        scale_x_continuous(limits=c(0, 550), breaks=c(0, 150, 300, 450)),
                         scale_x_continuous(limits=c(0, 0.06), breaks=c(0, 0.02, 0.04, 0.06)),
-                        scale_x_continuous(limits=c(0, 1), breaks=c(0, 0.50, 1.0)),
-                        # scale_x_continuous(limits=c(0, 5)),
-                        # scale_x_continuous(limits=c(2, 15)),
-                        scale_x_continuous(limits=c(5, 12)),
-                        scale_x_continuous(limits=c(0, 5)),
-                        scale_x_continuous(limits=c(0, 15))
-                    
+                        # scale_x_continuous(limits=c(0, 1), breaks=c(0, 0.50, 1.0)),
+                        scale_x_continuous(limits=c(0, 550), breaks=c(0, 150, 300, 450)),
+                        scale_x_continuous(limits=c(0, 15)),
+                        scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.2))
                     )
                 )
     }else{
