@@ -6,18 +6,12 @@
 #' @param model_runs list of completed MSE simualtion objects
 #' @param extra_columns additional columns to append to output
 #' @param dem_params demographic parameter matrix
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_ssb_biomass
 #'
-#' @example \dontrun{
-#'      dem_params <- om$dem_params
-#'      mse1 <- run_mse(om, hcr1, ...)
-#'      mse2 <- run_mse(om, hcr2, ...)
-#' 
-#'      model_runs <- list(mse1, mse2)
-#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_ssb_biomass(model_runs, extra_columns, dem_params)
-#' }
+#' @example
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
@@ -60,17 +54,12 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
 #'
 #' @param model_runs list of completed MSE simualtion objects
 #' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_fishing_mortalities
 #'
-#' @example \dontrun{
-#'      mse1 <- run_mse(om, hcr1, ...)
-#'      mse2 <- run_mse(om, hcr2, ...)
-#' 
-#'      model_runs <- list(mse1, mse2)
-#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_fishing_mortalities(model_runs, extra_columns)
-#' }
+#' @example
 #'
 get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
@@ -105,17 +94,12 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
 #'
 #' @param model_runs list of completed MSE simualtion objects
 #' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_recruits
 #'
-#' @example \dontrun{
-#'      mse1 <- run_mse(om, hcr1, ...)
-#'      mse2 <- run_mse(om, hcr2, ...)
-#' 
-#'      model_runs <- list(mse1, mse2)
-#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_recruits(model_runs, extra_columns)
-#' }
+#' @example
 #'
 get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
@@ -141,17 +125,12 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @param model_runs list of completed MSE simualtion objects
 #' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_landed_catch
 #'
-#' @example \dontrun{
-#'      mse1 <- run_mse(om, hcr1, ...)
-#'      mse2 <- run_mse(om, hcr2, ...)
-#' 
-#'      model_runs <- list(mse1, mse2)
-#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_landed_catch(model_runs, extra_columns)
-#' }
+#' @example
 #'
 get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
@@ -188,18 +167,13 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #' @param spinup_years year at which to begin calculating quantities
 #'
 #' @export get_management_quantities
 #'
-#' @example \dontrun{
-#'      mse1 <- run_mse(om, hcr1, ...)
-#'      mse2 <- run_mse(om, hcr2, ...)
-#' 
-#'      model_runs <- list(mse1, mse2)
-#'      extra_columns <- list(hcr=c("hcr1", "hcr2"))
-#'      get_management_quantities(model_runs, extra_columns)
-#' }
+#' @example
 #'
 get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=64){
     cols <- c("time", "sim", "value", "L1", names(extra_columns))
@@ -331,8 +305,9 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #' @param model_runs list of completed MSE simulations
 #' @param extra_columns additional columns that should be
 #' appended to the resultant data frame
-#' @param om_list list of OM objects
-#' @param om_names vector of OM names
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#' @param seed_list simulation seeds used in `model_runs`
 #'
 #' @export get_reference_points
 #'
@@ -405,6 +380,21 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 
 }
 
+#' Get Timeseries of B40 from MSE Simulations
+#' 
+#' Derive timeseries of B40 from completed MSE
+#' simulations.
+#'
+#' @param model_runs list of completed MSE simulations
+#' @param extra_columns additional columns that should be
+#' appended to the resultant data frame
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_b40_timeseries
+#'
+#' @example
+#'
 get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
     get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
@@ -460,6 +450,23 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
 
 }
 
+#' Get F and SSB data for Phaseplane Plot
+#' 
+#' Process MSE simulation data for total F
+#' and SSB by year across simulations, OMs,
+#' and management procedures.
+#'
+#' @param model_runs list of completed MSE simulations
+#' @param extra_columns additional columns that should be
+#' appended to the resultant data frame
+#' @param dem_params list of demographic parameters values
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_phaseplane_data
+#'
+#' @example
+#'
 get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
@@ -472,6 +479,23 @@ get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filte
     )
 }
 
+#' Get HCR recommended F and SSB data for Phaseplane Plot
+#' 
+#' Process MSE simulation data for recommended 
+#' F (from HCR) and SSB by year across simulations, 
+#' OMs, and management procedures.
+#'
+#' @param model_runs list of completed MSE simulations
+#' @param extra_columns additional columns that should be
+#' appended to the resultant data frame
+#' @param dem_params list of demographic parameters values
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_hcrphase_data
+#'
+#' @example
+#'
 get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
@@ -490,6 +514,23 @@ get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter,
     )
 }
 
+#' Get Catch and SSB data for Phaseplane Plot
+#' 
+#' Process MSE simulation data for landed catch
+#' and SSB by year across simulations, OMs, and 
+#' management procedures.
+#'
+#' @param model_runs list of completed MSE simulations
+#' @param extra_columns additional columns that should be
+#' appended to the resultant data frame
+#' @param dem_params list of demographic parameters values
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_phaseplane_catch_data
+#'
+#' @example
+#'
 get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
