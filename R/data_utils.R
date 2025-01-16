@@ -1,6 +1,12 @@
 #' Change a `ggdist` Tibble to Long Format 
-#' #'
-#' Description
+#' 
+#' Pivot a summary tibble from `ggdist` with multiple summary variables
+#' to long format. Summary variable names will be be pivoted to a 
+#' 'name' column, and corresponding 'median', 'lower', 'upper' columns
+#' will contain computed quantile values.
+#' 
+#' Intended for use when plotting distributions of multiple variables
+#' simultaneously.
 #'
 #' @param data a tibble output by a `ggdist` summary function
 #' (e.g. `ggdist:median_qi(...)`)
@@ -78,6 +84,19 @@ relativize_performance <- function(data, rel_column, value_column, rel_value, gr
     )
 }
 
+#' Filter processed MSE data to between two time points,
+#' 
+#' Filter dataframe of processed MSE data by 'time'
+#' column to between times set by `time_horizon`.
+#' 
+#' @param data dataframe of processed MSE data
+#' @param time_horizon vector of times to filter between.
+#' If first element is NA, lower bound will be 1. If
+#' second element is NA, upper bound will be maximum value
+#' in `time` column of `data`.
+#' 
+#' @export filter_times
+#' 
 filter_times <- function(data, time_horizon){
     times <- seq(
         from = ifelse(!is.na(time_horizon[1]), time_horizon[1], 1),
