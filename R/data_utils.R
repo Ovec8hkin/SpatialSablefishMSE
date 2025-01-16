@@ -122,3 +122,27 @@ filter_hcr_om <- function(data, hcrs, oms){
     )
 }
 
+#' Round dataframe column to Zero
+#' 
+#' Rounds data in a dataframe column to 0 when below a 
+#' certain threshold. Also rounds non finite values to 
+#' 0 automatically.
+#' 
+#' @param data dataframe of processed MSE data
+#' @param col_name name of data column to round
+#' @param zero_threshold threshold to round down to zero
+#' 
+#' @export round_to_zero
+#' 
+round_to_zero <- function(data, col_name, zero_threshold=1e-2){
+    return(
+        data %>%
+            mutate(!!col_name := 
+                ifelse(eval(rlang::parse_expr(col_name)) < zero_threshold, 0, eval(rlang::parse_expr(col_name)))
+            ) %>%
+            mutate(!!col_name := 
+                ifelse(!is.finite(eval(rlang::parse_expr(col_name))), 0, eval(rlang::parse_expr(col_name)))
+            )
+    )
+}
+
