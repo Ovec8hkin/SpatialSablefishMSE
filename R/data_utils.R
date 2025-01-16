@@ -19,6 +19,10 @@
 #'
 reformat_ggdist_long <- function(data, n=1){
 
+    if(n==0){
+        return(data)
+    }
+
     data_long <- data %>% pivot_longer(-c(1:n, ncol(.), ncol(.)-1, ncol(.)-2))
     medians <- data_long %>% filter(!(grepl("lower",name) | grepl("upper",name)))
     lowers <- data_long %>% filter(grepl("lower", name)) %>% mutate(name=unlist(lapply(str_split(name, fixed(".")), `[[`, 1)))
