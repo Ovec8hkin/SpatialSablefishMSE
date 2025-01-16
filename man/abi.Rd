@@ -2,13 +2,9 @@
 % Please edit documentation in R/age_structure_stats.R
 \name{abi}
 \alias{abi}
-\title{Compute Age-Based Indicator
-#'
-Compute ABI (Griffiths et al. 2023) given a
-population age structure and an age structure
-to use as a reference.}
+\title{Compute Age-Based Indicator}
 \usage{
-abi(naa, ref, threshold = 0.9, start_age = 3)
+abi(naa, ref, threshold = 0.9, start_age = 2)
 }
 \arguments{
 \item{naa}{numbers-at-age vector}
@@ -20,8 +16,6 @@ abi(naa, ref, threshold = 0.9, start_age = 3)
 \item{start_age}{age at which to start calculating ABI}
 }
 \description{
-Compute Age-Based Indicator
-#'
 Compute ABI (Griffiths et al. 2023) given a
 population age structure and an age structure
 to use as a reference.

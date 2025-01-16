@@ -11,7 +11,7 @@ bind_mse_outputs(model_runs, var, extra_columns)
 
 \item{var}{the output variable from the model run objects}
 
-\item{extra_columns}{a list of extra column names and values to add to the tibble}
+\item{extra_columns}{a data.frame of extra column names and values to add to the tibble}
 }
 \description{
 Create Tibble of MSE Output Data from Multiple Models

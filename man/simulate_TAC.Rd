@@ -2,16 +2,18 @@
 % Please edit documentation in R/simulate_TAC.R
 \name{simulate_TAC}
 \alias{simulate_TAC}
-\title{Simulate Total Allowable Catch Projections
-#'
-Determine the total allowable catch (TAC) in the next simulation
-year based on the fishing mortality rate identified by a harvest
-control rule (HCR). TAC is computed by projecting the population
-forward one year under the specific level of F and computing the
-the amount of catch that would be taken from that projected 
-population structure based on the joint fishery selectivity curve.}
+\title{Simulate Total Allowable Catch Projections}
 \usage{
-simulate_TAC(hcr_F, naa, recruitment, joint_sel, dem_params)
+simulate_TAC(
+  hcr_F,
+  naa,
+  recruitment,
+  joint_sel,
+  dem_params,
+  hist_abc,
+  hcr_options,
+  options
+)
 }
 \arguments{
 \item{hcr_F}{fishing mortality rate identified by HCR}
@@ -22,11 +24,17 @@ simulate_TAC(hcr_F, naa, recruitment, joint_sel, dem_params)
 
 \item{dem_params}{demographic parameter matrices subsetted to 1 year}
 
+\item{hcr_options}{list of additional management options such as stability
+constraints and harvest caps}
+
+\item{options}{list of additional ABC/TAC simulation options such as ABC-TAC
+reduction levels and attainment functions.}
+
 \item{join_sel}{joint fishery selectivity}
+
+\item{hist_tac}{TAC from the previous year}
 }
 \description{
-Simulate Total Allowable Catch Projections
-#'
 Determine the total allowable catch (TAC) in the next simulation
 year based on the fishing mortality rate identified by a harvest
 control rule (HCR). TAC is computed by projecting the population

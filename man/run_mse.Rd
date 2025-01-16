@@ -2,29 +2,31 @@
 % Please edit documentation in R/run_mse.R
 \name{run_mse}
 \alias{run_mse}
-\title{Run Management Strategy Evaluation
-#'
-Run an MSE simulation loop.}
+\title{Run Management Strategy Evaluation}
 \usage{
-run_mse(om, hcr, ..., nyears_input = NA, spinup_years = 64, seed = 1120)
+run_mse(om, mp, mse_options, nyears_input = NA, seed = 1120, file_suffix = "")
 }
 \arguments{
-\item{om}{path to a saved OM .RDS file (should contain
-demagraphic parameters list and model options list)}
+\item{om}{an operating model list object (should minimally contain a
+list object with demographic parameters, an array of initial NAAs, a
+list object specifying recruitment, and a list of model_options).}
 
-\item{hcr}{a function to compute the allowable F in the next year}
-
-\item{...}{parameters to pass to the `hcr` function}
+\item{mp}{a list object specifying the management procedure to be applied during
+the projection period}
 
 \item{nyears_input}{number of years to simulate forward (will override the dimensions
 of the demagraphic parameters matrices defined in the OM)}
 
-\item{spinup_years}{number of years before estimation process should begin}
-
 \item{seed}{random seed}
+
+\item{...}{parameters to pass to the `hcr` function}
+
+\item{run_estimation}{whether to run the estimation procedure or not. If FALSE, 
+management procedures will use OM outputs rather than EM estimates to compute
+future harvest from the management procedure function.}
+
+\item{spinup_years}{number of years before estimation process should begin}
 }
 \description{
-Run Management Strategy Evaluation
-#'
 Run an MSE simulation loop.
 }

@@ -2,9 +2,7 @@
 % Please edit documentation in R/data_utils.R
 \name{reformat_ggdist_long}
 \alias{reformat_ggdist_long}
-\title{Change a `ggdist` Tibble to Long Format 
-#'
-Description}
+\title{Change a `ggdist` Tibble to Long Format}
 \usage{
 reformat_ggdist_long(data, n = 1)
 }
@@ -18,7 +16,12 @@ reformat_ggdist_long(data, n = 1)
 a long format tibble with columns median, lower, and upper
 }
 \description{
-Change a `ggdist` Tibble to Long Format 
-#'
-Description
+Pivot a summary tibble from `ggdist` with multiple summary variables
+to long format. Summary variable names will be be pivoted to a 
+'name' column, and corresponding 'median', 'lower', 'upper' columns
+will contain computed quantile values.
+}
+\details{
+Intended for use when plotting distributions of multiple variables
+simultaneously.
 }

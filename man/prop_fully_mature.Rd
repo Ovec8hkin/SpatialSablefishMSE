@@ -2,11 +2,7 @@
 % Please edit documentation in R/age_structure_stats.R
 \name{prop_fully_mature}
 \alias{prop_fully_mature}
-\title{Compute proportion of population that is fully mature
-#'
-Calculate the proportion of a population
-in age classes that are "fully mature" (e.g.
-mat > 0.995).}
+\title{Compute proportion of population that is fully mature}
 \usage{
 prop_fully_mature(naa, mat)
 }
@@ -16,8 +12,6 @@ prop_fully_mature(naa, mat)
 \item{mat}{maturity-at-age vector}
 }
 \description{
-Compute proportion of population that is fully mature
-#'
 Calculate the proportion of a population
 in age classes that are "fully mature" (e.g.
 mat > 0.995).

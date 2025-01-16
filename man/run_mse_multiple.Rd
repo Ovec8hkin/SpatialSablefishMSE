@@ -2,30 +2,37 @@
 % Please edit documentation in R/run_mse_multiple.R
 \name{run_mse_multiple}
 \alias{run_mse_multiple}
-\title{Run Multiple MSE Simulations
-#'
-Wrapper function around `run_mse` that handle running and
-compiling the outputs of multiple MSE closed-loop simulations,
-across different random seeds.}
+\title{Run MSE Simulations Across OMs and HCRs}
 \usage{
-run_mse_multiple(nsims, seeds, nyears, ...)
+run_mse_multiple(
+  om_list,
+  hcr_list,
+  seed_list,
+  mse_options_list,
+  nyears,
+  diagnostics = FALSE,
+  save = FALSE
+)
 }
 \arguments{
-\item{nsims}{the number of unique simulations to run}
+\item{om_list}{named list of operating model list objects}
 
-\item{seeds}{vector of random seeds to use (length(seeds) == nsims)}
+\item{hcr_list}{named list of harvest control rule list objects}
 
-\item{nyears}{number of years in each simulation}
+\item{seed_list}{vector of random seeds}
 
-\item{...}{additional parameter sto pass to the `run_mse` call}
+\item{mse_options}{list of mse_options objects to apply to each
+OM. Must be either length 1, or length == length(om_list).}
+
+\item{...}{additional parameters to pass to the `run_mse` call}
 }
 \value{
-list of arrays of containing OM results from each simulation
+list of MSE simualtion results
 }
 \description{
-Run Multiple MSE Simulations
-#'
-Wrapper function around `run_mse` that handle running and
-compiling the outputs of multiple MSE closed-loop simulations,
-across different random seeds.
+Wrapper function around `run_mse` and `run_mse_parallel` that
+allows for simple running of MSE simulations across multiple 
+OMs and HCRs (and combinations of the two). The wrapper relies
+on using `expand.grid` to create a factorial combination of OMs
+and HCRs and runs MSE simulations across all such combinations.
 }

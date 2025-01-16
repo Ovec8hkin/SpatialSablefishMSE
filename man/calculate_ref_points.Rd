@@ -2,9 +2,9 @@
 % Please edit documentation in R/reference_points.R
 \name{calculate_ref_points}
 \alias{calculate_ref_points}
-\title{Calculate NPFMC groundfish reference points}
+\title{Calculate SPR Based Reference Points}
 \usage{
-calculate_ref_points(nages, mort, mat, waa, sel, ret, avg_rec)
+calculate_ref_points(nages, mort, mat, waa, sel, ret, avg_rec, spr_target)
 }
 \arguments{
 \item{nages}{number of ages in age structure}
@@ -21,12 +21,15 @@ calculate_ref_points(nages, mort, mat, waa, sel, ret, avg_rec)
 
 \item{avg_rec}{average recruitment}
 
-\item{F}{instantenous fishing mortality rate}
+\item{spr_target}{target SPR level. If length(spr_target) == 1, same
+target SPR level assumed for the F and B reference points. If 
+length(spr_target) == 2, element 1 corresponds to the spr target for 
+F, while element 2 corresponds to the spr target for B.}
 }
 \value{
-list of F40, F35, and B40
+list of F reference point and biomass reference point
 }
 \description{
-Calculate F_OFL (F_35%), F_ABC (F_40%), and B40
-(SSB under F_ABC).
+Generalized function for computing and F and biomass based reference point
+for a given SPR level
 }

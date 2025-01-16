@@ -8,7 +8,14 @@ Use Template Model Builder (TMB) to fit the assessmnte model
 from `SpatialSablefishAssessment`. Note that the 'ln_M_year_devs'
 and 'ln_M_age_devs' parameters have been turned off.}
 \usage{
-fit_TMB_model(data, parameters)
+fit_TMB_model(
+  data,
+  parameters,
+  model_name = "CurrentAssessment",
+  do_newton_steps = FALSE,
+  fix_pars = NA,
+  recompile_model = FALSE
+)
 }
 \arguments{
 \item{data}{data list to be provided to TMB (from `format_em_data(...)`)}

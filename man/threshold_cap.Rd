@@ -4,7 +4,7 @@
 \alias{threshold_cap}
 \title{Compute F following a threshold rule, with a cap at B/B_ref = 1}
 \usage{
-threshold_cap(ssb, B_ref, F_ref, alpha)
+threshold_cap(ssb, B_ref, F_ref, alpha, beta = 1)
 }
 \arguments{
 \item{ssb}{Value for SSB}
