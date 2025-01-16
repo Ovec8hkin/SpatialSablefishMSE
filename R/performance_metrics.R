@@ -6,11 +6,14 @@
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_catch
 #'
@@ -19,20 +22,25 @@
 average_catch <- function(
     model_runs, 
     extra_columns, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA),  
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
 
     group_columns <- c("sim", summarise_by)
     
     avg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
         filter_times(time_horizon) %>%
         group_by(across(all_of(c("time", group_columns)))) %>%
         summarise(annual_catch = sum(value)) %>%
+        round_to_zero("annual_catch") %>%
         relativize_performance(
             rel_column = "hcr",
             value_column = "annual_catch",
@@ -44,14 +52,19 @@ average_catch <- function(
         avg_catch <- avg_catch %>% filter(eval(extra_filter))
     }
             
-    return(
-        avg_catch %>%
+    out <- avg_catch
+    if(summary_out){
+        out <- avg_catch %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(annual_catch, .width=interval_widths, .simple_names=FALSE)
+    }
+            
+    return(
+        out 
     )
 }
 
-#' Compute Toatl Catch over projection period
+#' Compute Total Catch over projection period
 #' 
 #' Compute total catch (median and CIs) over all years and simulation seeds, 
 #' for each combination of operating models and management procedures. 
@@ -59,11 +72,14 @@ average_catch <- function(
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export total_catch
 #'
@@ -72,19 +88,24 @@ average_catch <- function(
 total_catch <- function(
     model_runs, 
     extra_columns, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
     tot_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
         filter_times(time_horizon = time_horizon) %>%
         group_by(across(all_of(group_columns))) %>%
         summarise(total_catch = sum(value)) %>%
+        round_to_zero("total_catch") %>%
         relativize_performance(
             rel_column = "hcr",
             value_column = "total_catch",
@@ -96,11 +117,14 @@ total_catch <- function(
         tot_catch <- tot_catch %>% filter(eval(extra_filter))
     }
             
-    return(
-        tot_catch %>%
+    out <- tot_catch
+    if(summary_out){
+        out <- tot_catch %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(total_catch, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+            
+    return(out)
 }
 
 #' Compute proportion of years catch exceeds a threshold level across projection period
@@ -112,11 +136,14 @@ total_catch <- function(
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export prop_years_catch
 #'
@@ -125,22 +152,27 @@ total_catch <- function(
 prop_years_catch <- function(
     model_runs, 
     extra_columns, 
+    hcr_filter,
+    om_filter,
     catch_threshold, 
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out = TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
     catch_years <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
         filter_times(time_horizon = time_horizon) %>%
         group_by(across(all_of(c("time", group_columns)))) %>%
         summarise(
             total_catch = sum(value),
         ) %>%
+        round_to_zero("total_catch") %>%
         group_by(across(all_of(group_columns))) %>%
         summarise(
             num_years = sum(total_catch >= catch_threshold)/n()
@@ -156,11 +188,14 @@ prop_years_catch <- function(
         catch_years <- catch_years %>% filter(eval(extra_filter))
     }
             
-    return(
-        catch_years %>%
+    out <- catch_years
+    if(summary_out){
+        out <- catch_years %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(num_years, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+            
+    return(out)
 }
 
 #' Compute Average SSB across projection period
@@ -173,11 +208,14 @@ prop_years_catch <- function(
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
 #' @param dem_params demographic parameters matrices from OM
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_ssb
 #'
@@ -187,21 +225,24 @@ average_ssb <- function(
     model_runs, 
     extra_columns, 
     dem_params, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    ...
+    summary_out = TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
 
-    agv_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
+    avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
             ungroup() %>%
             filter(L1 != "naa_est") %>%
             select(-L1) %>%
             filter_times(time_horizon=time_horizon) %>%
+            round_to_zero("spbio") %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "spbio",
@@ -210,31 +251,37 @@ average_ssb <- function(
             )
             
     if(!is.null(extra_filter)){
-        agv_ssb <- agv_ssb %>% filter(eval(extra_filter))
+        avg_ssb <- agv_ssb %>% filter(eval(extra_filter))
     }
 
-    return(
-         agv_ssb %>%
+    out <- avg_ssb
+    if(summary_out){
+        out <- avg_ssb %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(spbio, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute proportion of years SSB is below a threshold level across projection period
 #' 
-#' Compute average proportion of years where SSB is below a threshold level
+#' Compute average proportion of years where SSB is below 0.4*SSB0
 #' (median and CIs) across all years and simulation seeds, 
 #' for each combination of operating models and management procedures. 
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param time_horizon periof of years over which to calculate metric
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export prop_low_biomass
 #'
@@ -244,23 +291,27 @@ prop_low_biomass <- function(
     model_runs, 
     extra_columns, 
     dem_params, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(55, NA), 
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    ...
+    summary_out=TRUE
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, publication_hcrs, om_names) %>%
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
-                        select(-L1)
+                        select(-L1) %>%
+                        round_to_zero("spbio")
 
-    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
 
-    prop_years_low_biomass <- all_ssb %>% filter_times(time_horizon=time_horizon) %>%
+    prop_years_low_biomass <- all_ssb %>% 
+        filter_times(time_horizon=time_horizon) %>%
         mutate(
-            low_bio = spbio <= threshold
+            low_bio = spbio <= 0.4*threshold
         ) %>%
         group_by(sim, om, hcr) %>%
         summarise(
@@ -269,8 +320,8 @@ prop_low_biomass <- function(
         ) %>%
         relativize_performance(
             rel_column = "hcr",
-            value_column = "crash_time",
-            rel_value = NULL,
+            value_column = "prop_years",
+            rel_value = relative,
             grouping = group_columns
         )
     
@@ -278,27 +329,36 @@ prop_low_biomass <- function(
         prop_years_low_biomass <- prop_years_low_biomass %>% filter(eval(extra_filter))
     }
 
-    return(
-        prop_years_low_biomass %>% 
+    out <- prop_years_low_biomass
+    if(summary_out){
+        out <- prop_years_low_biomass %>% 
             group_by(across(all_of(summarise_by))) %>%
             median_qi(prop_years, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute number of years requied for SSB to crash
 #' 
 #' Compute average number of years required for SSB to decline below
-#' 50% of starting SSB (median and CIs) for each combination of operating 
+#' 0.2*SSB0 (median and CIs) for each combination of operating 
 #' models and management procedures.  
+#' 
+#' Scenarios (combinations of OM-MP-seed) where the crash threshold is not
+#' met, are removed from the dataset before computing median and CIs. 
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export biomass_crash_time
 #'
@@ -308,22 +368,25 @@ biomass_crash_time <- function(
     model_runs, 
     extra_columns, 
     dem_params, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(55, NA), 
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    ...
+    summary_out=TRUE
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
-                        select(-L1)
+                        select(-L1) %>%
+                        round_to_zero("spbio")
 
-    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
 
     crash_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1], time_horizon[1]+20)) %>%
-        filter(spbio <= 0.5*threshold) %>%
+        filter(spbio <= 0.2*threshold) %>%
         group_by(sim, om, hcr) %>%
         summarise(crash_time=min(time)-time_horizon[1]) %>%
         relativize_performance(
@@ -337,27 +400,36 @@ biomass_crash_time <- function(
         crash_time <- crash_time %>% filter(eval(extra_filter))
     }
 
-    return(
-        crash_time %>% 
+    out <- crash_time
+    if(summary_out){
+        out <- crash_time %>% 
             group_by(across(all_of(summarise_by))) %>%
             median_qi(crash_time, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute number of years requied for SSB to recover
 #' 
 #' Compute average number of years required for SSB to recover above
-#' 50% of starting SSB (median and CIs) following a known SSB crash
+#' 0.4*SSB0 (median and CIs) following a known SSB crash
 #' for each combination of operating models and management procedures.  
+#' 
+#' "Recovery" begins exactly 20 years after the start of the simulation
+#' to correspond with the "Immediate Crash Recruitment" scenario. 
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export biomass_recovery_time
 #'
@@ -367,22 +439,25 @@ biomass_recovery_time <- function(
     model_runs, 
     extra_columns, 
     dem_params, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(55, NA), 
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    ...
+    summary_out=TRUE
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, ...) %>%
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
-                        select(-L1)
+                        select(-L1) %>%
+                        round_to_zero("spbio")
 
-    threshold <- all_ssb %>% filter(time == time_horizon[1]-1) %>% pull(spbio) %>% min
+    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
 
     recovery_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1]+20, time_horizon[2])) %>%
-        filter(spbio >= 0.5*threshold) %>%
+        filter(spbio >= 0.4*threshold) %>%
         group_by(sim, om, hcr) %>%
         summarise(recovery_time=min(time)-(time_horizon[1]+20)) %>%
         relativize_performance(
@@ -396,28 +471,35 @@ biomass_recovery_time <- function(
         recovery_time <- recovery_time %>% filter(eval(extra_filter))
     }
 
-    return(
-        recovery_time %>% 
+    out <- recovery_time
+    if(summary_out){
+        out <- recovery_time %>% 
             group_by(across(all_of(summarise_by))) %>%
             median_qi(recovery_time, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute Average Age across projection period
 #' 
 #' Compute average age (median and CIs) per year across all years and 
 #' simulation seeds, for each combination of operating models and management 
-#' procedures. 
+#' procedures. Average age is calculated by age of individuals and is not
+#' weighted by biomass or maturity.
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
 #' @param dem_params demographic parameters matrices from OM
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_age
 #'
@@ -426,11 +508,14 @@ biomass_recovery_time <- function(
 average_age <- function(
     model_runs, 
     extra_columns,
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
@@ -438,15 +523,17 @@ average_age <- function(
     avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
             as_tibble() %>%
             ungroup() %>%
+            filter_hcr_om(hcr_filter, om_filter) %>%
+            filter_times(time_horizon=time_horizon) %>%
             group_by(time, age, sim, om, hcr) %>%
             mutate(value = sum(value)) %>%
+            # round_to_zero("value") %>%
             filter(sex == "F") %>%
             ungroup() %>%
             group_by(time, sim, hcr, om) %>%
             summarise(
                 avg_age = compute_average_age(value, 2:31)
             ) %>%
-            filter_times(time_horizon=time_horizon) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_age",
@@ -458,11 +545,14 @@ average_age <- function(
         avg_age <- avg_age %>% filter(eval(extra_filter))
     }
 
-    return(
-         avg_age %>%
+    out <- avg_age
+    if(summary_out){
+        out <- avg_age %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(avg_age, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute Average ABI across projection period
@@ -475,11 +565,14 @@ average_age <- function(
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
 #' @param ref_naa reference age structure for ABI computation
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_abi
 #'
@@ -489,11 +582,14 @@ average_abi <- function(
     model_runs, 
     extra_columns,
     ref_naa,
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
@@ -501,9 +597,11 @@ average_abi <- function(
     avg_abi <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
             as_tibble() %>%
             ungroup() %>%
+            filter_hcr_om(hcr_filter, om_filter) %>%
             filter_times(time_horizon=time_horizon) %>%
             group_by(time, age, sim, om, hcr) %>%
             mutate(value = sum(value)) %>%
+            # round_to_zero("value") %>%
             filter(sex == "F") %>%
             ungroup() %>%
             group_by(time, sim, hcr, om) %>%
@@ -521,11 +619,14 @@ average_abi <- function(
         avg_abi <- avg_abi %>% filter(eval(extra_filter))
     }
 
-    return(
-         avg_abi %>%
+    out <- avg_abi
+    if(summary_out){
+        avg_abi <- avg_abi %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(avg_abi, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 
@@ -539,11 +640,14 @@ average_abi <- function(
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_annual_catch_variation
 #'
@@ -552,17 +656,20 @@ average_abi <- function(
 average_annual_catch_variation <- function(
     model_runs, 
     extra_columns,
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80),
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    ...
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
-    avg_catch_var <- get_landed_catch(model_runs, extra_columns, ...) %>%
+    avg_catch_var <- get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>%
         filter_times(time_horizon = time_horizon) %>%
+        round_to_zero("total_catch") %>%
         group_by(across(all_of(group_columns))) %>%
         summarise(
             aav = aav(total_catch)
@@ -578,11 +685,14 @@ average_annual_catch_variation <- function(
         avg_catch_var <- avg_catch_var %>% filter(eval(extra_filter))
     }
 
-    return(
-         avg_catch_var %>%
+    out <- avg_catch_var
+    if(summary_out){
+        out <- avg_catch_var %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(aav, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute average proportion of catch that is "Large" across projection period
@@ -590,16 +700,20 @@ average_annual_catch_variation <- function(
 #' Compute average proportion of catch that is "large" (median and CIs) 
 #' per year across all years and simulation seeds, for each combination 
 #' of operating models and management procedures. "Large" fish are those 
-#' >9yo.
+#' >9yo (the approximate age corresponding to the highest processor grade
+#' for sablefish in Alaska).
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_proportion_catch_large
 #'
@@ -608,16 +722,20 @@ average_annual_catch_variation <- function(
 average_proportion_catch_large <- function(
     model_runs, 
     extra_columns, 
+    hcr_filter,
+    om_filter, 
     interval_widths=c(0.50, 0.80),
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
     prop_lg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
         filter_times(time_horizon = time_horizon) %>%
         mutate(
             size_group = case_when(
@@ -634,7 +752,11 @@ average_proportion_catch_large <- function(
         mutate(
             total_catch = sum(Large, Medium, Small)
         ) %>%
+        round_to_zero("total_catch") %>%
         mutate(across(Large:Small, ~ ./total_catch)) %>%
+        round_to_zero("Large") %>%
+        round_to_zero("Medium") %>%
+        round_to_zero("Small") %>%
         select(-total_catch) %>%
         ungroup() %>%
         pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
@@ -643,18 +765,21 @@ average_proportion_catch_large <- function(
             value_column = "catch",
             rel_value = relative,
             grouping = c("size_group", group_columns)
-        )
+        ) %>%
+        filter(size_group == "Large")
 
     if(!is.null(extra_filter)){
         prop_lg_catch <- prop_lg_catch %>% filter(eval(extra_filter))
     }
     
-    return(
-         prop_lg_catch %>%
-            filter(size_group == "Large") %>%
+    out <- prop_lg_catch
+    if(summary_out){
+        out <- prop_lg_catch %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(catch, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+    
+    return(out)
 }
 
 #' Compute average proportion of population that is "Old" across projection period
@@ -667,11 +792,14 @@ average_proportion_catch_large <- function(
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
 #' to each model_run (see `bind_mse_outputs` for more details)
+#' @param hcr_filter vector of HCR names to calculate metric over
+#' @param om_filter vector of OM names to calculate metric over
 #' @param interval_widths confidence intevrals to compute
 #' @param extra_filter an additional set of filters to apply before computing 
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_proportion_biomass_old
 #'
@@ -681,23 +809,27 @@ average_proportion_biomass_old <- function(
     model_runs, 
     extra_columns, 
     dem_params, 
+    hcr_filter,
+    om_filter, 
     interval_widths=c(0.50, 0.80), 
     time_horizon=c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     group_columns <- c("sim", summarise_by)
     prop_old_biomass <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
         as_tibble() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
+        filter_times(time_horizon = time_horizon) %>%
         # join WAA and maturity-at-age for computing SSB
         left_join(
             melt(dem_params$waa, value.name="weight"), 
             by=c("time", "age", "sex")
         ) %>%
         mutate(bio = value*weight) %>%
-        filter_times(time_horizon = time_horizon) %>%
         mutate(
             age_group = case_when(
                 age < 7 ~ "Young",
@@ -713,7 +845,11 @@ average_proportion_biomass_old <- function(
         mutate(
             total_bio = sum(Young, Adult, Old)
         ) %>%
+        round_to_zero("total_bio") %>%
         mutate(across(Adult:Young, ~ ./total_bio)) %>%
+        round_to_zero("Young") %>%
+        round_to_zero("Adult") %>%
+        round_to_zero("Old") %>%
         select(-total_bio) %>%
         ungroup() %>%
         pivot_longer(Adult:Young, names_to="age_group", values_to="bio") %>%
@@ -722,18 +858,21 @@ average_proportion_biomass_old <- function(
             value_column = "bio",
             rel_value = relative,
             grouping = c("age_group", group_columns)
-        )
+        ) %>%
+        filter(age_group == "Old")
 
     if(!is.null(extra_filter)){
         prop_old_biomass <- prop_old_biomass %>% filter(eval(extra_filter))
     }
     
-    return(
-         prop_old_biomass %>%
-            filter(age_group == "Old") %>%
+    out <- prop_old_biomass
+    if(summary_out){
+        out <- prop_old_biomass %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(bio, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+    
+    return(out)
 }
 
 #' Compute Average Annual Value of Catch across projection period
@@ -754,6 +893,7 @@ average_proportion_biomass_old <- function(
 #' medians and confidence intervals
 #' @param relative a management procedure to compute metric relative to
 #' @param summarise_by vector of columns to summarise metric by
+#' @param summary_out whether to output data summarised by `ggdist` or full data
 #' 
 #' @export average_annual_value
 #'
@@ -901,7 +1041,7 @@ average_annual_dynamic_value <- function(
             rel_column = "hcr",
             value_column = "dyn_annual_value",
             rel_value = relative,
-            grouping = group+columns
+            grouping = group_columns
         )
 
     if(!is.null(extra_filter)){
