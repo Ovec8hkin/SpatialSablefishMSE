@@ -29,7 +29,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         scale_y_continuous(limits=c(0, 500))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
-        guides(fill="none")+
+        guides(color=guide_legend(title="HCR", nrow=2), fill="none")+
         theme_bw()
 
     if(show_est){
@@ -42,7 +42,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="No Fishing"){
@@ -67,9 +67,10 @@ plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_
         scale_color_manual(values=hcr_colors)+
         coord_cartesian(expand=0)+
         labs(x="Year", y="Relative SSB")+
+        guides(color=guide_legend(title="HCR", nrow=2))+
         facet_wrap(~.data[[v2]])
 
-    return(plot)
+    return(plot+custom_theme)
 
 }
 
@@ -181,7 +182,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         # scale_y_continuous(limits=c(0, 60))+
         labs(x="Year", y="Catch (mt)", color="HCR")+
         coord_cartesian(expand=0, ylim=c(0, 60))+
-        guides(fill="none")+
+        guides(color=guide_legend(title="HCR", nrow=2), fill="none")+
         theme_bw()
 
     if(!is.na(v2) && is.na(v3)){
@@ -194,7 +195,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
     #     plot <- plot + facet_wrap(~fleet)
     # }
 
-    return(plot)
+    return(plot+custom_theme)
 
 }
 
@@ -259,7 +260,7 @@ plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om
         # scale_y_continuous(limits=c(0, 320))+
         labs(x="Year", y="1000s Metric Tons")+
         coord_cartesian(expand=0)+
-        guides(fill="none")+
+        guides(color=guide_legend("HCR", nrow=2), fill="none")+
         theme_bw()+
         facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")+
         ggh4x::facetted_pos_scales(
@@ -268,7 +269,7 @@ plot_ssb_catch <- function(model_runs, extra_columns, dem_params, hcr_filter, om
                 scale_y_continuous(limits=c(0, 500))
             )
         )
-    return(plot)
+    return(plot+custom_theme)
 }
 
 
@@ -603,7 +604,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="HCR")+
                 coord_cartesian(expand=0)+
-                guides(shape=guide_legend(nrow=3), color=guide_legend(nrow=4))+
+                guides(shape="none", color=guide_legend(nrow=1))+
                 theme_bw()+
                 theme(
                     plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
@@ -651,7 +652,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
             )
     }
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
