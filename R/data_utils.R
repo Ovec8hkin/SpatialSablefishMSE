@@ -105,3 +105,20 @@ filter_times <- function(data, time_horizon){
     return(data %>% filter(time %in% times))
 }
 
+#' Filter processed MSE data to a subset of HCRs and OMs
+#' 
+#' Filter dataframe of processed MSE data to only include
+#' a subset of HCRs and OMs.
+#' 
+#' @param data dataframe of processed MSE data
+#' @param hcrs vector of HCR names to retain in the data
+#' @param oms vector of OM names to retain in the data
+#' 
+#' @export filter_hcr_om 
+
+filter_hcr_om <- function(data, hcrs, oms){
+    return(
+        data %>% filter(hcr %in% hcrs, om %in% oms)
+    )
+}
+
