@@ -201,3 +201,15 @@ get_saved_model_runs <- function(om_order=NULL, hcr_order=NULL){
     return(listN(model_runs, extra_columns2))
 
 }
+
+#' Get maximum value without considering infinite values
+#' 
+#' Wrapper around max that ignores infinite values
+#' 
+#' @param d vector of values to find maximum of
+#' 
+#' @export inf_max
+#' 
+inf_max <- function(d){
+    return(max(d[!is.infinite(d)]))
+}
