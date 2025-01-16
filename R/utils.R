@@ -91,6 +91,18 @@ aav <- function(data){
     return(ifelse(is.nan(aav), 0, aav)) # If all data is 0, return 0 rather than NA
 }
 
+#' Extend a 3D array along its final dimension
+#' 
+#' Copies and append values from the final dimension 
+#' of a 3D array to the end of the final dimension.
+#' Originally written by Craig Marsh.
+#' 
+#' @param array_3d array with 3 dimensions
+#' @param n number of times to concatenate the last element in 
+#' the 3rd dimension
+#' 
+#' @export extend_3darray_last_dim
+#' 
 extend_3darray_last_dim <- function(array_3d, n){
     if(n <= 0){
         return(array_3d[,,1:(dim(array_3d)[3]+n)])
@@ -100,6 +112,16 @@ extend_3darray_last_dim <- function(array_3d, n){
     return(new_3d_array)
 }
 
+#' Extend a vector by copying its final value
+#' 
+#' Copies and appends the final value of a vector
+#' to the end of said vector 'n' times.
+#' 
+#' @param vector a vector to add n elements to
+#' @param n number of times to concatenate final element
+#' 
+#' @export extend_vec_last_val
+#' 
 extend_vec_last_val <- function(vector, n){
     if(n <= 0){
         return(vector[1:(length(vector)+n)])
@@ -108,6 +130,18 @@ extend_vec_last_val <- function(vector, n){
     return(new_vec)
 }
 
+#' Generate frequency vector
+#' 
+#' Create a vector of 0s and 1s that that alternate with
+#' a given frequency. This is intended to be used to
+#' indicate when certain actions should occur within a 
+#' loop.
+#' 
+#' @param frequency freqency with which a 1 occurs
+#' @param len length of output vector
+#' 
+#' @export generate_annual_frequency
+#' 
 generate_annual_frequency <- function(frequency, len){
     do <- rep(1, len+1)
     if(length(frequency) > 1){
