@@ -1,0 +1,199 @@
+---
+title: "Specifying Recruitment"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Specifying Recruitment}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+As part of the operating model (OM) list object (`om`) that is a required input to the MSE simulation function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necesarry. 
+
+### The Recruitment Object
+The recruitment list object requires two components: (1) a reference to an R function that specifies how future recruitment is to be generated, and (2) a list of parameters values to pass to said function.
+
+In the most simple case (as in the example below), future recruitment is generated from the `recruit_func` function, which simply returns a recruitment of "10" for the next 100 years. 
+
+```{r, recruitment_obj, eval=FALSE}
+recruit_func <- function(nyears){
+    return(rep(10, nyears))
+}
+
+recruitment_obj <- list(
+    # function from which to generate future recruitment events
+    func = recruit_func,
+    # extra parameters to pass to `func`
+    pars = list(
+        nyears = 100
+    )
+)
+
+om$recruitment <- recruitment_obj
+```
+
+Recruitment functions can be as complicated as necesarry, and can also make use of annual population state variables, such as spawning biomass. Examples are more complex recruitment functions are available at the end of this page.
+
+### Provided Recruitment Functions
+
+Five generic recruitment functions are provided as part of the `SablefishMSE` package. They cover four common ways to simulate future fisheries recruitment.
+
+##### Resample Recruitment
+The first provided recruitment function generates future recruitment by resampling from a vector of provided values. Most often, the vector being resampled from is a vector of historical recruitment events, but can also include other values. 
+
+```{r, resample_recruitment, eval=FALSE}
+om$recruitment$func <- resample_recruits
+om$recruitment$pars <- list(
+    # vector of values to resample from
+    hist_recruits = hist_recruits,
+    # number of years to generate future recruitment for
+    nyears = nyears
+)
+```
+
+##### Beverton-Holt Recruitment
+The second provided recruitment function generates future recruitment via a Beverton-Holt stock recruitment relationship (Beverton and Holt, 1957), parameterized using steepness. The Beverton-Holt function is defined as:
+
+$R_y = \frac{4hR_0\text{SSB}_{y-1}}{(1-h)S_0 + (5h-1)\text{SSB}_{y-1}}$
+
+where $h$ is steepness, $S_0$ is unfished spawning biomass, $R_0$ is unfished recruitment, and $\text{SSB}$ is the current spawning stock biomass. Lognormally distributed deviations from the base stock recruit relationship, with recruitment variation $\sigma_R = 1.20$, are also applied. 
+
+```{r, bevholt_recruitment, eval=FALSE}
+om$recruitment$func <- beverton_holt
+om$recruitment$pars <- list(
+    h = 0.85,   # steepness
+    R0 = 15,    # unfished recruitment
+    S0 = 300,   # unfished spawning biomass
+    sigR = 1.20 # recruitment variability
+)
+```
+
+Annual spawning biomass (SSB) is passed to the underlying `beverton_holt` function automatically inside the MSE simulation loop. 
+
+##### Regime Recruitment
+The third and fourth provided recruitment functions generate future recruitment in distinct alternating regimes. Users have the ability to control the length, order, and relative strength of the two regimes. 
+
+The first regime recruitment function works similarly to the simpler `resample_recruits` function in that it resamples from distinct vectors of values depending on which regime is active.
+
+```{r, regime_recruitment1, eval=FALSE}
+om$recruitment$func <- resample_regime_recruits
+om$recruitment$pars <- list(
+    # Vector of recruits to resample from in regime 1
+    regime1_recruits = seq(1, 25, 1)],
+    # Vector of recruits to resample from in regime 2
+    regime2_recruits = seq(60, 100, 10),
+    # Total number of years to generate future recruitment for
+    nyears = nyears,
+    # Lengths of each regime
+    regime_length = c(20, 5),
+    # Start with the first regime
+    starting_regime = 0
+)
+```
+
+The second regime recruitment function works by parameterizing two separate Beverton-Holt stock recruit relationships, differing in their value of unfished recruitment ($R_0$).  
+
+```{r, regime_recruitment2, eval=FALSE}
+om$recruitment$func <- bevholt_regimes
+om$recruitment$pars <- list(
+    # steepness
+    h = 0.85,
+    # spawning biomass per recruit (to calculate regime specific S0)
+    sbpr = 20,                
+    # Regime specfic R0
+    R0 = c(12.5, 50),           
+    # Regime specific recruitment variability
+    sigR = c(1.20, 1.20),       
+    # Total number of years to generate future recruitment for
+    nyears = nyears,            
+    # Lengths of each regime
+    regime_length = c(20, 5),   
+    # Start with first regim
+    starting_regime = 0
+)
+```
+
+##### Crash Recruitment
+The final provided recruitment fuction generates future recruitment through resampling, as in the "Resample Recruitment" option, but with a defined period where recruitment is different. This different period can be used to simulate a period depressed recruitment (e.g. a recruitment crash) or a period of amplified recruitment (e.g. a recruitment boom), depending on how it is parameterized. Users can specify the simulation year in which the alterntaive recruitment period begins, the length of that period, and the mean value of recruitment during that period. During the alternative recruitment period, lognormal deviations about the specified mean recruitment are applied using a $\text{CV}=0.1$.
+
+```{r, crash_recruitment, eval=FALSE}
+om$recruitment$func <- recruits_crash
+om$recruitment$pars <- list(
+    # Start a crash period in simulation years 1
+    crash_start_year = 1,
+    # 20-year crash period
+    crash_length = 20,
+    # Use minimum historical recruitment as average crash recruitment level
+    crash_value = min(hist_recruits),
+    # recruitment vector to resample from outside of the "crash period"
+    hist_recruits = hist_recruits,
+    # Total number of years to generte future recruitment for
+    nyears = nyears
+)
+```
+
+### Custom Recruitment Functions
+
+##### Required Parameters
+The only required parameter for custom recruitment functions is a `seed` parameter, corresponding to a random seed. This is used to ensure that future recruitment vectors are reproducible across simulations. Note that while this `seed` parameter is a required input to the function, it does not need to be specified in the `recruitment$pars` list object. Instead, the MSE simulation loop will automatically pass the appropriate seed value to the recruitment function internally. 
+
+##### State-Independent Recruitment Functions
+State-independent recruitment functions are those that do not require knowledge of the current state of the population to generate future recruitments. These functions have the benefit of being able to generate all future recruitment events before entering the simulation loop. The `resample_recruitment` and `crash_recruitment` functions are examples of such state-independent recruitment functions.
+
+As a extension of the provided `resample_recruits` functions, we provide the following example. Here, future recruitment is randomly resampled from a vector of historical recruitment events, with some weights applied, creating a new vector of recruitment for the next 100 years.
+
+```{r, recruit_func2, eval=FALSE}
+weighted_resample_recruitment <- function(hist_recruits, nyears, weights, seed){
+    set.seed(seed)
+    r <- sample(hist_recruits, nyears, replace=TRUE, prob=weights)
+    return(r)
+}
+
+
+recruitment_obj <- list(
+    # function from which to generate future recruitment events
+    func = recruit_func,
+    # extra parameters to pass to `func`
+    pars = list(
+        hist_recruits = seq(1, 100, 5)
+        nyears = 100,
+        weights = c(rep(0.025, 10), rep(0.05, 10))
+    )
+)
+
+om$recruitment <- recruitment_obj
+
+```
+
+##### State-Dependent Recruitment Functions
+State-dependent recruitment functions are those that do require knowledge of the current state of the population to appropiately generate future recruitment. These types of recruitment functions commonly require knowledge of annual SSB to parameterize some stock-recruit relationship, such as the Beverton-Holt or Ricker curves. The provided `beverton_holt` and `bevholt_regimes` functions are good examples of such state-dependent recruitment functions.   
+
+The primary difference between defining state-dependent and state-independent recruitment functions is that state-dependent functions must be written as a ["function factory"](https://adv-r.hadley.nz/function-factories.html). Function factories are functions that parameterize, and then return a reference too, another function. Here, a function factory is used so that the parameter values of a stock recruit relationship can be defined by the user external to the simulation loop, and then the model can calculate annual SSB internally and pass that along to the output of the function factory.
+
+Below is an example of creating a new Bevertin-Holt style stock recruit relationship, this time paramterized using $\alpha$ and $\beta$:
+
+```{r, bevhlt2, eval=FALSE}
+beverton_holt_ab <- function(a, b, seed){
+    set.seed(seed)
+    function(ssb, y){
+        bh <- (a*ssb)/(1+b*ssb)
+        return(bh)
+    }
+}
+
+recruitment_obj <- list(
+    # reference to the beverton_holt_ab function above
+    func = beverton_holt_ab,
+    # parameter values for 'a', and 'b'
+    pars = list(
+        a = 10
+        b = 5
+    )
+)
+
+om$recruitment <- recruitment_obj
+
+```
+
+The MSE simulation loop will handle calculating annual SSB and passing that value to the function factory internally. 
+
+Note the lack of any variability around the stock-recruit relationship in the above example. For state-dependent recruitment functions, recruitment stochasticity is calculated and applied separately by the MSE simulation loop. Annual recruitment deviations are distributed as $~\mathcal{N}(0, \sigma_R)$ and are applied multiplicatively to the output from the above function.
