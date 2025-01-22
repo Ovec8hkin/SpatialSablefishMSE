@@ -760,13 +760,12 @@ set_hcr_colors2 <- function(hcrs){
     return(hcr_colors)
 }
 
-
-custom_theme <- theme_bw()+theme(
-    panel.spacing.y = unit(0.5, "cm"),
-    panel.grid.minor = element_blank(),
-    axis.title = element_text(size=14),
-    axis.text = element_text(size=14),
-    strip.text = element_text(size=14),
-    legend.text = element_text(size=14),
+custom_theme <- ggplot2::theme_bw()+ggplot2::theme(
+    panel.spacing.y = ggplot2::unit(0.5, "cm"),
+    panel.grid.minor = ggplot2::element_blank(),
+    axis.title = ggplot2::element_text(size=14),
+    axis.text = ggplot2::element_text(size=14),
+    strip.text = ggplot2::element_text(size=14),
+    legend.text = ggplot2::element_text(size=14),
     legend.position = "bottom"
 )
