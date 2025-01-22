@@ -1,5 +1,5 @@
 ---
-title: "Sablefish MSE Estimation Method"
+title: "Estimation Method"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Estimation Method}

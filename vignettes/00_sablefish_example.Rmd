@@ -2,7 +2,7 @@
 title: "Sablefish MSE Example"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Estimation Method}
+  %\VignetteIndexEntry{Sablefish MSE Example}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
