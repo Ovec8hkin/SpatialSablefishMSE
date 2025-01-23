@@ -6,3 +6,20 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
+Helper functions are available to faciliate simple and consistent visualization of MSE output data. All visualizations are created with `ggplot2` and interacting visualization packages (e.g. `ggdist`, `ggridges`), allowing for them to be easily customized. By default, the "color" aesthetic corresponds to different management procedures, and plots are facetted by operating model.
+
+- `plot_ssb` - plot of spawning biomass timeseries
+- `plot_relative_ssb` - plot of relative spawning biomass timeseries
+- `plot_fishing_mortalities` - plot of fishing mortality timeseries
+- `plot_recruitment` - plot of recruitment timeseries
+- `plot_landed_catch` - plot of landed catch timeseries
+- `plot_ssb_catch` - plot of landed catch and spawning biomass timeseries
+- `plot_abc_tac` - plot of ABC, TAC, expected landings, and attainment timeseries
+- `plot_phase_diagram` - plot of phase-plane diagram (SSB vs F)
+- `plot_hcr_phase_diagram` - plot of phase-plane diagram (SSB vs recommended F)
+- `plot_catch_phase_diagram` - plot of phase-plane diagram (SSB vs catch)
+- `plot_mse_summary` - plot of TAC, landed catch, fishing mortality, and spawning biomass timeseries
+- `plot_performance_metric_summary` - plot of median/quantiles of performance metrics
+- `plot_ssb_paginate` - paginated plot of SSB (pages correspond to different OMs)
+- `plot_catch_paginate` - paginated plot of catch (pages correspond to different OMs)

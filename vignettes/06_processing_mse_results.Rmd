@@ -75,12 +75,12 @@ Several processing functions are available through the `SablefishMSE` package al
 - `get_*_phaseplane_data` - aggregates SSB and either realized fishing mortality (`get_phaseplane_data`), HCR recommended fishing mortality (`get_hcrphase_data`), or landed catch (`get_phaseplane_catch_data`) for all years across all model runs and simulations.
 
 ### Performance Metrics
-Many functions are available for calculating common and sablefish-specific performance metrics from MSE output data. All functions calculate their performance metric across the projection period only, and across all model runs.
+Many functions are available for calculating common and sablefish-specific performance metrics from MSE output data. All functions calculate their performance metric across the projection period only, and across all model runs. 
 
 - `average_catch` - average annual catch
 - `total_catch` - total catch (sum of catch over all years)
 - `prop_years_catch` - proportion of projection years in which catch exceeded some threshold value
-- `average_ssb` - average annual spanwing biomass
+- `average_ssb` - average annual spawning biomass
 - `prop_low_biomass` - proportion of projection years in which SSB was $<0.4\text{SSB}_{1960}$
 - `average_age` - average age of an individual in the population
 - `average_abi` - average ABI of the population (Griffiths et al. 2023)

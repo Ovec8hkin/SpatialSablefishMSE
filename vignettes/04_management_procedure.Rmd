@@ -1,0 +1,179 @@
+---
+title: "Defining a Management Procedure"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Defining a Management Procedure}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+--- 
+
+```{r, import, include=FALSE}
+devtools::load_all()
+```
+
+A management procedure (MP) object is required to define aspects of the management regime being applied to the population. Nominally, this includes defining: (1) a harvest control rule (HCR), (2) a method for calculating reference points, (3) whether/how to reduce allowable catch from the HCR recommended catch levels, and (4) the frequency with which surveys and stock assessments occur. The MP object has been designed based on the existing management practices for Alaska sablefish under the jurisidiction of the North Pacific Fisheries Management Council.
+
+To define an MP object, five elements are required:
+
+- `hcr` - a harvest control rule definition
+- `ref_points` - a method and level of reference point
+- `management` - aspects of the management regime such as ABC-TAC reductions and realized TAC attainment
+- `survey_frequency` - a frequency with which to simulate survey data
+- `assessment_frequency` - a frequency with which to perform a stock assessment
+
+A default MP object is available through the `setup_mp_option()` function, though no default HCR is available.
+
+```{r, mp_object, eval=TRUE}
+mp <- setup_mp_options()
+mp
+```
+
+### Defining a Harvest Control Rule
+The harvest control rule (HCR) defines the maximum catch that can be taken from the population in the following annual timestep. HCRs can range from as simple as constant catch rules (where the same catch is taken every year) to complex threshold functions that scale allowable catch based on stock status relative to one or more reference points. 
+
+An HCR is defined as a complex list object with four parameters:
+
+- `func` - an R function that defines the functional form of the HCR
+- `extra_pars` - a named list of additional parameter values required by `func` (see section on "Custom Harvest Control Rule Functions")
+- `extra_options` - a named list of additional HCR options (currently only stability constraints and harvest caps are supported)
+- `units` - output units of `func` (either "F" if the HCR is defined in fishing mortality units or "TAC" if defined in catch units)
+
+The below example defines the NPFMC Tier 3 Groundfish HCR that is used to manage sablefish in Alaska:
+```{r, tier3, eval=TRUE}
+tier3 <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1){
+    nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
+    a <- cutoff_age-1
+    ssb <- apply(naa[,a:nages,1,]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
+    return(
+        npfmc_tier3_F(ssb, ref_pts$Bref, ref_pts$Fref)
+    )
+}
+
+hcr_obj <- list(
+    # R function defining HCR 
+    func = tier3,
+    # No extra parameters required
+    extra_pars = NA,
+    # No stability constraints or harvest caps
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    # `func` outputs in fishing mortality units
+    units = "F"
+)
+```
+
+
+The `max_stability` option allows for constraining the maximum allowable annual change in catch recommendations by the HCR. Values should be in the range 0-1. This constraint is always applied to the recommended catch even if the HCR function output is in fishing mortality units.
+
+The `harvest_cap` option allows for constraining the allowable catch to a maximum value, even if the catch recommendation from the HCR is higher. Values are interpreted in units of 1000s mt.
+
+##### Existing Harvest Control Rule Functions
+Several MP/HCR objects are provided with the `SablefishMSE` package:
+
+- `mp_f40` - a threshold HCR using F40/B40 reference points. This is the current HCR used to managed sablefish in Alaska.
+- `mp_f50` - a threshold HCR using F50/B50 reference points.
+- `mp_5perc` - the `mp_f40` HCR but with a stability constrainnt of 5%
+- `mp_15cap` - the `mp_f40` HCR but with a maximum harvest cap of 15,000mt.
+
+##### Custom Harvest Control Rule Functions
+Custom HCR functions can be easily developed and used within the MSE simulation loop. All HCR functions must accept, at minimum, the same four function arguments:
+
+- `ref_pts` - a list object containing computed values of reference points
+- `naa` - an array of numbers-at-age (will be dimension `[1, nages, nsexes, nregions]`)
+- `dem_params` - a list of demographic parameters (will be dimension `[1, nages, nsexes, nregion, nfleets]`)
+- `avgrec` - average recruitment across the simulation
+
+All four of these arguments must be accepted by any custom HCR function, even if they are not used. Additional arguments can also be accepted, and their values specified in the `hcr$extra_pars` list (the four arguments listed above __DO NOT__ need to be specified in the `extra_pars` list, as they will be passed to the HCR function automatcally within the MSE simulation loop). Note that custom HCR functions __CAN NOT__ make use of internal state variables from the MSE except for numbers-at-age.
+
+Below is an example of a custom HCR that recommends a fishing mortality of 10% when $\text{SSB} >= 100$mt and a fishing mortality of 1% when $\text{SSB} < 100$mt.
+```{r, stepwise_hcr_example, eval=FALSE}
+
+# the four required function arguemnts are present
+step_hcr <- function(ref_pts, naa, dem_params, avgrec){
+    # Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons
+    ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
+    return(ifelse(ssb > 100, 0.10, 0.01))
+}
+
+hcr <- list(
+    func = step_hcr, # the HCR function to evaluate
+    extra_pars = NA, # no extra parameters needed
+    extra_options = list(
+        max_stability = NA, # no stability constraints
+        harvest_cap = NA # no harvest caps
+    ),
+    units = "F"
+)
+
+mp <- setup_mp_options()
+mp$hcr <- hcr
+```
+
+Another example of a custom HCR function that accepts additional arguments:
+```{r, complex_hcr_function, eval=FALSE}
+average_age <- function(naa, ages){
+    return(weighted.mean(ages, naa))
+}
+
+avgage_threshold_f <- function(ref_pts, naa, dem_params, ref_naa, ages){
+    # Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons
+    ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
+    as_stat <- average_age(naa, ages)/average_age(ref_naa, ages)
+    as_scalar <- threshold_f(as_stat, f_min=0, f_max=1, lrp=0, urp=1)
+
+    x <- ssb/ref_pts$B40
+    f_max <- ref_pts$F40*as_scalar
+    f_min <- 0
+    lrp <- 0
+    urp <- 1
+
+    if(x >= urp)  F <- f_max # if stock status >= 1
+    if(x > lrp && x < urp) F <- f_max * ((x-lrp)/(urp-lrp)) # if stock status > alpha & stock status < 1
+    if(x <= lrp) F <- f_min
+
+    return(f)
+}
+
+hcr <- list(
+    # the HCR function to evaluate
+    func = avgage_threshold_f,
+    # values of additional arguments required by the "avgage_threshold_f" function
+    extra_pars = list(
+        ref_naa = c(100, 75, 50, 25, 10), 
+        ages = 1:5
+    ),
+    extra_options = list(
+        max_stability = NA
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp <- setup_mp_options()
+mp$hcr <- hcr
+```
+
+### Defining a Management Object
+`SablefishMSE` applies HCR functions at the level of Acceptable Biological Catch (ABC), consistent with how the North Pacific Fisheries Management Council utilizes HCRs to manage groundfish fisheries in Alaska. Total Allowable Catch (TAC), the management quantity that constrains the maximum catch that can be removed the population annually, is subsequently constrained such that $\text{TAC} <= \text{ABC}$. Finally, landed catch is further constrained such that $\text{Catch} <= \text{TAC}$, to reflect that the entire TAC is not taken in every year.
+
+The amount by which the ABC is reduced to yield a TAC, and the amount by which the TAC is reduced to yield an annual catch, are customizable through the `mp$management` object.
+
+- `mp$management$abc_tac_reduction` - a multiplicative factor reflecting what proportion of the ABC to set the TAC too. 
+- `mp$management$tac_land_reduction` - multiplicative factor reflecting what proportion of the TAC to set annual landings too. This is otherwise known as "attainment".
+
+Both the `abc_tac_reduction` and `tac_land_reduction` parameters are, by default, set to 1, such that the $\text{ABC} = \text{TAC} = \text{Catch}$. If set to a single value, the same multiplicative factor is applied in every year of the simulation.
+
+### Defining a Reference Point Object
+`SablefishMSE` calculates annual reference points using spawning potential ratio (SPR) methods. A target SPR level can be set by the `mp$ref_pts$spr_target` parameter. The parameter can be either a single value, or a vector of two values. If two values are supplied, the first value corresponds to the fishing mortality reference point and the second value corresponds to the biological reference point.
+
+The MSE simulation loop reference point function, `calculate_ref_points`, computes and returns 4 values:
+
+- `Fmax` - a maximum permissable fishing mortality rate corresponding to the fishing mortality that yields `\text{SPR}=0.50`.
+- `Fref` - the fishing mortality rate that yields `\text{SPR}=spr_target`
+- `Bref` - the spawning biomass resulting from fishing at `Fref`
+- `B0` - the spawning biomass resulting from fishing at `F=0.0`
+
+The two biological reference points, `Bref` and `B0` are calculated using the average recruitment across the entire simulation.
+
