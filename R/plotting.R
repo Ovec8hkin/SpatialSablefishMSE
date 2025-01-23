@@ -697,7 +697,7 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
     traj_column <- ifelse(is.na(v3), v2, v3)
     traj <- c2 %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
-        c2 <- c2 %>% filter(name == "total_catch")
+    c2 <- c2 %>% filter(name == "total_catch")
 
     common <- c2 %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common, time >= 40) %>% select(-hcr)
 
@@ -737,7 +737,7 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
 }
 
 set_hcr_colors <- function(hcrs){
-    hcr_colors <- hue_pal()(length(hcrs))
+    hcr_colors <- scales::hue_pal()(length(hcrs))
     hcr_colors[which(hcrs == "No Fishing")] <- "#000000"
     names(hcr_colors) <- hcrs
     return(hcr_colors)
@@ -759,6 +759,21 @@ set_hcr_colors2 <- function(hcrs){
     )
     return(hcr_colors)
 }
+
+
+rank_colors <- c(
+    "#D55E00",
+    "#FF740A",
+    "#FF8B33",
+    "#FFA35C",
+    "#FFBA85",
+    "#AAAAAA",
+    "#5CC3FF",
+    "#33B4FF",
+    "#0AA5FF",
+    "#008EE0",
+    "#0072B2"
+)
 
 custom_theme <- ggplot2::theme_bw()+ggplot2::theme(
     panel.spacing.y = ggplot2::unit(0.5, "cm"),
