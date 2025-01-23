@@ -1,135 +1,105 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>/404.html</loc>
-  </url>
-  <url>
-    <loc>/LICENSE-text.html</loc>
-  </url>
-  <url>
-    <loc>/articles/01_intro.html</loc>
-  </url>
-  <url>
-    <loc>/articles/02_estimation_model.html</loc>
-  </url>
-  <url>
-    <loc>/articles/03_recruitment_functions.html</loc>
-  </url>
-  <url>
-    <loc>/articles/04_harvest_control_rule_function.html</loc>
-  </url>
-  <url>
-    <loc>/articles/05_processing_mse_results.html</loc>
-  </url>
-  <url>
-    <loc>/articles/06_multiple_mse_simulations.html</loc>
-  </url>
-  <url>
-    <loc>/articles/07_plotting_mse_results.html</loc>
-  </url>
-  <url>
-    <loc>/articles/SablefishMSE.html</loc>
-  </url>
-  <url>
-    <loc>/articles/estimation_model.html</loc>
-  </url>
-  <url>
-    <loc>/articles/harvest_control_rule_function.html</loc>
-  </url>
-  <url>
-    <loc>/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>/articles/intro.html</loc>
-  </url>
-  <url>
-    <loc>/articles/mse_options.html</loc>
-  </url>
-  <url>
-    <loc>/articles/multiple_mse_simulations.html</loc>
-  </url>
-  <url>
-    <loc>/articles/plotting_mse_results.html</loc>
-  </url>
-  <url>
-    <loc>/articles/processing_mse_results.html</loc>
-  </url>
-  <url>
-    <loc>/articles/recruitment_functions.html</loc>
-  </url>
-  <url>
-    <loc>/authors.html</loc>
-  </url>
-  <url>
-    <loc>/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/abi.html</loc>
-  </url>
-  <url>
-    <loc>/reference/as_scalar_threshold_f.html</loc>
-  </url>
-  <url>
-    <loc>/reference/average_age.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bind_mse_outputs.html</loc>
-  </url>
-  <url>
-    <loc>/reference/calculate_ref_points.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compute_bx.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compute_sbpr.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compute_spr.html</loc>
-  </url>
-  <url>
-    <loc>/reference/constant_F.html</loc>
-  </url>
-  <url>
-    <loc>/reference/fit_TMB_model.html</loc>
-  </url>
-  <url>
-    <loc>/reference/format_em_data.html</loc>
-  </url>
-  <url>
-    <loc>/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/npfmc_tier3_F.html</loc>
-  </url>
-  <url>
-    <loc>/reference/prop_fully_mature.html</loc>
-  </url>
-  <url>
-    <loc>/reference/prop_mature.html</loc>
-  </url>
-  <url>
-    <loc>/reference/reformat_ggdist_long.html</loc>
-  </url>
-  <url>
-    <loc>/reference/run_mse.html</loc>
-  </url>
-  <url>
-    <loc>/reference/run_mse_multiple.html</loc>
-  </url>
-  <url>
-    <loc>/reference/shannon_diversity.html</loc>
-  </url>
-  <url>
-    <loc>/reference/simulate_TAC.html</loc>
-  </url>
-  <url>
-    <loc>/reference/spr_x.html</loc>
-  </url>
-  <url>
-    <loc>/reference/threshold_cap.html</loc>
-  </url>
-  <url>
-    <loc>/reference/threshold_f.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/articles/00_sablefish_example.html</loc></url>
+<url><loc>/articles/01_intro.html</loc></url>
+<url><loc>/articles/01_operating_model.html</loc></url>
+<url><loc>/articles/02_estimation_model.html</loc></url>
+<url><loc>/articles/02_recruitment.html</loc></url>
+<url><loc>/articles/03_estimation_model.html</loc></url>
+<url><loc>/articles/03_recruitment_functions.html</loc></url>
+<url><loc>/articles/04_harvest_control_rule_function.html</loc></url>
+<url><loc>/articles/04_management_procedure.html</loc></url>
+<url><loc>/articles/05_processing_mse_results.html</loc></url>
+<url><loc>/articles/05_running_mse.html</loc></url>
+<url><loc>/articles/06_multiple_mse_simulations.html</loc></url>
+<url><loc>/articles/06_processing_mse_results.html</loc></url>
+<url><loc>/articles/07_plotting_mse_results.html</loc></url>
+<url><loc>/articles/SablefishMSE.html</loc></url>
+<url><loc>/articles/estimation_model.html</loc></url>
+<url><loc>/articles/harvest_control_rule_function.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/articles/intro.html</loc></url>
+<url><loc>/articles/mse_options.html</loc></url>
+<url><loc>/articles/multiple_mse_simulations.html</loc></url>
+<url><loc>/articles/plotting_mse_results.html</loc></url>
+<url><loc>/articles/processing_mse_results.html</loc></url>
+<url><loc>/articles/recruitment_functions.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/aav.html</loc></url>
+<url><loc>/reference/abi.html</loc></url>
+<url><loc>/reference/as_scalar_threshold_f.html</loc></url>
+<url><loc>/reference/average_abi.html</loc></url>
+<url><loc>/reference/average_age.html</loc></url>
+<url><loc>/reference/average_annual_catch_variation.html</loc></url>
+<url><loc>/reference/average_annual_dynamic_value.html</loc></url>
+<url><loc>/reference/average_annual_value.html</loc></url>
+<url><loc>/reference/average_catch.html</loc></url>
+<url><loc>/reference/average_proportion_biomass_old.html</loc></url>
+<url><loc>/reference/average_proportion_catch_large.html</loc></url>
+<url><loc>/reference/average_ssb.html</loc></url>
+<url><loc>/reference/beverton_holt.html</loc></url>
+<url><loc>/reference/bind_mse_outputs.html</loc></url>
+<url><loc>/reference/biomass_crash_time.html</loc></url>
+<url><loc>/reference/biomass_recovery_time.html</loc></url>
+<url><loc>/reference/calculate_joint_selret.html</loc></url>
+<url><loc>/reference/calculate_npfmc_ref_points.html</loc></url>
+<url><loc>/reference/calculate_ref_points.html</loc></url>
+<url><loc>/reference/compute_average_age.html</loc></url>
+<url><loc>/reference/compute_bx.html</loc></url>
+<url><loc>/reference/compute_sbpr.html</loc></url>
+<url><loc>/reference/compute_spr.html</loc></url>
+<url><loc>/reference/constant_F.html</loc></url>
+<url><loc>/reference/extend_3darray_last_dim.html</loc></url>
+<url><loc>/reference/extend_vec_last_val.html</loc></url>
+<url><loc>/reference/filter_hcr_om.html</loc></url>
+<url><loc>/reference/filter_times.html</loc></url>
+<url><loc>/reference/fit_TMB_model.html</loc></url>
+<url><loc>/reference/format_em_data.html</loc></url>
+<url><loc>/reference/generate_annual_frequency.html</loc></url>
+<url><loc>/reference/get_atage_groups.html</loc></url>
+<url><loc>/reference/get_b40_timeseries.html</loc></url>
+<url><loc>/reference/get_big_recruitment_filter.html</loc></url>
+<url><loc>/reference/get_fishing_mortalities.html</loc></url>
+<url><loc>/reference/get_hcrphase_data.html</loc></url>
+<url><loc>/reference/get_landed_catch.html</loc></url>
+<url><loc>/reference/get_management_quantities.html</loc></url>
+<url><loc>/reference/get_phaseplane_catch_data.html</loc></url>
+<url><loc>/reference/get_phaseplane_data.html</loc></url>
+<url><loc>/reference/get_recruits.html</loc></url>
+<url><loc>/reference/get_reference_points.html</loc></url>
+<url><loc>/reference/get_saved_model_runs.html</loc></url>
+<url><loc>/reference/get_ssb_biomass.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/inf_max.html</loc></url>
+<url><loc>/reference/npfmc_tier3_F.html</loc></url>
+<url><loc>/reference/performance_metric_summary.html</loc></url>
+<url><loc>/reference/prop_fully_mature.html</loc></url>
+<url><loc>/reference/prop_low_biomass.html</loc></url>
+<url><loc>/reference/prop_mature.html</loc></url>
+<url><loc>/reference/prop_years_catch.html</loc></url>
+<url><loc>/reference/recruits_crash.html</loc></url>
+<url><loc>/reference/reformat_ggdist_long.html</loc></url>
+<url><loc>/reference/regime_recruits.html</loc></url>
+<url><loc>/reference/resample_recruits.html</loc></url>
+<url><loc>/reference/resample_regime_recruits.html</loc></url>
+<url><loc>/reference/round_to_zero.html</loc></url>
+<url><loc>/reference/run_EM.html</loc></url>
+<url><loc>/reference/run_mse.html</loc></url>
+<url><loc>/reference/run_mse_multiple.html</loc></url>
+<url><loc>/reference/sable_om.html</loc></url>
+<url><loc>/reference/scale_and_rank.html</loc></url>
+<url><loc>/reference/setup_hcr_options.html</loc></url>
+<url><loc>/reference/setup_mp_options.html</loc></url>
+<url><loc>/reference/shannon_diversity.html</loc></url>
+<url><loc>/reference/simulate_TAC.html</loc></url>
+<url><loc>/reference/simulate_em_data.html</loc></url>
+<url><loc>/reference/simulate_em_data_sex_disaggregate.html</loc></url>
+<url><loc>/reference/spr_x.html</loc></url>
+<url><loc>/reference/stairstep_attainment.html</loc></url>
+<url><loc>/reference/threshold_cap.html</loc></url>
+<url><loc>/reference/threshold_f.html</loc></url>
+<url><loc>/reference/total_catch.html</loc></url>
 </urlset>
+
