@@ -170,8 +170,8 @@ Both the `abc_tac_reduction` and `tac_land_reduction` parameters are, by default
 
 The MSE simulation loop reference point function, `calculate_ref_points`, computes and returns 4 values:
 
-- `Fmax` - a maximum permissable fishing mortality rate corresponding to the fishing mortality that yields `\text{SPR}=0.50`.
-- `Fref` - the fishing mortality rate that yields `\text{SPR}=spr_target`
+- `Fmax` - a maximum permissable fishing mortality rate corresponding to the fishing mortality that yields $\text{SPR}=0.50$.
+- `Fref` - the fishing mortality rate that yields $\text{SPR}=\text{spr_target}$
 - `Bref` - the spawning biomass resulting from fishing at `Fref`
 - `B0` - the spawning biomass resulting from fishing at `F=0.0`
 
