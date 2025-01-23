@@ -31,11 +31,14 @@ LazyData: true
 Depends:
     R (>= 3.5.0),
 Imports:
+    ggplot2,
     ggdist,
     ggh4x,
     reshape2,
-    dplyr,
-    ggplot2
+    dplyr
+Suggests:
+    knitr,
+    rmarkdown
 DevPackage:
     Craig44/SpatialSablefishAssessment
     BenWilliams-NOAA/afscOM

@@ -6,7 +6,7 @@
 #' @param nyears total number of years to resample
 #' @param seed random seed for reproducability
 #'
-#' @export resanple_recruits
+#' @export resample_recruits
 #'
 #' @example
 #'

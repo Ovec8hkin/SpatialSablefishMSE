@@ -29,8 +29,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         scale_y_continuous(limits=c(0, 500))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
-        guides(color=guide_legend(title="HCR", nrow=2), fill="none")+
-        theme_bw()
+        guides(color=guide_legend(title="HCR", nrow=2), fill="none")
 
     if(show_est){
         plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
@@ -100,8 +99,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
         scale_color_manual(values=hcr_colors)+
         scale_y_continuous(limits=c(0, 0.20))+
         coord_cartesian(expand=0)+
-        guides(fill="none")+
-        theme_bw()
+        guides(fill="none")
 
     if(show_est){
         plot <- plot + geom_pointrange(data = f %>% filter(L1 == "faa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
@@ -135,8 +133,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_traje
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
         scale_y_continuous(limits=c(0, 120))+
-        coord_cartesian(expand=0)+
-        theme_bw()
+        coord_cartesian(expand=0)
 
     if(show_est){
         plot <- plot + geom_pointrange(data = f %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
@@ -182,8 +179,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         # scale_y_continuous(limits=c(0, 60))+
         labs(x="Year", y="Catch (mt)", color="HCR")+
         coord_cartesian(expand=0, ylim=c(0, 60))+
-        guides(color=guide_legend(title="HCR", nrow=2), fill="none")+
-        theme_bw()
+        guides(color=guide_legend(title="HCR", nrow=2), fill="none")
 
     if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
@@ -198,7 +194,6 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
     return(plot+custom_theme)
 
 }
-
 
 plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
 
@@ -253,7 +248,6 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
         labs(x="Year", y="1000s Metric Tons")+
         coord_cartesian(expand=0)+
         guides(color=guide_legend("HCR", nrow=2), fill="none")+
-        theme_bw()+
         facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")+
         ggh4x::facetted_pos_scales(
             y = list(
@@ -263,7 +257,6 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
         )
     return(plot+custom_theme)
 }
-
 
 plot_atage_trajectory_ternary <- function(data, segments, col_names){
     axis_names = names(data)[6:8]
@@ -390,8 +383,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        coord_cartesian(expand=0)+
-        theme_bw()
+        coord_cartesian(expand=0)
 
     if(!is.na(v2)){
         plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")
@@ -408,7 +400,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="
             )
         )
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
@@ -531,7 +523,6 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
 
 }
 
-
 plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, common_trajectory=64){
     all_data <- bind_rows(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=spbio),
@@ -574,10 +565,9 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, 
         scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
         scale_color_manual(values=hcr_colors)+
         labs(y="", x="Year", color="HCR")+
-        coord_cartesian(expand=0)+
-        theme_bw()
+        coord_cartesian(expand=0)
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_hcr="F40"){
@@ -595,8 +585,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
                 # facet_wrap(vars(name), scales="free_x")+
                 labs(y="", x="", shape="OM", color="Performance Order")+
                 coord_cartesian(expand=0)+
-                guides(shape="none", color=guide_legend(nrow=1))+
-                theme_bw()+
+                guides(shape="none", color=guide_legend(nrow=1))
                 theme(
                     plot.margin = margin(0.25, 1, 0.25, 0.25, "cm"),
                     panel.spacing.x = unit(5, "cm"),
@@ -679,8 +668,7 @@ plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, comm
             facet_wrap(~ hcr, ncol=4, nrow=7)+
             labs(x="Year", y="SSB", title=o)+
             coord_cartesian(expand=0)+
-            guides(fill="none", color="none")+
-            theme_bw()+
+            guides(fill="none", color="none")
             custom_theme+
             theme(
                 plot.title = element_text(size=20)
@@ -732,8 +720,7 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
             facet_wrap(~ hcr, ncol=4, nrow=7)+
             labs(x="Year", y="Catch (mt)", title=o)+
             coord_cartesian(expand=0, ylim=c(0, 60))+
-            guides(fill="none", color="none")+
-            theme_bw()+
+            guides(fill="none", color="none")
             custom_theme+
             theme(
                 plot.title = element_text(size=20)
@@ -788,13 +775,12 @@ rank_colors <- c(
     "#0072B2"
 )
 
-
-custom_theme <- theme_bw()+theme(
-    panel.spacing.y = unit(0.5, "cm"),
-    panel.grid.minor = element_blank(),
-    axis.title = element_text(size=14),
-    axis.text = element_text(size=14),
-    strip.text = element_text(size=14),
-    legend.text = element_text(size=14),
+custom_theme <- ggplot2::theme_bw()+ggplot2::theme(
+    panel.spacing.y = ggplot2::unit(0.5, "cm"),
+    panel.grid.minor = ggplot2::element_blank(),
+    axis.title = ggplot2::element_text(size=14),
+    axis.text = ggplot2::element_text(size=14),
+    strip.text = ggplot2::element_text(size=14),
+    legend.text = ggplot2::element_text(size=14),
     legend.position = "bottom"
 )

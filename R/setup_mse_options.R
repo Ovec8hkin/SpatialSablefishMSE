@@ -10,7 +10,7 @@ setup_mp_options <- function(){
 
     return(
         list(
-            hcr = NULL,
+            hcr = setup_hcr_options(),
             ref_points = list(
                 spr_target = 0.40
             ),
@@ -23,6 +23,26 @@ setup_mp_options <- function(){
         )
     )
 
+}
+
+#' Setup HCR Objects
+#' 
+#' Set HCR object list items to NULL defaults
+#' 
+#' @export setup_hcr_options
+#' 
+setup_hcr_options <- function(){
+    return(
+        list(
+            func = NULL,
+            extra_pars = NA,
+            extra_options = list(
+                max_stability = NA,
+                harvest_cap = NA
+            ),
+            units = NULL
+        )
+    )
 }
 
 setup_mse_options <- function(){
