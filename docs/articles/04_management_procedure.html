@@ -78,7 +78,7 @@ calculating reference points, (3) whether/how to reduce allowable catch
 from the HCR recommended catch levels, and (4) the frequency with which
 surveys and stock assessments occur. The MP object has been designed
 based on the existing management practices for Alaska sablefish under
-the jurisidiction of the North Pacific Fisheries Management Council.</p>
+the jurisdiction of the North Pacific Fisheries Management Council.</p>
 <p>To define an MP object, five elements are required:</p>
 <ul>
 <li>
@@ -213,7 +213,7 @@ Alaska.</li>
 points.</li>
 <li>
 <code>mp_5perc</code> - the <code>mp_f40</code> HCR but with a
-stability constrainnt of 5%</li>
+stability constraint of 5%</li>
 <li>
 <code>mp_15cap</code> - the <code>mp_f40</code> HCR but with a
 maximum harvest cap of 15,000mt.</li>
@@ -243,9 +243,9 @@ function, even if they are not used. Additional arguments can also be
 accepted, and their values specified in the <code>hcr$extra_pars</code>
 list (the four arguments listed above <strong>DO NOT</strong> need to be
 specified in the <code>extra_pars</code> list, as they will be passed to
-the HCR function automatcally within the MSE simulation loop). Note that
-custom HCR functions <strong>CAN NOT</strong> make use of internal state
-variables from the MSE except for numbers-at-age.</p>
+the HCR function automatically within the MSE simulation loop). Note
+that custom HCR functions <strong>CAN NOT</strong> make use of internal
+state variables from the MSE except for numbers-at-age.</p>
 <p>Below is an example of a custom HCR that recommends a fishing
 mortality of 10% when
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SSB</mtext><mo>&gt;</mo><mo>=</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">\text{SSB} &gt;= 100</annotation></semantics></math>mt
@@ -361,7 +361,7 @@ point.</p>
 <code>calculate_ref_points</code>, computes and returns 4 values:</p>
 <ul>
 <li>
-<code>Fmax</code> - a maximum permissable fishing mortality rate
+<code>Fmax</code> - a maximum permissible fishing mortality rate
 corresponding to the fishing mortality that yields
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SPR</mtext><mo>=</mo><mn>0.50</mn></mrow><annotation encoding="application/x-tex">\text{SPR}=0.50</annotation></semantics></math>.</li>
 <li>

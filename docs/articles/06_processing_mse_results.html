@@ -76,7 +76,7 @@ landed catch by year, fishing mortality by year, recommended harvest
 levels by year, etc. – and this data output quickly grows as the number
 of operating models (OMs), management procedures (MPs), and simulations
 grows. <code>SablefishMSE</code> provides several wrapper functions to
-faciliate easier processing of large MSE outputs and computation of
+facilitate easier processing of large MSE outputs and computation of
 common derived quantities (spawning biomass, total biomass, total catch,
 etc.)</p>
 <div class="section level3">
@@ -156,7 +156,7 @@ following outputs are also available:</p>
 </ul>
 <p>The functions discussed below were not developed with the intent to
 be used on the <code>survey_obs</code> or <code>model_outs</code> output
-datatypes.</p>
+data types.</p>
 </div>
 </div>
 <div class="section level3">
@@ -176,7 +176,7 @@ outputs can be read back into R using the provided
 <p>Because users will frequently deal with data of up to 8 dimensions
 (<code>[nyears, nages, nsexes, nregions, nfleets, nsims, nMPs, nOMs]</code>),
 spread across multiple list objects, a helper function has been provided
-to faciliate collating specific data outputs across all available MSE
+to facilitate collating specific data outputs across all available MSE
 models: <code>bind_mse_outputs</code>.</p>
 <p>The <code>bind_mse_outputs</code> function takes a list of a
 completed MSE model runs (e.g. the output from a finished call to

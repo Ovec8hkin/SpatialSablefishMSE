@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-As part of the operating model (OM) list object (`om`) that is a required input to the MSE simulation function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necesarry. 
+As part of the operating model (OM) list object (`om`) that is a required input to the MSE simulation function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necessary. 
 
 ### The Recruitment Object
 The recruitment list object requires two components: (1) a reference to an R function that specifies how future recruitment is to be generated, and (2) a list of parameters values to pass to said function.
@@ -31,7 +31,7 @@ recruitment_obj <- list(
 om$recruitment <- recruitment_obj
 ```
 
-Recruitment functions can be as complicated as necesarry, and can also make use of annual population state variables, such as spawning biomass. Examples are more complex recruitment functions are available at the end of this page.
+Recruitment functions can be as complicated as necessary, and can also make use of annual population state variables, such as spawning biomass. Examples are more complex recruitment functions are available at the end of this page.
 
 ### Provided Recruitment Functions
 
@@ -113,7 +113,7 @@ om$recruitment$pars <- list(
 ```
 
 ##### Crash Recruitment
-The final provided recruitment fuction generates future recruitment through resampling, as in the "Resample Recruitment" option, but with a defined period where recruitment is different. This different period can be used to simulate a period depressed recruitment (e.g. a recruitment crash) or a period of amplified recruitment (e.g. a recruitment boom), depending on how it is parameterized. Users can specify the simulation year in which the alterntaive recruitment period begins, the length of that period, and the mean value of recruitment during that period. During the alternative recruitment period, lognormal deviations about the specified mean recruitment are applied using a $\text{CV}=0.1$.
+The final provided recruitment function generates future recruitment through resampling, as in the "Resample Recruitment" option, but with a defined period where recruitment is different. This different period can be used to simulate a period depressed recruitment (e.g. a recruitment crash) or a period of amplified recruitment (e.g. a recruitment boom), depending on how it is parameterized. Users can specify the simulation year in which the alternative recruitment period begins, the length of that period, and the mean value of recruitment during that period. During the alternative recruitment period, lognormal deviations about the specified mean recruitment are applied using a $\text{CV}=0.1$.
 
 ```{r, crash_recruitment, eval=FALSE}
 om$recruitment$func <- recruits_crash
@@ -165,11 +165,11 @@ om$recruitment <- recruitment_obj
 ```
 
 ##### State-Dependent Recruitment Functions
-State-dependent recruitment functions are those that do require knowledge of the current state of the population to appropiately generate future recruitment. These types of recruitment functions commonly require knowledge of annual SSB to parameterize some stock-recruit relationship, such as the Beverton-Holt or Ricker curves. The provided `beverton_holt` and `bevholt_regimes` functions are good examples of such state-dependent recruitment functions.   
+State-dependent recruitment functions are those that do require knowledge of the current state of the population to appropriately generate future recruitment. These types of recruitment functions commonly require knowledge of annual SSB to parameterize some stock-recruit relationship, such as the Beverton-Holt or Ricker curves. The provided `beverton_holt` and `bevholt_regimes` functions are good examples of such state-dependent recruitment functions.   
 
 The primary difference between defining state-dependent and state-independent recruitment functions is that state-dependent functions must be written as a ["function factory"](https://adv-r.hadley.nz/function-factories.html). Function factories are functions that parameterize, and then return a reference too, another function. Here, a function factory is used so that the parameter values of a stock recruit relationship can be defined by the user external to the simulation loop, and then the model can calculate annual SSB internally and pass that along to the output of the function factory.
 
-Below is an example of creating a new Bevertin-Holt style stock recruit relationship, this time paramterized using $\alpha$ and $\beta$:
+Below is an example of creating a new Beverton-Holt style stock recruit relationship, this time parameterized using $\alpha$ and $\beta$:
 
 ```{r, bevhlt2, eval=FALSE}
 beverton_holt_ab <- function(a, b, seed){

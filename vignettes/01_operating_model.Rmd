@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 The `SablefishMSE` package makes use of the `afscOM` package for defining the operating model (OM) component of the MSE simulation loop. As such, defining OMs to use within the MSE framework is identical to the process of defining a model with `afscOM`.
 
 ### An Introduction to `afscOM`
-`afscOM` is a age-structured, multi-sex, multi-fleet, spatially explicit fisheries model that can be parameterized to elicit a range of complex population dyanmics. Users can define how specific demographic parameters (e.g. natural mortality, weight-at-age, selectivity) change across time, age, sex, space, or by fleet, and the model internally projects a population with such demographic characteristics forwards in time. Observation processes can additionally be defined allowing the users to simulate observations (with associated error levels) from the population at each time step.
+`afscOM` is a age-structured, multi-sex, multi-fleet, spatially explicit fisheries model that can be parameterized to elicit a range of complex population dynamics. Users can define how specific demographic parameters (e.g. natural mortality, weight-at-age, selectivity) change across time, age, sex, space, or by fleet, and the model internally projects a population with such demographic characteristics forwards in time. Observation processes can additionally be defined allowing the users to simulate observations (with associated error levels) from the population at each time step.
 
 For more information on the `afscOM` package, including examples and additional documentation, please see the [package documentation](https://benwilliams-noaa.github.io/afscOM).
 
@@ -48,7 +48,7 @@ Required population parameters include:
 - `sexrat`: Population sex ratio `[nyears, nages, nsexes, nregions]`
 - `sel`: Fishery selectivity `[nyears, nages, nsexes, nregions, nfleets]`
 - `ret`: Fishery retention `[nyears, nages, nsexes, nregions, nfleets]`
-- `dmr`: Fishery discard mortality (as an instantenous rate) `[nyears, nages, nsexes, nregions, nfleets]`
+- `dmr`: Fishery discard mortality (as an instantaneous rate) `[nyears, nages, nsexes, nregions, nfleets]`
 
 If observations are being simulated, survey selectivity must also be specified:
 
@@ -85,7 +85,7 @@ Required items in the obs_pars list are:
 
 While not required, when used within the wider MSE simulation loop, the OM should always be parameterized to yield observations, so that observation data is available to the estimation method submodule of the MSE. 
 
-The types of observations (RPN, RPW, age compositions, etc.) specified in the provided `sable_om$model_options$obs_pars` object should be retained when used in the MSE simulation loop to ensure compatability with the estimation model.
+The types of observations (RPN, RPW, age compositions, etc.) specified in the provided `sable_om$model_options$obs_pars` object should be retained when used in the MSE simulation loop to ensure compatibility with the estimation model.
 
 ### The Full Operating Model Object
 A fully parameterized OM object, `sable_om`, is available through the `SablefishMSE` package. This OM object contains a full set of demographic parameter matrices, observation process parameters, and an array of initial numbers-at-age.

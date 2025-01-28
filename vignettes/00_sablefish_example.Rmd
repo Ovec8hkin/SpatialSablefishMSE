@@ -12,7 +12,7 @@ A fully worked example of this MSE framework for Alaska Sablefish follows. This 
 - multiple operating models
 - multiple harvest control rules
 - state-dependent and state-independent recruitment functions
-- HCRs with stability costraints and harvest caps
+- HCRs with stability constraints and harvest caps
 - HCRs with different reference point levels
 - Parallel MSE simulations
 - MSE output processing and plotting.
@@ -60,7 +60,7 @@ om_bh_recruit$recruitment$pars <- list(
 
 ```
 
-OM3 projects future recriutment as occurring in distinct regimes: first a "low" regime for 20 years, followed by a "high" regime for 5 years. The regimes each have a uniquely parameterized Beverton-Holt stock recruitment relationships that differ with respect to the $R_0$ and $S_0$ paramerers.
+OM3 projects future recruitment as occurring in distinct regimes: first a "low" regime for 20 years, followed by a "high" regime for 5 years. The regimes each have a uniquely parameterized Beverton-Holt stock recruitment relationships that differ with respect to the $R_0$ and $S_0$ parameters.
 
 ```{r, om3, eval=FALSE}
 om_bhcyclic_recruit <- sable_om
@@ -77,7 +77,7 @@ om_bhcyclic_recruit$recruitment$pars <- list(
 )
 ```
 
-OM4 assumes that recruitment crashes for the first 20 years of the projection period, while the recruitment for the remainder of the projection period is historcially resamples as in OM1.
+OM4 assumes that recruitment crashes for the first 20 years of the projection period, while the recruitment for the remainder of the projection period is historically resamples as in OM1.
 ```{r, om5, eval=FALSE}
 om_immcrash_recruit <- sable_om
 om_immcrash_recruit$name <- "Immediate Crash Recruitment"
@@ -103,7 +103,7 @@ Management procedures (MPs) are specified as a complex list of values that defin
 mp_base <- setup_mp_options()
 ```
 
-MP1 is the NPFMC Tier 3 HCR that is currently used to manage sablefish in Alaska. It is a threshold HCR that uses a target reference point of $SPR_{40\%}$. The HCR function (`tier3`) outputs in units of fihsing mortality (F), as specified by "units". No harvest cap or stability constraints are applied. 
+MP1 is the NPFMC Tier 3 HCR that is currently used to manage sablefish in Alaska. It is a threshold HCR that uses a target reference point of $SPR_{40\%}$. The HCR function (`tier3`) outputs in units of fishing mortality (F), as specified by "units". No harvest cap or stability constraints are applied. 
 ```{r, mp1, eval=FALSE}
 mp_f40 <- mp_base
 mp_f40$name <- "F40"
@@ -175,7 +175,7 @@ mp_10perc$hcr <- list(
 )
 ```
 
-MP6 and MP7 are another simple variation on MP1, whereby a maximum permissable TAC is implemented. If the recommended TAC (via evaluation of the harvest control rule and after application of the ABC-TAC reduction) exceeds the specified harvest cap, the TAC will be reduced to the harvest cap exactly. Attainment will be applied after the harvest cap has been applied. Harvest caps are 15k, 25k mt respectively.
+MP6 and MP7 are another simple variation on MP1, whereby a maximum permissible TAC is implemented. If the recommended TAC (via evaluation of the harvest control rule and after application of the ABC-TAC reduction) exceeds the specified harvest cap, the TAC will be reduced to the harvest cap exactly. Attainment will be applied after the harvest cap has been applied. Harvest caps are 15k, 25k mt respectively.
 ```{r, mp67, eval=FALSE}
 mp_15cap <- mp_base
 mp_15cap$name <- "15k Harvest Cap"
@@ -284,7 +284,7 @@ hcr_list <- listN(
 ```
 
 ### Defining the `mse_options` Object
-An `mse_options` list object is also defined to provode additional options to the MSE function. Critically, this list object defines: the number of years to project for, the length of the OM conditioning period, the simulation year in which to begin projecting recruitment using the provided recruitment function, and whether the estimation method should be run or not. 
+An `mse_options` list object is also defined to provide additional options to the MSE function. Critically, this list object defines: the number of years to project for, the length of the OM conditioning period, the simulation year in which to begin projecting recruitment using the provided recruitment function, and whether the estimation method should be run or not. 
 
 The default values are all appropriate for this case study, and can be accessed using `setup_mse_options`.
 
@@ -343,7 +343,7 @@ catch_data <- get_landed_catch(model_runs, extra_columns2, hcr_filter=publicatio
 
 ```
 
-These helper functions return tibbles in long format that can be easily provided to `ggplot` for plotting or used within other tidyverse style data processing pipelines. A plotting function is also defined alongside each data processing function above, and will return a ggplot object that can be further modified outside of the function. For each plotting function, the parameter `v1` corresponds to the column name assigned to the "color" aesthetic, and the parameter `v2` corresponds to the column names to facet by. Facetting by mulitple variables (e.g. a facet grid) is not currently supported by default.
+These helper functions return tibbles in long format that can be easily provided to `ggplot` for plotting or used within other tidyverse style data processing pipelines. A plotting function is also defined alongside each data processing function above, and will return a `ggplot` object that can be further modified outside of the function. For each plotting function, the parameter `v1` corresponds to the column name assigned to the "color" aesthetic, and the parameter `v2` corresponds to the column names to facet by. Facetting by multiple variables (e.g. a facet grid) is not currently supported by default.
 
 ```{r, plotting, eval=FALSE}
 plot_ssb(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)
@@ -359,10 +359,10 @@ plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_traj
 ```
 
 ### Computing Performance Metrics
-Helper functions are also provided to compute performance metrics. Individual functions for each performance metric are available (though outputs may require additional processing), or the `performance_metric_summary` function can be used to quickly compute all of them. Like with the otehr data processing functions, a default plotting functions for performance metrics is also available.
+Helper functions are also provided to compute performance metrics. Individual functions for each performance metric are available (though outputs may require additional processing), or the `performance_metric_summary` function can be used to quickly compute all of them. Like with the other data processing functions, a default plotting functions for performance metrics is also available.
 
 ```{r, performance_metrics, eval=FALSE}
-performance_metrics <- performance_metric_summary(
+perf_tradeoffs <- performance_metric_summary(
     model_runs, 
     extra_columns, 
     sable_om$dem_params, 
@@ -374,17 +374,11 @@ performance_metrics <- performance_metric_summary(
     extra_filter = NULL,
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out = TRUE,
-    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "prop_years_lowssb")
+    summary_out = FALSE,
+    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "prop_years_lowssb") 
 )
 
-perf_data <- performance_metrics$perf_data %>% 
-    mutate(
-        name = factor(name, levels=publication_metrics)
-    ) %>%
-    group_by(.width, om, name) %>%
-    scale_and_rank("median")
-
-plot_performance_metric_summary(perf_data, v1="hcr", v2="om")
+perf_data <- performance_metrics$perf_data
+plot_performance_metric_summary(perf_data)
 
 ```

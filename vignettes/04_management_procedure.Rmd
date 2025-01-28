@@ -11,7 +11,7 @@ vignette: >
 devtools::load_all()
 ```
 
-A management procedure (MP) object is required to define aspects of the management regime being applied to the population. Nominally, this includes defining: (1) a harvest control rule (HCR), (2) a method for calculating reference points, (3) whether/how to reduce allowable catch from the HCR recommended catch levels, and (4) the frequency with which surveys and stock assessments occur. The MP object has been designed based on the existing management practices for Alaska sablefish under the jurisidiction of the North Pacific Fisheries Management Council.
+A management procedure (MP) object is required to define aspects of the management regime being applied to the population. Nominally, this includes defining: (1) a harvest control rule (HCR), (2) a method for calculating reference points, (3) whether/how to reduce allowable catch from the HCR recommended catch levels, and (4) the frequency with which surveys and stock assessments occur. The MP object has been designed based on the existing management practices for Alaska sablefish under the jurisdiction of the North Pacific Fisheries Management Council.
 
 To define an MP object, five elements are required:
 
@@ -74,7 +74,7 @@ Several MP/HCR objects are provided with the `SablefishMSE` package:
 
 - `mp_f40` - a threshold HCR using F40/B40 reference points. This is the current HCR used to managed sablefish in Alaska.
 - `mp_f50` - a threshold HCR using F50/B50 reference points.
-- `mp_5perc` - the `mp_f40` HCR but with a stability constrainnt of 5%
+- `mp_5perc` - the `mp_f40` HCR but with a stability constraint of 5%
 - `mp_15cap` - the `mp_f40` HCR but with a maximum harvest cap of 15,000mt.
 
 ##### Custom Harvest Control Rule Functions
@@ -85,7 +85,7 @@ Custom HCR functions can be easily developed and used within the MSE simulation 
 - `dem_params` - a list of demographic parameters (will be dimension `[1, nages, nsexes, nregion, nfleets]`)
 - `avgrec` - average recruitment across the simulation
 
-All four of these arguments must be accepted by any custom HCR function, even if they are not used. Additional arguments can also be accepted, and their values specified in the `hcr$extra_pars` list (the four arguments listed above __DO NOT__ need to be specified in the `extra_pars` list, as they will be passed to the HCR function automatcally within the MSE simulation loop). Note that custom HCR functions __CAN NOT__ make use of internal state variables from the MSE except for numbers-at-age.
+All four of these arguments must be accepted by any custom HCR function, even if they are not used. Additional arguments can also be accepted, and their values specified in the `hcr$extra_pars` list (the four arguments listed above __DO NOT__ need to be specified in the `extra_pars` list, as they will be passed to the HCR function automatically within the MSE simulation loop). Note that custom HCR functions __CAN NOT__ make use of internal state variables from the MSE except for numbers-at-age.
 
 Below is an example of a custom HCR that recommends a fishing mortality of 10% when $\text{SSB} >= 100$mt and a fishing mortality of 1% when $\text{SSB} < 100$mt.
 ```{r, stepwise_hcr_example, eval=FALSE}
@@ -170,7 +170,7 @@ Both the `abc_tac_reduction` and `tac_land_reduction` parameters are, by default
 
 The MSE simulation loop reference point function, `calculate_ref_points`, computes and returns 4 values:
 
-- `Fmax` - a maximum permissable fishing mortality rate corresponding to the fishing mortality that yields $\text{SPR}=0.50$.
+- `Fmax` - a maximum permissible fishing mortality rate corresponding to the fishing mortality that yields $\text{SPR}=0.50$.
 - `Fref` - the fishing mortality rate that yields $\text{SPR}=\text{spr_target}$
 - `Bref` - the spawning biomass resulting from fishing at `Fref`
 - `B0` - the spawning biomass resulting from fishing at `F=0.0`

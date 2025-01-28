@@ -79,7 +79,7 @@ are prepackaged with the model – a Beverton-Holt stock recruit function,
 a function that resamples from a historical recruitment timeseries, and
 two different functions that specify distinct recruitment regimes – but
 users are also able to specify their own custom recruitment functions,
-as necesarry.</p>
+as necessary.</p>
 <div class="section level3">
 <h3 id="the-recruitment-object">The Recruitment Object<a class="anchor" aria-label="anchor" href="#the-recruitment-object"></a>
 </h3>
@@ -105,7 +105,7 @@ returns a recruitment of “10” for the next 100 years.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">om</span><span class="op">$</span><span class="va">recruitment</span> <span class="op">&lt;-</span> <span class="va">recruitment_obj</span></span></code></pre></div>
-<p>Recruitment functions can be as complicated as necesarry, and can
+<p>Recruitment functions can be as complicated as necessary, and can
 also make use of annual population state variables, such as spawning
 biomass. Examples are more complex recruitment functions are available
 at the end of this page.</p>
@@ -213,13 +213,13 @@ value of unfished recruitment
 <div class="section level5">
 <h5 id="crash-recruitment">Crash Recruitment<a class="anchor" aria-label="anchor" href="#crash-recruitment"></a>
 </h5>
-<p>The final provided recruitment fuction generates future recruitment
+<p>The final provided recruitment function generates future recruitment
 through resampling, as in the “Resample Recruitment” option, but with a
 defined period where recruitment is different. This different period can
 be used to simulate a period depressed recruitment (e.g. a recruitment
 crash) or a period of amplified recruitment (e.g. a recruitment boom),
 depending on how it is parameterized. Users can specify the simulation
-year in which the alterntaive recruitment period begins, the length of
+year in which the alternative recruitment period begins, the length of
 that period, and the mean value of recruitment during that period.
 During the alternative recruitment period, lognormal deviations about
 the specified mean recruitment are applied using a
@@ -294,7 +294,7 @@ some weights applied, creating a new vector of recruitment for the next
 <h5 id="state-dependent-recruitment-functions">State-Dependent Recruitment Functions<a class="anchor" aria-label="anchor" href="#state-dependent-recruitment-functions"></a>
 </h5>
 <p>State-dependent recruitment functions are those that do require
-knowledge of the current state of the population to appropiately
+knowledge of the current state of the population to appropriately
 generate future recruitment. These types of recruitment functions
 commonly require knowledge of annual SSB to parameterize some
 stock-recruit relationship, such as the Beverton-Holt or Ricker curves.
@@ -310,8 +310,8 @@ is used so that the parameter values of a stock recruit relationship can
 be defined by the user external to the simulation loop, and then the
 model can calculate annual SSB internally and pass that along to the
 output of the function factory.</p>
-<p>Below is an example of creating a new Bevertin-Holt style stock
-recruit relationship, this time paramterized using
+<p>Below is an example of creating a new Beverton-Holt style stock
+recruit relationship, this time parameterized using
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
 and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>:</p>
