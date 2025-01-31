@@ -1,6 +1,6 @@
 # SablefishMSE - Management strategy evaluation for Alaska Sablefish
 
-**Joshua A. Zahner (_UAF_)**, Ben Williams (_NOAA_), Curry Cunningham (_UAF_), Dan Goethel (_NOAA_), Matt Cheng (_UAF_), Pete Hulson (_NOAA_), Chris Lunsford (_NOAA_) 
+**Joshua A. Zahner (_UAF_)**, Ben Williams (_NOAA_), Curry Cunningham (_UAF_), Dan Goethel (_NOAA_), Matt Cheng (_UAF_), Maia Kapur (_NOAA_), Chris Lunsford (_NOAA_) 
 
 
 A management strategy evaluation simulation framework for assessing alternative management options for Alaska sablefish in the North Pacific ocean, under the jurisidiction of the U.S. North Pacific Fisheries Management Council. 
