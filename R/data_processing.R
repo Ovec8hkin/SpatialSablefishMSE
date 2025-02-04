@@ -18,7 +18,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
+            filter_hcr_om(hcr_filter, om_filter) %>%
             drop_na() %>%
             # join WAA and maturity-at-age for computing SSB
             left_join(
@@ -39,7 +39,10 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
             filter(sex == "F") %>%
             # summarise SSB across year and sim 
             group_by(across(all_of(group_columns))) %>%
-            summarise(spbio=sum(spbio)) %>%
+            summarise(
+                spbio=sum(spbio),
+                biomass=sum(biomass)
+            ) %>%
             mutate(
                 om = factor(om, levels=om_filter),
                 hcr = factor(hcr, levels=hcr_filter)
@@ -365,7 +368,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
         reframe(rps = get_rps(om, hcr, rec, c(Fixed, Trawl))) %>%
-        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_list)*length(om_list)*length(seed_list))) %>%
+        mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_filter)*length(om_filter)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
         median_qi(Fref, Fmax, Bref, B0, .width=interval_widths, .simple_names=TRUE) %>%
