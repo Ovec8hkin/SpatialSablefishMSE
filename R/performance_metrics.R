@@ -51,7 +51,7 @@ average_catch <- function(
     if(!is.null(extra_filter)){
         avg_catch <- avg_catch %>% filter(eval(extra_filter))
     }
-            
+
     out <- avg_catch
     if(summary_out){
         out <- avg_catch %>%
@@ -116,7 +116,7 @@ total_catch <- function(
     if(!is.null(extra_filter)){
         tot_catch <- tot_catch %>% filter(eval(extra_filter))
     }
-            
+
     out <- tot_catch
     if(summary_out){
         out <- tot_catch %>%
@@ -187,7 +187,7 @@ prop_years_catch <- function(
     if(!is.null(extra_filter)){
         catch_years <- catch_years %>% filter(eval(extra_filter))
     }
-            
+
     out <- catch_years
     if(summary_out){
         out <- catch_years %>%
@@ -240,7 +240,7 @@ average_ssb <- function(
     avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
             ungroup() %>%
             filter(L1 != "naa_est") %>%
-            select(-L1) %>%
+            select(-c("L1", "biomass")) %>%
             filter_times(time_horizon=time_horizon) %>%
             round_to_zero("spbio") %>%
             relativize_performance(
@@ -251,7 +251,7 @@ average_ssb <- function(
             )
             
     if(!is.null(extra_filter)){
-        avg_ssb <- agv_ssb %>% filter(eval(extra_filter))
+        avg_ssb <- avg_ssb %>% filter(eval(extra_filter))
     }
 
     out <- avg_ssb
@@ -303,15 +303,18 @@ prop_low_biomass <- function(
     all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
-                        select(-L1) %>%
+                        select(-c("L1", "biomass")) %>%
                         round_to_zero("spbio")
+    
+    group_columns <- c("sim", summarise_by)
 
-    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    #threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    threshold <- 0.35*299.901
 
     prop_years_low_biomass <- all_ssb %>% 
         filter_times(time_horizon=time_horizon) %>%
         mutate(
-            low_bio = spbio <= 0.4*threshold
+            low_bio = spbio <= threshold
         ) %>%
         group_by(sim, om, hcr) %>%
         summarise(
@@ -343,7 +346,7 @@ prop_low_biomass <- function(
 #' 
 #' Compute average number of years required for SSB to decline below
 #' 0.2*SSB0 (median and CIs) for each combination of operating 
-#' models and management procedures.  
+#' models and management procedures.
 #' 
 #' Scenarios (combinations of OM-MP-seed) where the crash threshold is not
 #' met, are removed from the dataset before computing median and CIs. 
@@ -383,10 +386,13 @@ biomass_crash_time <- function(
                         select(-L1) %>%
                         round_to_zero("spbio")
 
-    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    #threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    threshold <- 0.50*0.35*299.901
+
+    group_columns <- c("sim", summarise_by)
 
     crash_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1], time_horizon[1]+20)) %>%
-        filter(spbio <= 0.2*threshold) %>%
+        filter(spbio <= threshold) %>%
         group_by(sim, om, hcr) %>%
         summarise(crash_time=min(time)-time_horizon[1]) %>%
         relativize_performance(
@@ -414,7 +420,7 @@ biomass_crash_time <- function(
 #' 
 #' Compute average number of years required for SSB to recover above
 #' 0.4*SSB0 (median and CIs) following a known SSB crash
-#' for each combination of operating models and management procedures.  
+#' for each combination of operating models and management procedures. 
 #' 
 #' "Recovery" begins exactly 20 years after the start of the simulation
 #' to correspond with the "Immediate Crash Recruitment" scenario. 
@@ -454,10 +460,13 @@ biomass_recovery_time <- function(
                         select(-L1) %>%
                         round_to_zero("spbio")
 
-    threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    # threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
+    threshold <- 0.35*299.901
+
+    group_columns <- c("sim", summarise_by)
 
     recovery_time <- all_ssb %>% filter_times(time_horizon=c(time_horizon[1]+20, time_horizon[2])) %>%
-        filter(spbio >= 0.4*threshold) %>%
+        filter(spbio >= threshold) %>%
         group_by(sim, om, hcr) %>%
         summarise(recovery_time=min(time)-(time_horizon[1]+20)) %>%
         relativize_performance(
@@ -721,7 +730,7 @@ average_annual_catch_variation <- function(
 #'
 average_proportion_catch_large <- function(
     model_runs, 
-    extra_columns, 
+    extra_columns,
     hcr_filter,
     om_filter, 
     interval_widths=c(0.50, 0.80),
@@ -771,7 +780,7 @@ average_proportion_catch_large <- function(
     if(!is.null(extra_filter)){
         prop_lg_catch <- prop_lg_catch %>% filter(eval(extra_filter))
     }
-    
+
     out <- prop_lg_catch
     if(summary_out){
         out <- prop_lg_catch %>%
@@ -808,7 +817,7 @@ average_proportion_catch_large <- function(
 average_proportion_biomass_old <- function(
     model_runs, 
     extra_columns, 
-    dem_params, 
+    dem_params,
     hcr_filter,
     om_filter, 
     interval_widths=c(0.50, 0.80), 
@@ -864,7 +873,7 @@ average_proportion_biomass_old <- function(
     if(!is.null(extra_filter)){
         prop_old_biomass <- prop_old_biomass %>% filter(eval(extra_filter))
     }
-    
+
     out <- prop_old_biomass
     if(summary_out){
         out <- prop_old_biomass %>%
@@ -1205,8 +1214,8 @@ performance_metric_summary <- function(
 
     if(summary_out){
         perf_data <- bind_rows(mget(metric_list)) %>%
-        mutate(name=factor(
-                        name, 
+            mutate(name=factor(
+                            name, 
                             levels=metric_key, 
                             labels=names(metric_key)
                         )
