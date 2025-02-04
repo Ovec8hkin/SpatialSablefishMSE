@@ -39,7 +39,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
     do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
-    assessment <- dget("data/sablefish_assessment_2023.rdat")
+    assessment <- dget(file.path(here::here(), "data", "sablefish_assessment_2023.rdat"))
    
     # Load OM parameters into global environment
     list2env(om, env=environment())

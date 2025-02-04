@@ -33,25 +33,39 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, nye
 
     nsims <- length(seed_list)
 
-    j <- 1
+    max_sims <- 66
+    nsim_iters <- ifelse(nsims < max_sims, 1, round(nsims / max_sims)+1)
+
+    m <- 1
+    counter <- 0
     for(i in 1:nrow(mse_run_grid)){
         # omi <- which(names(om_list) == mse_run_grid[i,1])[1]
         om <- om_list[[mse_run_grid[i,1]]]
         hcr <- hcr_list[[mse_run_grid[i,2]]]
         opt <- mse_options_list[[mse_run_grid[i,3]]]
+    
+        for(j in 1:nsim_iters){
+            seeds <- seed_list[(((j-1)*max_sims)+1):min((j*max_sims), length(seed_list))]
+            nsims2 <- length(seeds)
+            mse_run <- run_mse_parallel(nsims2, seeds, om, hcr, mse_options=opt, nyears=nyears, diagnostics=diagnostics)
+            
+            counter <- counter+1
+            mse_objects[[j]] <- mse_run
 
-        mse_run <- run_mse_parallel(nsims, seed_list, om, hcr, mse_options=opt, nyears=nyears, diagnostics=diagnostics)
-        mse_objects[[i]] <- mse_run
-
+            print(save)
+            if(save || nsim_iters>1){
+                # Going to save files by HCR
+                filename <- file.path(here::here(), "data", "active", paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr$name))), "_",counter,".RDS"))
+                obj <- listN(mse_objects, om, hcr, mse_options_list, seeds)
+                saveRDS(obj, file=filename)
+                # m <- m+1
+                mse_objects <- list()
+            }
+        }
+        
         next_hcr <- hcr_list[[mse_run_grid[i+1, 2]]]
-        print(save && !identical(next_hcr, hcr))
-        if(save && !identical(next_hcr, hcr)){
-            # Going to save files by HCR
-            filename <- file.path(here::here(), "data", "active", paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr$name))), ".RDS"))
-            obj <- listN(mse_objects, om_list, hcr, mse_options_list, seed_list)
-            saveRDS(obj, file=filename)
-            j <- i
-            mse_objects <- list()
+        if(!identical(next_hcr, hcr)){
+            counter <- 0
         }
 
     }
