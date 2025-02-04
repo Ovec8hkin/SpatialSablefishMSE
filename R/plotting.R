@@ -1,8 +1,9 @@
 plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
     # Plot spawning biomass from OM and EM
     d <- data %>%
+        select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
         median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
@@ -198,9 +199,10 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
 
     group_columns <- colnames(ssb_data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
     # Plot spawning biomass from OM and EM
     ssb_d <- ssb_data %>%
+        select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
         median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
