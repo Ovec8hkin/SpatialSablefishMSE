@@ -29,7 +29,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         scale_y_continuous(limits=c(0, 500))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
-        guides(color=guide_legend(title="HCR", nrow=2), fill="none")
+        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
 
     if(show_est){
         plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
@@ -66,7 +66,7 @@ plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_
         scale_color_manual(values=hcr_colors)+
         coord_cartesian(expand=0)+
         labs(x="Year", y="Relative SSB")+
-        guides(color=guide_legend(title="HCR", nrow=2))+
+        guides(color=guide_legend(title="Management \n Strategy", nrow=2))+
         facet_wrap(~.data[[v2]])
 
     return(plot+custom_theme)
@@ -177,9 +177,9 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
         # scale_y_continuous(limits=c(0, 60))+
-        labs(x="Year", y="Catch (mt)", color="HCR")+
+        labs(x="Year", y="Catch (mt)", color="Management \n Strategy")+
         coord_cartesian(expand=0, ylim=c(0, 60))+
-        guides(color=guide_legend(title="HCR", nrow=2), fill="none")
+        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
 
     if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
@@ -247,7 +247,7 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
         # scale_y_continuous(limits=c(0, 320))+
         labs(x="Year", y="1000s Metric Tons")+
         coord_cartesian(expand=0)+
-        guides(color=guide_legend("HCR", nrow=2), fill="none")+
+        guides(color=guide_legend("Management \n Strategy", nrow=2), fill="none")+
         facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")+
         ggh4x::facetted_pos_scales(
             y = list(
@@ -564,7 +564,7 @@ plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, 
         )+
         scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
         scale_color_manual(values=hcr_colors)+
-        labs(y="", x="Year", color="HCR")+
+        labs(y="", x="Year", color="Management \n Strategy")+
         coord_cartesian(expand=0)
 
     return(plot+custom_theme)
