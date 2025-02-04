@@ -239,8 +239,8 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
     base_hcr <- d %>% filter(hcr == base_hcr)
 
     plot <- ggplot(d) + 
-        geom_line(data = base_hcr, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = base_hcr, aes(x=time, y=median, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         # geom_hline(yintercept=121.4611, linetype="dashed")+
@@ -577,7 +577,7 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     metric_minmax = perf_data %>% group_by(name) %>% summarise(min=min(lower), max=max(upper))
     axis_scalar <- c(0.9, 1.1)
 
-    summary <- perf_data %>% filter(!is.infinite(median)) %>% summarise(median=mean(median))
+    summary <- perf_data %>% filter(!is.infinite(median), hcr != "No Fishing") %>% summarise(median=mean(median))
 
     plot <- ggplot(perf_data)+
                 geom_vline(data=summary, aes(xintercept = median), color="black")+
@@ -620,10 +620,10 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     }else{
         plot <- plot + ggh4x::facetted_pos_scales(
                 x = list(
-                    scale_x_continuous(limits=c(0, 1.5)),
-                    scale_x_continuous(limits=c(0.75, 2.0)),
+                    scale_x_continuous(limits=c(0, 2)),
+                    scale_x_continuous(limits=c(0, 1.25)),
                     scale_x_continuous(limits=c(0, 3.5)),
-                    scale_x_continuous(limits=c(0.75, 1.5)),
+                    scale_x_continuous(limits=c(0, 2)),
                     scale_x_continuous(limits=c(0.75, 2.5)),
                     scale_x_continuous(limits=c(0.5, 1.25))
                 )
