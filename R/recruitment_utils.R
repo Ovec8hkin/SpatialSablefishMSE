@@ -15,6 +15,12 @@ resample_recruits <- function(hist_recruits, nyears, seed){
     return(sample(hist_recruits, size=nyears, replace=TRUE))
 }
 
+resample_recruits_spatial <- function(hist_recruits, nyears, seed){
+    set.seed(seed)
+    idx <- sample(1:nrow(hist_recruits), size=nyears, replace=TRUE)
+    return(hist_recruits[idx,])
+}
+
 #' Regime-like recruitment
 #' #'
 #' Generate future recruitment timeseries based on historcial regime-like 
@@ -176,8 +182,9 @@ retro_recruitment <- function(hist_recruits, nyears, seed, sim_func, ...){
     return(rec)
 }
 
-f <- function(...){
-    return(list(...))
+# Apportionment schemes
+resample_recruit_apportionment <- function(hist_recruits){
+    idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
+    props <- t(apply(hist_recruits, 1, function(x) x/sum(x)))
+    return(props[idx,])
 }
-
-f(a=1, b=2)

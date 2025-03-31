@@ -87,7 +87,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     # out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
     f           = array(NA, dim=c(nyears, 1, 1, nregions, nfleets))
-    global_rec_devs    = array(NA, dim=c(mse_options$n_proj_years, 1, 1, nregions), dimnames=list("time"=1:(mse_options$n_proj_years), 1, 1, "region"="Alaska"))
+    global_rec_devs    = array(NA, dim=c(mse_options$n_proj_years, 1, 1, nregions), dimnames=list("time"=1:(mse_options$n_proj_years), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
 
     survey_preds <- list(
         rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
@@ -110,14 +110,15 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     naa[1,,,] = init_naa
 
     set.seed(seed)
-    hist_recruitment <- assessment$natage.female[,1]*2
-    hist_recruitment <- hist_recruitment[1:mse_options$recruitment_start]
+
+    hist_recruitment <- t(spatial_assessment$recruitment)
+    hist_recruitment <- hist_recruitment[1:mse_options$recruitment_start,]
     projected_recruitment <- do.call(recruitment$func, c(recruitment$pars, list(seed=seed)))
-    if(!is.function(projected_recruitment)){
-        full_recruitment <- c(hist_recruitment, projected_recruitment)
+    if(!is.function(projected_recruitment) && ncol(projected_recruitment)==nregions){
+        full_recruitment <- rbind(hist_recruitment, projected_recruitment)
     }else{
-        full_recruitment <- rep(NA, nyears)
-        full_recruitment[1:length(hist_recruitment)] <- hist_recruitment
+        full_recruitment <- array(NA, dim=c(nyears+1, nregions))
+        full_recruitment[1:nrow(hist_recruitment),] <- hist_recruitment
         set.seed(seed)
         rec_devs <- rlnorm(mse_options$n_proj_years, meanlog = 0, sdlog = 1.20)
         global_rec_devs[1:mse_options$n_proj_years, 1, 1, 1] <- rec_devs
@@ -135,10 +136,27 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
         # will work for any recruitment function that only requires
         # ssb as a yearly input (beverton holt and ricker should work fine)
-        if(is.na(full_recruitment[y+1])){
-            ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
-            full_recruitment[y+1] <- projected_recruitment(ssb, y-spinup_years+1) 
-            full_recruitment[y+1] <- full_recruitment[y+1]*rec_devs[y-spinup_years+1] 
+        if(all(is.na(full_recruitment[y+1,]))){
+            global_naa <- apply(naa[y,,,,drop=FALSE], c(1, 2, 3), sum)
+            global_ssb <- sum(global_naa[,,1]*dp_y$waa[,,1,1]*dp_y$mat[,,1,1])
+            # ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
+            global_recruits <- projected_recruitment(ssb, y-spinup_years+1) 
+            recruit_apportionment <- apportion_recruitment_single(
+                recruits = as.vector(global_recruits),
+                apportionment = model_options$recruit_apportionment,
+                nregions = nregions
+            )
+            regional_recruits <- get_annual_recruitment(
+                recruitment = recruit_apportionment$full_recruitment,
+                apportionment = recruit_apportionment$rec_props,
+                apportion_random = model_options$recruit_apportionment_random,
+                apportionment_pars = model_options$recruit_apportionment_pars,
+                nregions = nregions,
+                list(naa=naa[y,,,,drop=FALSE], dem_params=dp_y)
+            )
+
+            full_recruitment[y+1,] <- projected_recruitment(ssb, y-spinup_years+1) 
+            full_recruitment[y+1,] <- full_recruitment[y+1,]*rec_devs[y-spinup_years+1] 
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
