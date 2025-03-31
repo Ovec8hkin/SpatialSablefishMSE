@@ -182,15 +182,21 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             if(mse_options$run_estimation && bio > 1){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
+
+                # First aggregate the observation data for use in a single-area assessment
+                aggregated_survey_obs <- aggregate_observations(survey_obs, y)
+
+                aggregate_land_caa <- array(apply(land_caa, c(1, 2, 3, 5), sum), dim=c(nyears, nages, nsexes, 1, nfleets))
+
                 assess_inputs <- simulate_em_data_sex_disaggregate(
                     nyears = y,
                     dem_params = afscOM::subset_dem_params(om$dem_params, 1:y, d=1, drop=FALSE),
-                    land_caa = land_caa[1:y,,,,,drop=FALSE],
-                    survey_indices = afscOM::subset_dem_params(survey_obs, 1:y, d=1, drop=FALSE),
-                    fxfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,1,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    twfish_caa_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    ll_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    tw_ac_obs = afscOM::subset_matrix(survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    land_caa = aggregate_land_caa[1:y,,,,,drop=FALSE],
+                    survey_indices = afscOM::subset_dem_params(aggregated_survey_obs, 1:y, d=1, drop=FALSE),
+                    fxfish_caa_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,1,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    twfish_caa_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    ll_ac_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
+                    tw_ac_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
                     ll_srv_indic = do_survey_ll[(spinup_years:y)-spinup_years+1],
                     tw_srv_indic = do_survey_tw[(spinup_years:y)-spinup_years+1],
                     model_options = om$model_options,
