@@ -25,8 +25,8 @@ lapply(list.files("R", full.names = TRUE), source)
 #' processes), and OM initial conditons
 nyears <- 110
 
-sable_om <- readRDS("data/sablefish_om_big.RDS") # Read this saved OM from a file
-sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
+sable_om <- readRDS("data/spatial_sablefish_om.RDS") # Read this saved OM from a file
+# sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
 
 source("dev/oms.R")
 om_list <- listN(

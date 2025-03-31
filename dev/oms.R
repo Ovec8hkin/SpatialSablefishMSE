@@ -1,7 +1,7 @@
 
 # Define recruitment to occur via historical resampling
-assessment <- dget("data/sablefish_assessment_2023.rdat")
-hist_recruits <- assessment$natage.female[,1]*2
+assessment <- dget(file.path(here::here(), "data/spatial_sablefsh_inputs.rdat"))
+hist_recruits <- t(assessment$recruitment)
 
 dp_y <- afscOM::subset_dem_params(sable_om$dem_params, 64, d=1, drop=FALSE)
 joint_selret <- calculate_joint_selret(
@@ -11,28 +11,28 @@ joint_selret <- calculate_joint_selret(
 )
 rp <- calculate_ref_points(
     nages=30,
-    mort = dp_y$mort[,,1,],
-    mat = dp_y$mat[,,1,],
-    waa = dp_y$waa[,,1,],
+    mort = dp_y$mort[,,1,1],
+    mat = dp_y$mat[,,1,1],
+    waa = dp_y$waa[,,1,1],
     sel =  joint_selret$sel[,,1,,drop=FALSE],
     ret = joint_selret$ret[,,1,,drop=FALSE],
-    avg_rec = mean(hist_recruits)/2,
+    avg_rec = mean(apply(hist_recruits, 1, sum))/2,
     spr_target = 0.40
 )
 ref_naa <- compute_naapr(
     nages=30,
-    mort = dp_y$mort[,,1,],
-    mat = dp_y$mat[,,1,],
-    waa = dp_y$waa[,,1,],
+    mort = dp_y$mort[,,1,1],
+    mat = dp_y$mat[,,1,1],
+    waa = dp_y$waa[,,1,1],
     sel =  joint_selret$sel[,,1,,drop=FALSE],
     ret = joint_selret$ret[,,1,,drop=FALSE],
     F = rp$Fref
 )
 sbpr <- compute_sbpr(
     nages=30,
-    mort = dp_y$mort[,,1,],
-    mat = dp_y$mat[,,1,],
-    waa = dp_y$waa[,,1,],
+    mort = dp_y$mort[,,1,1],
+    mat = dp_y$mat[,,1,1],
+    waa = dp_y$waa[,,1,1],
     sel =  joint_selret$sel[,,1,,drop=FALSE],
     ret = joint_selret$ret[,,1,,drop=FALSE],
     F = 0
@@ -43,10 +43,14 @@ sbpr <- compute_sbpr(
 # Normal recruitment
 om_rand_recruit <- sable_om
 om_rand_recruit$name <- "Random Recruitment"
-om_rand_recruit$recruitment$func <- resample_recruits
+om_rand_recruit$recruitment$func <- resample_recruits_spatial
 om_rand_recruit$recruitment$pars <- list(
     hist_recruits = hist_recruits,
     nyears = 10*nyears
+)
+om_rand_recruit$model_options$recruit_apportionment <- resample_recruit_apportionment
+om_rand_recruit$model_options$recruit_apportionment_pars <- list(
+    hist_recruits = hist_recruits
 )
 
 # Cyclic recruiment
@@ -120,6 +124,10 @@ om_bhcyclic_recruit$recruitment$pars <- list(
     nyears = 10*nyears,
     regime_length = c(20, 5),
     starting_regime = 0
+)
+om_bhcyclic_recruit$model_options$recruit_apportionment <- resample_recruit_apportionment
+om_bhcyclic_recruit$model_options$recruit_apportionment_pars <- list(
+    hist_recruits = hist_recruits
 )
 
 # Immediate Recruitment Crash
