@@ -39,7 +39,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
     do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
-    assessment <- dget(file.path(here::here(), "data", "sablefish_assessment_2023.rdat"))
+    spatial_assessment <- dget(file.path(here::here(), "data", "spatial_sablefsh_inputs.rdat"))
    
     # Load OM parameters into global environment
     list2env(om, env=environment())
@@ -56,14 +56,15 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         "time" = 1:nyears,
         "age"  = 2:31,
         "sex"  = c("F", "M"),
-        "region" = "alaska",
+        "region" = c("BS", "AI", "WGOA", "CGOA", "EGOA"),
         "fleet" = c("Fixed", "Trawl")
     )
 
-    landings <- rep(0, nyears)
+    landings <- array(0, dim=c(nyears+1, nfleets, nregions), dimnames=list("time"=1:(nyears+1), "fleet"=c("Fixed", "Trawl"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
     hcr_F <- rep(0, nyears)
     out_f <- rep(0, nyears) # vector to store outputted F
-    landings[1:64] <- (assessment$t.series[,"Catch_HAL"]+assessment$t.series[,"Catch_TWL"])
+    landings[1:spinup_years,,] <- aperm(spatial_assessment$catch[,1:spinup_years,], c(2, 3, 1))
+
 
     #' 6. Setup empty array to collect derived quantities from the OM
     #' It is left to the user to decide what information to store, and
@@ -75,13 +76,13 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
-    faa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
-    naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
-    naa_est     = array(NA, dim=c(nyears,   nages, nsexes, nregions), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"="Alaska"))
+    faa_est     = array(NA, dim=c(nyears, nages, nsexes, 1, nfleets), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"=c("alaska"), "fleet"=c("Fixed", "Trawl")))
+    naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
+    naa_est     = array(NA, dim=c(nyears,   nages, nsexes, 1), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"=c("alaska")))
 
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
-    exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
     hcr_f       = array(NA, dim=c(nyears+1,   1, 1, 1), dimnames=list("time"=1:(nyears+1),     1, 1, "region"="Alaska"))
     # out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
@@ -125,11 +126,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     for(y in 1:nyears_input){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
-        dp_y <- subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
-        removals_input <- landings[y]
-        fleet.props <- subset_matrix(model_options$fleet_apportionment, y, d=1, drop=FALSE)
-        removals_input <- array(removals_input*fleet.props, dim=c(1, nfleets, nregions))
-        # region_props <- as.matrix(1)
+        dp_y <- afscOM::subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
+        removals_input <- afscOM::subset_matrix(landings, y, d=1, drop=FALSE)
+        # fleet.props <- subset_matrix(model_options$fleet_apportionment, y, d=1, drop=FALSE)
+        # removals_input <- array(removals_input*fleet.props, dim=c(1, nfleets, nregions))
+        # # region_props <- as.matrix(1)
         # rec_props <- as.matrix(1)
 
         # will work for any recruitment function that only requires
@@ -141,11 +142,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
-        out_vars <- project(
+        out_vars <- project_single(
             removals = removals_input,
             dem_params=dp_y,
             prev_naa=prev_naa,
-            recruitment=full_recruitment[y+1],
+            recruitment=full_recruitment[y+1,],
             # fleet_props = fleet.props,
             # region_props = region_props,
             # rec_props = rec_props,
@@ -252,6 +253,10 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
             }
 
+            # NOTE: All demographic matrices are substted to the first spatial regions
+            # by default. This does not matter so long as there are not regionally varying
+            # demographic rates. If regionally variable demographics, needs to come up
+            # with better way to do reference point calculations and projections.
             n_proj_years <- min(assessment_years[assessment_years > y]) - y - 1
             for(y2 in y:(y+n_proj_years)){
                 # Solve for reference points, F from the HCR,
@@ -263,11 +268,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 # reference points are all female based
                 ref_pts <- calculate_ref_points(
                     nages=nages,
-                    mort = dp_y$mort[,,1,],
-                    mat = dp_y$mat[,,1,],
-                    waa = dp_y$waa[,,1,],
-                    sel =  joint_selret$sel[,,1,,drop=FALSE],
-                    ret = joint_selret$ret[,,1,,drop=FALSE],
+                    mort = dp_y$mort[,,1,1],
+                    mat = dp_y$mat[,,1,1],
+                    waa = dp_y$waa[,,1,1],
+                    sel =  joint_selret$sel[,,1,1,drop=FALSE],
+                    ret = joint_selret$ret[,,1,1,drop=FALSE],
                     avg_rec = mean(rec)/2,
                     spr_target = mp$ref_points$spr_target
                 )
@@ -283,11 +288,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     hcr_out <- afscOM::find_F(
                         f_guess=0.10,
                         naa = naa_proj,
-                        waa = dp_y$waa,
-                        mort = dp_y$mort,
+                        waa = afscOM::subset_matrix(dp_y$waa, 1, d=4, drop=FALSE),
+                        mort = afscOM::subset_matrix(dp_y$mort, 1, d=4, drop=FALSE),
                         selex = joint_selret$sel,
-                        ret = joint_selret$ret,
-                        dmr = afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE),
+                        ret = joint_selret$ret[,,,1, drop=FALSE],
+                        dmr = afscOM::subset_matrix(afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE), 1, d=4, drop=FALSE),
                         prov_catch = hcr_out
                     )
                 }
@@ -300,7 +305,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     naa = naa_proj, 
                     recruitment = mean(rec)/2, 
                     joint_sel = joint_selret$sel, 
-                    dem_params = dp_y,
+                    dem_params = afscOM::subset_dem_params(dp_y, 1, d=4, drop=FALSE),
                     hist_abc = abc[y2,1,1,1],
                     hcr_options = mp$hcr$extra_options,
                     options = mp$management
@@ -309,7 +314,9 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 abc[y2+1,1,1,1] <- mgmt_out$abc
                 tac[y2+1,1,1,1] <- mgmt_out$tac
                 exp_land[y2+1,1,1,1] <- mgmt_out$land
-                landings[y2+1] <- mgmt_out$land
+                # This is default apportionment for now
+                # TODO: generalize catch apportionment
+                landings[y2+1,,] <- mgmt_out$land/nfleets/nregions
                 hcr_f[y2+1,,,] <- hcr_out
 
                 naa_proj <- mgmt_out$proj_N_new
