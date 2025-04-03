@@ -123,7 +123,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         rec_devs <- rlnorm(mse_options$n_proj_years, meanlog = 0, sdlog = 1.20)
         global_rec_devs[1:mse_options$n_proj_years, 1, 1, 1] <- rec_devs
     }
-    
+
     for(y in 1:nyears_input){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
@@ -165,9 +165,6 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             dem_params=dp_y,
             prev_naa=prev_naa,
             recruitment=full_recruitment[y+1,],
-            # fleet_props = fleet.props,
-            # region_props = region_props,
-            # rec_props = rec_props,
             options=model_options
         )
 
@@ -188,7 +185,6 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         survey_obs$rpws[y,,,,] <- out_vars$survey_obs$rpws
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
 
-        
         if((y+1) > spinup_years && do_assessment[y]){
 
             naa_proj <- out_vars$naa_tmp
@@ -340,7 +336,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 exp_land[y2+1,1,1,1] <- mgmt_out$land
                 # This is default apportionment for now
                 # TODO: generalize catch apportionment
-                landings[y2+1,,] <- mgmt_out$land/nfleets/nregions
+                landings[y2+1,,] <- mgmt_out$land*model_options$fleet_apportionment[y,,,drop=FALSE]
                 hcr_f[y2+1,,,] <- hcr_out
 
                 naa_proj <- mgmt_out$proj_N_new
