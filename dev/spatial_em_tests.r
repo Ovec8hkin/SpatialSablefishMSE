@@ -100,7 +100,7 @@ mse_options_base <- setup_mse_options()
 mse_options <- mse_options_base
 mse_options$n_spinup_years <- 62
 mse_options$recruitment_start_year <- 62
-mse_options$n_proj_years <- 2
+mse_options$n_proj_years <- 1
 mse_options$run_estimation <- FALSE
 
 om <- om_rand_recruit
@@ -171,30 +171,43 @@ selex <- selex %>% filter(gear %in% c("domsurveyll", "fixed", "nmfssurveytrwl", 
 true_fish_selex <- reshape2::melt(om$dem_params$sel) %>% as_tibble() %>%
     filter(region == "BS") %>%
     rename("gear"="fleet") %>%
-    select(-region, -time) %>%
+    select(-region) %>%
     mutate(
-        gear = case_when(gear == "FIXED" ~ "fixed", TRUE ~ "trawl"),
+        gear = case_when(gear == "Fixed" ~ "fixed", TRUE ~ "trawl"),
         sex = case_when(sex == "F" ~ "female", TRUE ~ "male"),
-        age = age-1
+        age = age-1,
+        time_block = case_when(
+            gear == "fixed" & time %in% 1:35 ~ 1,
+            gear == "fixed" & time %in% 36:56 ~ 2,
+            gear == "fixed" & time %in% 57:64 ~ 3,
+            gear == "trawl" ~ 1
+        )
     )
+
 true_survey_selex <- reshape2::melt(om$dem_params$surv_sel) %>% as_tibble() %>%
     filter(region == "BS") %>%
     rename("gear"="fleet") %>%
-    select(-region, -time) %>%
+    select(-region) %>%
     mutate(
-        gear = case_when(gear == "FIXED" ~ "domsurveyll", TRUE ~ "nmfssurveytrwl"),
+        gear = case_when(gear == "Fixed" ~ "domsurveyll", TRUE ~ "nmfssurveytrwl"),
         sex = case_when(sex == "F" ~ "female", TRUE ~ "male"),
-        age = age-1
+        age = age-1,
+        time_block = case_when(
+            gear == "domsurveyll" & time %in% c(1:56) ~ 1,
+            gear == "domsurveyll" & time %in% c(57:64) ~ 2,
+            gear == "nmfssurveytrwl" ~ 1
+        )
     )
 
 true_selex <- bind_rows(true_fish_selex, true_survey_selex)
 
-selex %>% left_join(true_selex, by=c("age", "sex", "gear"), suffix=c(".om", ".em"))
+full_selex <- selex %>% left_join(true_selex, by=c("age", "sex", "gear", "time_block"), suffix=c(".om", ".em"))
 
 
-ggplot(selex)+
-    geom_line(aes(x=age, y=value, color=sex))+
-    facet_wrap(~gear)+
+ggplot(full_selex)+
+    geom_line(aes(x=age, y=value.om, linetype=factor(time_block)))+
+    geom_line(aes(x=age, y=value.em, linetype=factor(time_block)), color="red")+
+    facet_grid(rows = vars(sex), cols=vars(gear))+
     custom_theme
 
 om_ssb <- apply(model_runs$naa[1:62,,1,,drop=FALSE]*om$dem_params$mat[1:62,,1,,drop=FALSE]*om$dem_params$waa[1:62,,1,,drop=FALSE], 1, sum)
