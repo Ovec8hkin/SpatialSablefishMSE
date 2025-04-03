@@ -29,6 +29,31 @@ model_options$obs_pars <- list(
     acs_agg_sex     = c(FALSE, FALSE, FALSE, FALSE) # should age comps be aggregated by sex
 )
 
+# Figure out average fleet/regional apportionment
+catch <- spatial_sablefish_inputs$catch
+catch <- aperm(catch, c(2,3,1))
+
+regional_catch <- apply(catch, c(1, 3), sum)
+regional_catch_props <- t(apply(regional_catch, 1, \(x) x/sum(x)))
+fleet_catch_props <- array(NA, dim=dim(catch))
+for(r in 1:5){
+    for(y in 1:62){
+        spat_catch <- regional_catch[y,r]
+        flt_catch <- catch[y,,r]
+        fleet_catch_props[y,,r] <- flt_catch/spat_catch
+    }
+}
+recent_fleet_props <- afscOM::subset_matrix(fleet_catch_props, 40:62, d=1, drop=FALSE)
+recent_regional_props <- afscOM::subset_matrix(regional_catch_props, 40:62, d=1, drop=FALSE)
+region_fleet_catch_props <- apply(regional_catch_props, 2, mean)*t(apply(recent_fleet_props, c(2, 3), mean))
+
+model_options$fleet_apportionment <- aperm(array(
+    aperm(array(region_fleet_catch_props, dim=c(5, 2, 1)), c(3, 2, 1)),
+    dim=c(2, 5, 200)
+), c(3, 1 ,2))
+
+
+
 spatial_sablefish_om <- list(
     dem_params = spatial_dem_params,
     model_options = model_options,
