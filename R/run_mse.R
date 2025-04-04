@@ -187,11 +187,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
         if((y+1) > spinup_years && do_assessment[y]){
 
-            naa_proj <- out_vars$naa_tmp
+            naa_proj <- array(apply(out_vars$naa_tmp, c(1, 2, 3), sum), dim=c(1, nages, nsexes, 1))
             rec <- full_recruitment[1:y]
-            sel <- dp_y$sel
+            sel <- dp_y$sel[,,,1,,drop=FALSE]
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
-            bio <- sum(naa_proj*dp_y$waa, na.rm=TRUE)
+            bio <- sum(naa_proj*dp_y$waa[,,,1,drop=FALSE], na.rm=TRUE)
 
             if(mse_options$run_estimation && bio > 1){
                 # Do all of the data formatting and running

@@ -26,6 +26,7 @@ lapply(list.files("R", full.names = TRUE), source)
 nyears <- 110
 
 sable_om <- readRDS("data/spatial_sablefish_om.RDS") # Read this saved OM from a file
+
 # sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
 
 source("dev/oms.R")
@@ -104,10 +105,11 @@ mse_options$n_proj_years <- 1
 mse_options$run_estimation <- FALSE
 
 om <- om_rand_recruit
-om$model_options$obs_pars$ac_samps <- c(10, 5, 10, 5)
+om$model_options$obs_pars$ac_samps <- c(10, 5, 10, 5)*10
 mp <- mp_f40
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
+
 
 model_runs <- run_mse(
     om=om,
@@ -122,9 +124,9 @@ nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
 do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
 do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
-y=64
+y=63
 survey_obs <- model_runs$survey_obs
-aggregated_survey_obs <- aggregate_observations(survey_obs, 64)
+aggregated_survey_obs <- aggregate_observations(survey_obs, 63)
 aggregate_land_caa <- array(apply(model_runs$land_caa, c(1, 2, 3, 5), sum), dim=c(64, 30, 2, 1, 2))
 
 assess_inputs <- simulate_em_data_sex_disaggregate(
@@ -142,6 +144,10 @@ assess_inputs <- simulate_em_data_sex_disaggregate(
     added_years = y-spinup_years+1,
     file_suffix = y
 )
+
+assess_inputs$new_data$ll_sel_by_year_indicator <- c(rep(0, 57), rep(1, 64-57))
+assess_inputs$new_data$ll_sel_type <- c(0, 0)
+assess_inputs$new_parameters$ln_ll_sel_pars <- assess_inputs$new_parameters$ln_ll_sel_pars[1:2,,,drop=FALSE]
 
 mod_out <- fit_TMB_model(
     data = assess_inputs$new_data, 
@@ -177,11 +183,14 @@ true_fish_selex <- reshape2::melt(om$dem_params$sel) %>% as_tibble() %>%
         sex = case_when(sex == "F" ~ "female", TRUE ~ "male"),
         age = age-1,
         time_block = case_when(
-            gear == "fixed" & time %in% 1:35 ~ 1,
-            gear == "fixed" & time %in% 36:56 ~ 2,
-            gear == "fixed" & time %in% 57:64 ~ 3,
+            gear == "fixed" & time %in% 1:56 ~ 1,
+            gear == "fixed" & time %in% 57:64 ~ 1,
             gear == "trawl" ~ 1
         )
+    ) %>%
+    group_by(gear, time_block, age, sex) %>%
+    summarise(
+        value=mean(value)
     )
 
 true_survey_selex <- reshape2::melt(om$dem_params$surv_sel) %>% as_tibble() %>%
@@ -193,16 +202,19 @@ true_survey_selex <- reshape2::melt(om$dem_params$surv_sel) %>% as_tibble() %>%
         sex = case_when(sex == "F" ~ "female", TRUE ~ "male"),
         age = age-1,
         time_block = case_when(
-            gear == "domsurveyll" & time %in% c(1:56) ~ 1,
+            gear == "domsurveyll" & time %in% c(1:56) ~ 2,
             gear == "domsurveyll" & time %in% c(57:64) ~ 2,
             gear == "nmfssurveytrwl" ~ 1
         )
+    )%>%
+    group_by(gear, time_block, age, sex) %>%
+    summarise(
+        value=mean(value)
     )
 
 true_selex <- bind_rows(true_fish_selex, true_survey_selex)
 
 full_selex <- selex %>% left_join(true_selex, by=c("age", "sex", "gear", "time_block"), suffix=c(".om", ".em"))
-
 
 ggplot(full_selex)+
     geom_line(aes(x=age, y=value.om, linetype=factor(time_block)))+
@@ -215,16 +227,29 @@ est_ssb <- SpatialSablefishAssessment::get_SSB(mod_report)$SSB
 
 
 plot(1:62, om_ssb, type="l", ylim=c(0, 300))
-lines(1:64, est_ssb, col="red")
+lines(1:63, est_ssb, col="red")
 
 est_ssb <- apply(model_runs$naa_est[1:62,,1,,drop=FALSE]*om$dem_params$mat[1:62,,1,1,drop=FALSE]*om$dem_params$waa[1:62,,1,1,drop=FALSE], 1, sum)
 
 
 om_rec <- apply(model_runs$naa[1:62,1,,,drop=FALSE], 1, sum)
-est_rec <- apply(model_runs$naa_est[1:62,1,,,drop=FALSE], 1, sum)
+est_rec <- SpatialSablefishAssessment::get_recruitment(mod_report)$Recruitment
 
-mod_out$opt
+plot(1:62, om_rec, type="l", ylim=c(0, 300))
+lines(1:63, est_rec, col="red")
 
-exp(3.0296574668)
+reshape2::melt(apply(apply(model_runs$faa, c(1, 5), \(x) max(x)), c(1, 2), sum))
 
 SpatialSablefishAssessment::get_recruitment(mod_report)$Recruitment
+
+om_catch <- apply(aggregate_land_caa, 1, sum)
+em_catch <- SpatialSablefishAssessment::get_catches(mod_report) %>% 
+    filter(type=="Observed") %>%
+    group_by(Year) %>%
+    summarise(
+        catch=sum(Catch)
+    ) %>% pull(catch)
+
+plot(om_catch, type="l")
+lines(em_catch, col="red")
+

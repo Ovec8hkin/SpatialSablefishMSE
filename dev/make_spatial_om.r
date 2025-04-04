@@ -6,6 +6,13 @@ trawl_fishery_selex <- sable_om$dem_params$sel[1,,,,2]
 trawl_fishery_selex_mat <- afscOM::generate_param_matrix(trawl_fishery_selex, dimension_names = list("time"=1:200, "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")), by=c("age", "sex"), include_fleet_dim = TRUE)
 spatial_dem_params$sel[,,,,2] <- trawl_fishery_selex_mat[,,,,2,drop=FALSE]
 
+
+trawl_survey_selex <- sable_om$dem_params$surv_sel[1,,,,2]
+trawl_survey_selex_mat <- afscOM::generate_param_matrix(trawl_survey_selex, dimension_names = list("time"=1:200, "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")), by=c("age", "sex"), include_fleet_dim = TRUE)
+spatial_dem_params$surv_sel[,,,,2] <- trawl_survey_selex_mat[,,,,2,drop=FALSE]
+
+dimension_names <- list("time"=1:200, "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl"))
+
 names(sable_om)
 
 init_naa <- aperm(spatial_sablefish_inputs$naa[,1,,,drop=FALSE], perm=c(2, 3, 4, 1))
