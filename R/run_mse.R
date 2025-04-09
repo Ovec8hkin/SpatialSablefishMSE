@@ -168,6 +168,46 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             options=model_options
         )
 
+        bio <- apply(out_vars$naa*dp_y$waa, c(1, 4), sum)
+        cat <- apply(out_vars$caa, c(1, 4), sum)
+        
+        # Custom biomass weighted age composition observations
+        ll_srv_ac <- simulate_weighted_comps(
+            aa_matrix = out_vars$naa,
+            selex = subset_matrix(dp_y$surv_sel, r=1, d=5, drop=TRUE),
+            region_weights = bio,
+            total_samples = model_options$obs_pars$ac_samps[3],
+            aggregate_sex = model_options$obs_pars$acs_agg_sex[3],
+            as_integers = model_options$obs_pars$ac_as_integers[3]
+        )
+
+        tw_srv_ac <- simulate_weighted_comps(
+            aa_matrix = out_vars$naa,
+            selex = subset_matrix(dp_y$surv_sel, r=2, d=5, drop=TRUE),
+            region_weights = bio,
+            total_samples = model_options$obs_pars$ac_samps[4],
+            aggregate_sex = model_options$obs_pars$acs_agg_sex[4],
+            as_integers = model_options$obs_pars$ac_as_integers[4]
+        )
+
+        fx_fish_ac <- simulate_weighted_comps(
+            aa_matrix = out_vars$naa,
+            selex = subset_matrix(dp_y$sel, r=1, d=5, drop=TRUE),
+            region_weights = cat,
+            total_samples = model_options$obs_pars$ac_samps[1],
+            aggregate_sex = model_options$obs_pars$acs_agg_sex[1],
+            as_integers = model_options$obs_pars$ac_as_integers[1]
+        )
+
+        tw_fish_ac <- simulate_weighted_comps(
+            aa_matrix = out_vars$naa,
+            selex = subset_matrix(dp_y$sel, r=2, d=5, drop=TRUE),
+            region_weights = cat,
+            total_samples = model_options$obs_pars$ac_samps[2],
+            aggregate_sex = model_options$obs_pars$acs_agg_sex[2],
+            as_integers = model_options$obs_pars$ac_as_integers[2]
+        )
+
         # update state
         land_caa[y,,,,] <- out_vars$land_caa_tmp
         disc_caa[y,,,,] <- out_vars$disc_caa_tmp
@@ -183,7 +223,11 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
         survey_obs$rpns[y,,,,] <- out_vars$survey_obs$rpns
         survey_obs$rpws[y,,,,] <- out_vars$survey_obs$rpws
-        survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
+        # survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
+        survey_obs$acs[y,,,,1] <- fx_fish_ac
+        survey_obs$acs[y,,,,2] <- tw_fish_ac
+        survey_obs$acs[y,,,,3] <- ll_srv_ac
+        survey_obs$acs[y,,,,4] <- tw_srv_ac
 
         if((y+1) > spinup_years && do_assessment[y]){
 
