@@ -549,9 +549,13 @@ simulate_em_data <- function(
     srv_ll_rpn_indic <- extend_vec_last_val(srv_ll_rpn_indic, n=extra_years)
     srv_ll_rpn_indic[min(length(new_data$srv_dom_ll_bio_indicator), length(year_idxs)):(nyears)] <- ll_srv_indic
 
+    joint_cv_ll <- model_options$obs_pars$rpn_cv[3]*2.28
+    # joint_sd_ll <- sqrt(log(model_options$obs_pars$rpn_cv[3]^2 + 1))*5
+    # joint_cv_ll <- sqrt(exp(joint_sd_ll^2) - 1)
+
     srv_ll_rpn_obs <- survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
-    srv_ll_rpn_ses <- model_options$obs_pars$rpn_cv[3]*survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
-    srv_ll_rpn_ses[srv_ll_rpn_ses == 0] <- 0.1 
+    srv_ll_rpn_ses <- joint_cv_ll*survey_indices$rpns[which(srv_ll_rpn_indic == 1),1,1,1,1]
+    srv_ll_rpn_ses[srv_ll_rpn_ses == 0] <- joint_cv_ll 
 
     new_data$srv_dom_ll_bio_indicator <- srv_ll_rpn_indic
     new_data$obs_dom_ll_bio <- as.vector(srv_ll_rpn_obs)
@@ -572,9 +576,13 @@ simulate_em_data <- function(
     srv_tw_rpw_indic[min(length(new_data$srv_nmfs_trwl_bio_indicator), length(year_idxs)):(nyears)] <- tw_srv_indic
 
     
+    joint_cv_tw <- model_options$obs_pars$rpn_cv[4]*2.28
+    # joint_sd_tw <- sqrt(log(model_options$obs_pars$rpn_cv[4]^2 + 1))*5
+    # joint_cv_tw <- sqrt(exp(joint_sd_ll^2) - 1)
+
     srv_tw_rpw_obs <- survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
-    srv_tw_rpw_ses <- model_options$obs_pars$rpw_cv[4]*survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
-    srv_tw_rpw_ses[srv_tw_rpw_ses == 0] <- 0.1 
+    srv_tw_rpw_ses <- joint_cv_tw*survey_indices$rpws[which(srv_tw_rpw_indic == 1),1,1,1,2]
+    srv_tw_rpw_ses[srv_tw_rpw_ses == 0] <- joint_cv_tw
 
     new_data$srv_nmfs_trwl_bio_indicator <- srv_tw_rpw_indic
     new_data$obs_nmfs_trwl_bio <- as.vector(srv_tw_rpw_obs)

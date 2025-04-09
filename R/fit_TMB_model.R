@@ -30,7 +30,14 @@ fit_TMB_model <- function(data, parameters, model_name="CurrentAssessment", do_n
 
         # Turn off mortality related parameters
         ln_M_year_devs  = factor(rep(NA, length(parameters$ln_M_year_devs))),
-        ln_M_age_devs   = factor(rep(NA, length(parameters$ln_M_age_devs)))
+        ln_M_age_devs   = factor(rep(NA, length(parameters$ln_M_age_devs))),
+
+        # Turn off recruitment estimation
+        ln_mean_rec = factor(NA),
+        ln_rec_dev = factor(rep(NA, length(parameters$ln_rec_dev))),
+        ln_M = factor(NA),
+        ln_srv_dom_ll_q = factor(NA),
+        ln_srv_nmfs_trwl_q = factor(NA)
     )
 
     # Need to do this for the selectivity estimation to not be weird
