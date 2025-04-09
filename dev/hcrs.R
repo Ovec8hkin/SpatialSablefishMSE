@@ -1,7 +1,7 @@
 tier3 <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1){
     nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
     a <- cutoff_age-1
-    ssb <- apply(naa[,a:nages,1,,drop=FALSE]*dem_params$waa[,a:nages,1,,drop=FALSE]*dem_params$mat[,a:nages,1,,drop=FALSE], 1, sum)
+    ssb <- apply(naa[,a:nages,1,,drop=FALSE]*dem_params$waa[,a:nages,1,1,drop=FALSE]*dem_params$mat[,a:nages,1,1,drop=FALSE], 1, sum)
     return(
         npfmc_tier3_F(ssb, ref_pts$Bref, ref_pts$Fref)
     )

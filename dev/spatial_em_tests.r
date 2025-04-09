@@ -26,6 +26,7 @@ lapply(list.files("R", full.names = TRUE), source)
 nyears <- 110
 
 sable_om <- readRDS("data/spatial_sablefish_om.RDS") # Read this saved OM from a file
+
 # sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
 
 source("dev/oms.R")
@@ -104,13 +105,10 @@ mse_options$n_proj_years <- 50
 mse_options$run_estimation <- FALSE
 
 om <- om_rand_recruit
-om$model_options$obs_pars$ac_samps <- c(500, 300, 500, 300)/10
+om$model_options$obs_pars$ac_samps <- c(10, 5, 10, 5)*10
 mp <- mp_f40
 
-identity <- diag(nrow=5, ncol=5)
-new_movement <- array(0.20, dim=c(5, 5, 200, 30, 2))
-names(dim(new_movement)) <- c("nregions", "nregions", "nyears", "nages", "nsexes")
-om$dem_params$movement <- new_movement
+# mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
 
 
 model_runs <- run_mse(
@@ -129,10 +127,10 @@ nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
 do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
 do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
-y=mse_options$n_spinup_years+mse_options$n_proj_years
+y=63
 survey_obs <- model_runs$survey_obs
-aggregated_survey_obs <- aggregate_observations(survey_obs, y)
-aggregate_land_caa <- array(apply(model_runs$land_caa, c(1, 2, 3, 5), sum), dim=c(y, 30, 2, 1, 2))
+aggregated_survey_obs <- aggregate_observations(survey_obs, 63)
+aggregate_land_caa <- array(apply(model_runs$land_caa, c(1, 2, 3, 5), sum), dim=c(64, 30, 2, 1, 2))
 
 assess_inputs <- simulate_em_data_sex_disaggregate(
     nyears = y,
@@ -150,22 +148,11 @@ assess_inputs <- simulate_em_data_sex_disaggregate(
     file_suffix = y
 )
 
-assess_inputs$new_data$ll_sel_by_year_indicator <- c(rep(0, 56), rep(1, y-56))
+assess_inputs$new_data$ll_sel_by_year_indicator <- c(rep(0, 57), rep(1, 64-57))
 assess_inputs$new_data$ll_sel_type <- c(0, 0)
 assess_inputs$new_parameters$ln_ll_sel_pars <- assess_inputs$new_parameters$ln_ll_sel_pars[1:2,,,drop=FALSE]
-assess_inputs$new_data$prop_F_hist <- 0
-assess_inputs$new_parameters$ln_mean_rec <- true_ln_mean_rec
-assess_inputs$new_parameters$ln_rec_dev <- true_ln_rec_dev
-assess_inputs$new_data$input_init_natage_f <- apply(model_runs$naa[1,,1,,drop=FALSE], c(1, 2), sum)
-assess_inputs$new_data$input_init_natage_m <- apply(model_runs$naa[1,,2,,drop=FALSE], c(1, 2), sum)
-assess_inputs$new_data$bias_ramp <- 0
 
-assess_inputs$new_parameters$ln_ll_sel_pars
-
-exp(true_ln_mean_rec+true_ln_rec_dev)
-om_rec
-
-mod_out2 <- fit_TMB_model(
+mod_out <- fit_TMB_model(
     data = assess_inputs$new_data, 
     parameters = assess_inputs$new_parameters,
     model_name = "CurrentAssessmentDisaggregated",
@@ -205,13 +192,13 @@ true_fish_selex <- reshape2::melt(om$dem_params$sel) %>% as_tibble() %>%
         age = age-1,
         time_block = case_when(
             gear == "fixed" & time %in% 1:56 ~ 1,
-            gear == "fixed" & time > 56 ~ 2,
-            gear == "trawl" ~ 1 
+            gear == "fixed" & time %in% 57:64 ~ 1,
+            gear == "trawl" ~ 1
         )
     ) %>%
-    group_by(time_block, gear, age, sex) %>%
+    group_by(gear, time_block, age, sex) %>%
     summarise(
-        value = mean(value)
+        value=mean(value)
     )
 
 true_survey_selex <- reshape2::melt(om$dem_params$surv_sel) %>% as_tibble() %>%
@@ -223,18 +210,19 @@ true_survey_selex <- reshape2::melt(om$dem_params$surv_sel) %>% as_tibble() %>%
         sex = case_when(sex == "F" ~ "female", TRUE ~ "male"),
         age = age-1,
         time_block = case_when(
-            gear == "domsurveyll" & time %in% 1:56 ~ 1,
-            gear == "domsurveyll" & time > 56 ~ 2,
-            gear == "nmfssurveytrwl" ~ 1 
+            gear == "domsurveyll" & time %in% c(1:56) ~ 2,
+            gear == "domsurveyll" & time %in% c(57:64) ~ 2,
+            gear == "nmfssurveytrwl" ~ 1
         )
-    ) %>%
-    group_by(time_block, gear, age, sex) %>%
+    )%>%
+    group_by(gear, time_block, age, sex) %>%
     summarise(
-        value = mean(value)
+        value=mean(value)
     )
 
 true_selex <- bind_rows(true_fish_selex, true_survey_selex)
-full_selex <- selex %>% left_join(true_selex, by=c("age", "sex", "gear", "time_block"), suffix=c(".em", ".om"))
+
+full_selex <- selex %>% left_join(true_selex, by=c("age", "sex", "gear", "time_block"), suffix=c(".om", ".em"))
 
 ggplot(full_selex)+
     geom_line(aes(x=age, y=value.em, linetype=factor(time_block)), color="black")+
@@ -326,47 +314,31 @@ for(i in 1:nsamples){
     om_ssb <- apply(model_runs$naa[1:y,,1,,drop=FALSE]*om$dem_params$mat[1:y,,1,,drop=FALSE]*om$dem_params$waa[1:y,,1,,drop=FALSE], 1, sum)
     est_ssb <- SpatialSablefishAssessment::get_SSB(mod_report)$SSB   
 
-    om_rec <- apply(model_runs$naa[,1,,,drop=FALSE], 1, sum)
-    est_rec <- SpatialSablefishAssessment::get_recruitment(mod_report)$Recruitment
 
-    om_ssbs[,i] <- om_ssb
-    em_ssbs[,i] <- est_ssb
-    om_recs[,i] <- om_rec
-    em_recs[,i] <- est_rec
+plot(1:62, om_ssb, type="l", ylim=c(0, 300))
+lines(1:63, est_ssb, col="red")
 
-}
+est_ssb <- apply(model_runs$naa_est[1:62,,1,,drop=FALSE]*om$dem_params$mat[1:62,,1,1,drop=FALSE]*om$dem_params$waa[1:62,,1,1,drop=FALSE], 1, sum)
 
-reshape2::melt(om_ssbs) %>% as_tibble() %>%
-    rename("Year"="Var1", "Sim"="Var2", "OM_SSB"="value") %>%
-    left_join(
-        reshape2::melt(em_ssbs) %>% as_tibble() %>%
-            rename("Year"="Var1", "Sim"="Var2", "EM_SSB"="value"),
-        by=c("Year", "Sim")
-    ) %>%
+
+om_rec <- apply(model_runs$naa[1:62,1,,,drop=FALSE], 1, sum)
+est_rec <- SpatialSablefishAssessment::get_recruitment(mod_report)$Recruitment
+
+plot(1:62, om_rec, type="l", ylim=c(0, 300))
+lines(1:63, est_rec, col="red")
+
+reshape2::melt(apply(apply(model_runs$faa, c(1, 5), \(x) max(x)), c(1, 2), sum))
+
+SpatialSablefishAssessment::get_recruitment(mod_report)$Recruitment
+
+om_catch <- apply(aggregate_land_caa, 1, sum)
+em_catch <- SpatialSablefishAssessment::get_catches(mod_report) %>% 
+    filter(type=="Observed") %>%
     group_by(Year) %>%
-    median_qi(OM_SSB, EM_SSB, .width=c(0.50, 0.95)) %>%
+    summarise(
+        catch=sum(Catch)
+    ) %>% pull(catch)
 
-    ggplot()+
-        geom_lineribbon(aes(x=Year, y=EM_SSB, ymin=EM_SSB.lower, ymax=EM_SSB.upper))+
-        geom_pointinterval(aes(x=Year, y=OM_SSB, ymin=OM_SSB.lower, ymax=OM_SSB.upper), color="red")+
-        scale_fill_brewer(palette="Blues")+
-        coord_cartesian(ylim=c(0, 300))+
-        custom_theme
+plot(om_catch, type="l")
+lines(em_catch, col="red")
 
-
-reshape2::melt(om_recs) %>% as_tibble() %>%
-    rename("Year"="Var1", "Sim"="Var2", "OM_REC"="value") %>%
-    left_join(
-        reshape2::melt(em_recs) %>% as_tibble() %>%
-            rename("Year"="Var1", "Sim"="Var2", "EM_REC"="value"),
-        by=c("Year", "Sim")
-    ) %>%
-    group_by(Year) %>%
-    median_qi(OM_REC, EM_REC, .width=c(0.50, 0.95)) %>%
-
-    ggplot()+
-        geom_lineribbon(aes(x=Year, y=EM_REC, ymin=EM_REC.lower, ymax=EM_REC.upper))+
-        geom_pointinterval(aes(x=Year, y=OM_REC, ymin=OM_REC.lower, ymax=OM_REC.upper), color="red")+
-        scale_fill_brewer(palette="Blues")+
-        coord_cartesian(ylim=c(0, 150))+
-        custom_theme

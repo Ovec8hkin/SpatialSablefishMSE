@@ -679,7 +679,7 @@ simulate_em_data <- function(
 
     # Update parameter start values to those used
     # by the production assessment
-    new_parameters$ln_mean_rec <- 3.285214
+    new_parameters$ln_mean_rec <- 3.061937
     new_parameters$ln_ll_F_avg <- -3.023593
     new_parameters$ln_trwl_F_avg <- -4.48993
 
