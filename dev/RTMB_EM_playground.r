@@ -18,6 +18,59 @@ devtools::load_all(afscOM_dir)
 
 lapply(list.files("R", full.names = TRUE, include.dirs = FALSE, recursive = TRUE), source)
 
+## Helpful functions -----------------
+rss <- function(obs, exp){
+    num <- sum(obs*(1-obs))
+    denom <- sum((exp-obs)^2)
+    return(num/denom)
+}
+
+aggregate_comps <- function(y, nfleets, weight_type=1){
+    tmp <- array(NA, dim=c(1, 30, 2, 1, nfleets))
+    for(f in 1:nfleets){
+        ISS <- om$model_options$obs_pars$ac_samps[f]
+        agg_sex <- om$model_options$obs_pars$acs_agg_sex[f]
+        as_int <- om$model_options$obs_pars$ac_as_integers[f]
+
+        is_survey <- om$model_options$obs_pars$is_survey[f]
+        if(is_survey){
+            selex <- subset_matrix(dp_y$surv_sel, r=f-2, d=5, drop=TRUE)
+            weights <- apply(model_runs$naa[y,,,,drop=FALSE]*om$dem_params$waa[y,,,,drop=FALSE], 4, sum)
+        }else{
+            selex <- subset_matrix(dp_y$sel, r=f, d=5, drop=TRUE)
+            weights <- apply(model_runs$caa[y,,,,,drop=FALSE], 4, sum)
+        }
+
+        test <- generate_aggregated_comp(
+            ac = model_runs$naa[y,,,,drop=FALSE],
+            weight_type = weight_type,
+            weights = rep(0.2, 5),
+            selex = selex,
+            total_samples = ISS,
+            aggregate_sex = agg_sex,
+            as_integers = as_int
+        )
+
+        tmp[,,,,f] <- test
+    } 
+    return(tmp)
+}
+
+generate_aggregated_comp <- function(ac, weight_type, selex, weights, total_samples, aggregate_sex, as_integers){
+    if(weight_type == 1){
+        agg_comp <- simulate_weighted_comps_ISS(ac, selex, weights, total_samples, aggregate_sex, as_integers)
+    }else if(weight_type == 2){
+        agg_comp <- simulate_weighted_comps_SAMPLE(ac, selex, weights, total_samples, aggregate_sex, as_integers)
+    }else{
+        agg_comp <- simulate_weighted_comps_HYRBID(ac, selex, weights, total_samples, aggregate_sex, as_integers)
+    }
+    return(agg_comp)
+}
+
+om_to_spock <- function(x){
+    return(aperm(x, perm=c(4, 1, 2, 3)))
+}
+
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
 #' processes), and OM initial conditons
