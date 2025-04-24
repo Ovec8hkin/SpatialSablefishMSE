@@ -248,12 +248,6 @@ get_saved_model_runs <- function(om_order=NULL, hcr_order=NULL){
 
 }
 
-
-
-
-
-
-
 #' Get maximum value without considering infinite values
 #' 
 #' Wrapper around max that ignores infinite values
@@ -264,4 +258,50 @@ get_saved_model_runs <- function(om_order=NULL, hcr_order=NULL){
 #' 
 inf_max <- function(d){
     return(max(d[!is.infinite(d)]))
+}
+
+#' Realized Sample Size
+#' 
+#' Calculate realized sample size from Hulson and Williams, 2024
+#' 
+#' @param obs age composition observations
+#' @param exp expected age composition
+#' 
+#' @return realized sample size sum(obs*(1-obs))/sum((exp-obs)^2)
+#' 
+rss <- function(obs, exp){
+    num <- sum(obs*(1-obs))
+    denom <- sum((exp-obs)^2)
+    return(num/denom)
+}
+
+#' Realized Sample Size
+#' 
+#' Wrapper function for calculating realized sample size from Hulson
+#' and williams, 2024.
+#' 
+#' @param ac_obs age composition observations
+#' @param naa population age structure
+#' @param selex selectivity-at-age
+#' 
+#' @return vector of realized sample sizes for each year
+#' 
+calculate_realized_samplesize <- function(ac_obs, naa, selex){
+    nyears <- dim(selex)[1]
+    nfleets <- dim(selex)[5]
+    
+    selected2 <- naa*selex
+    total_selected2 <- array(apply(selected2, c(1, 2, 3), sum), dim=c(nyears+1,30,2,1))
+    selected_prop2 <- aperm(apply(total_selected2, c(1), \(x) x/sum(x)), c(2, 1))
+
+    ac2 <- array(ac_obs[,,,1,1], c(nyears, 30*2, 1))
+    ac2 <- aperm(apply(ac2, c(1), \(x) x/sum(x)), c(2, 1))
+
+
+    r_sampsize <- sapply(1:nyears, function(x){
+        rss(obs=selected_prop2[x,], exp=ac2[x,])
+    })
+
+    r_ISS <- round(r_sampsize, 0)
+    return(r_ISS)
 }
