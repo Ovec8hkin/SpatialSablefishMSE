@@ -212,6 +212,7 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
         # fixed effects for survey catchability
         srv_q_spec = c("est_all", "est_all")
     )
+    input_list$par$ln_srv_fixed_sel_pars[,,,2,2] <- log(0.26)
 
     ### Model Weighting -----------------------------------
     Wt_FishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
@@ -231,7 +232,7 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
         likelihoods = 0,
         Wt_Catch = 50,
         Wt_FishIdx = 0,
-        Wt_SrvIdx = 10,
+        Wt_SrvIdx = 5,
         Wt_Rec = 1.5,
         Wt_F = 0.1,
         Wt_FishAgeComps = Wt_FishAgeComps,
@@ -243,6 +244,8 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
     ### Mapping -------------------------------------------
     input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
     input_list$map$ln_srv_fixed_sel_pars <-  factor(c(1:3, 2, 4:6, 5,rep(7,4), rep(8, 4)))
+    # input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_fish_fixed_sel_pars)))
+    # input_list$map$ln_srv_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_srv_fixed_sel_pars)))
 
     return(input_list)
 
