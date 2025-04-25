@@ -98,7 +98,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     survey_obs <- list(
         rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
         rpws = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys)),
-        acs  = array(NA, dim=c(nyears, nages, nsexes, nregions, nsurveys+nfleets))
+        acs  = array(NA, dim=c(nyears, nages, nsexes, nregions, nsurveys+nfleets)),
+        agg_acs = array(NA, dim=c(nyears, nages, nsexes, 1, nsurveys+nfleets))
     )
 
     model_outs = list(
@@ -167,47 +168,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             recruitment=full_recruitment[y+1,],
             options=model_options
         )
-
-        bio <- apply(out_vars$naa*dp_y$waa, c(1, 4), sum)
-        cat <- apply(out_vars$caa, c(1, 4), sum)
-        
-        # Custom biomass weighted age composition observations
-        # ll_srv_ac <- simulate_weighted_comps(
-        #     aa_matrix = out_vars$naa,
-        #     selex = subset_matrix(dp_y$surv_sel, r=1, d=5, drop=TRUE),
-        #     region_weights = bio,
-        #     total_samples = model_options$obs_pars$ac_samps[3],
-        #     aggregate_sex = model_options$obs_pars$acs_agg_sex[3],
-        #     as_integers = model_options$obs_pars$ac_as_integers[3]
-        # )
-
-        # tw_srv_ac <- simulate_weighted_comps(
-        #     aa_matrix = out_vars$naa,
-        #     selex = subset_matrix(dp_y$surv_sel, r=2, d=5, drop=TRUE),
-        #     region_weights = bio,
-        #     total_samples = model_options$obs_pars$ac_samps[4],
-        #     aggregate_sex = model_options$obs_pars$acs_agg_sex[4],
-        #     as_integers = model_options$obs_pars$ac_as_integers[4]
-        # )
-
-        # fx_fish_ac <- simulate_weighted_comps(
-        #     aa_matrix = out_vars$naa,
-        #     selex = subset_matrix(dp_y$sel, r=1, d=5, drop=TRUE),
-        #     region_weights = cat,
-        #     total_samples = model_options$obs_pars$ac_samps[1],
-        #     aggregate_sex = model_options$obs_pars$acs_agg_sex[1],
-        #     as_integers = model_options$obs_pars$ac_as_integers[1]
-        # )
-
-        # tw_fish_ac <- simulate_weighted_comps(
-        #     aa_matrix = out_vars$naa,
-        #     selex = subset_matrix(dp_y$sel, r=2, d=5, drop=TRUE),
-        #     region_weights = cat,
-        #     total_samples = model_options$obs_pars$ac_samps[2],
-        #     aggregate_sex = model_options$obs_pars$acs_agg_sex[2],
-        #     as_integers = model_options$obs_pars$ac_as_integers[2]
-        # )
-
+       
         # update state
         land_caa[y,,,,] <- out_vars$land_caa_tmp
         disc_caa[y,,,,] <- out_vars$disc_caa_tmp
@@ -224,10 +185,37 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         survey_obs$rpns[y,,,,] <- out_vars$survey_obs$rpns
         survey_obs$rpws[y,,,,] <- out_vars$survey_obs$rpws
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
-        # survey_obs$acs[y,,,,1] <- fx_fish_ac
-        # survey_obs$acs[y,,,,2] <- tw_fish_ac
-        # survey_obs$acs[y,,,,3] <- ll_srv_ac
-        # survey_obs$acs[y,,,,4] <- tw_srv_ac
+        
+        # Aggregate age composition observations to single regions for EM
+        bio <- apply(out_vars$naa*dp_y$waa, c(1, 4), sum)
+        cat <- apply(out_vars$caa, c(1, 4), sum)
+
+        for(i in 1:(nfleets+nsurveys)){
+            ISS <- model_options$obs_pars$ac_samps[i]
+            agg_sex <- model_options$obs_pars$acs_agg_sex[i]
+            as_int <- model_options$obs_pars$ac_as_integers[i]
+
+            is_survey <- model_options$obs_pars$is_survey[i]
+            if(is_survey){
+                selex <- subset_matrix(dp_y$surv_sel, r=i-2, d=5, drop=TRUE)
+                weights <- bio
+            }else{
+                selex <- subset_matrix(dp_y$sel, r=i, d=5, drop=TRUE)
+                weights <- cat
+            }
+
+            agg_comp <- simulate_weighted_comps(
+                ac = out_vars$naa_tmp,
+                weight_type = 1,
+                weights = weights,
+                selex = selex,
+                total_samples = ISS,
+                aggregate_sex = agg_sex,
+                as_integers = as_int
+            )
+
+            survey_obs$agg_acs[y,,,,i] <- agg_comp
+        }
 
         if((y+1) > spinup_years && do_assessment[y]){
 
@@ -242,49 +230,64 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 # of the TMB Sablefish model
 
                 # First aggregate the observation data for use in a single-area assessment
-                aggregated_survey_obs <- aggregate_observations(survey_obs, y)
+                aggregated_survey_obs <- aggregate_indices(survey_obs, y)
+                aggregated_survey_obs$acs <- survey_obs$agg_acs[1:y,,,,,drop=FALSE]
+                aggregate_land_caa <- array(apply(land_caa[1:y,,,,,drop=FALSE], c(1, 2, 3, 5), sum), dim=c(y, nages, nsexes, 1, nfleets))
 
-                aggregate_land_caa <- array(apply(land_caa, c(1, 2, 3, 5), sum), dim=c(nyears, nages, nsexes, 1, nfleets))
+                rISS <- sapply(1:4, function(i){
+                            if(i > 2){
+                                sel <- subset_matrix(dem_params$surv_sel[1:y,,,,,drop=FALSE], i-2, 5, drop=TRUE)
+                            }else{
+                                sel <- subset_matrix(dem_params$sel[1:y,,,,,drop=FALSE], i, 5, drop=TRUE)
+                            }
+                            calculate_realized_samplesize(
+                                ac_obs = aggregated_survey_obs$acs[,,,,i,drop=FALSE],
+                                naa = naa[1:y,,,,drop=FALSE],
+                                selex=sel
+                            )
+                        })
 
-                assess_inputs <- simulate_em_data_sex_disaggregate(
-                    nyears = y,
-                    dem_params = afscOM::subset_dem_params(om$dem_params, 1:y, d=1, drop=FALSE),
-                    land_caa = aggregate_land_caa[1:y,,,,,drop=FALSE],
-                    survey_indices = afscOM::subset_dem_params(aggregated_survey_obs, 1:y, d=1, drop=FALSE),
-                    fxfish_caa_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,1,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    twfish_caa_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,2,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    ll_ac_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,3,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    tw_ac_obs = afscOM::subset_matrix(aggregated_survey_obs$acs[1:y,,,,4,drop=FALSE], 1, d=5, drop=TRUE), # Age comp data is one year delayed
-                    ll_srv_indic = do_survey_ll[(spinup_years:y)-spinup_years+1],
-                    tw_srv_indic = do_survey_tw[(spinup_years:y)-spinup_years+1],
-                    model_options = om$model_options,
-                    added_years = y-spinup_years+1,
-                    file_suffix = y
+                suppressMessages({
+                    input_list <- generate_RTMB_inputs(
+                        nyears = y,
+                        dem_params = subset_dem_params(dem_params, 1:y, 1, drop=FALSE),
+                        agg_land_caa = aggregate_land_caa,
+                        aggregated_survey_obs = aggregated_survey_obs,
+                        model_options = model_options,
+                        r_ISS = rISS
+                    )
+                })
+
+                data <- input_list$data
+                parameters <- input_list$par
+                mapping <- input_list$map
+
+                sabie_rtmb_model <- fit_model(
+                    data,
+                    parameters,
+                    mapping,
+                    random = NULL,
+                    newton_loops = 0,
+                    silent = TRUE
                 )
 
-
-                mod_out <- fit_TMB_model(
-                    data = assess_inputs$new_data, 
-                    parameters = assess_inputs$new_parameters,
-                    model_name = "CurrentAssessmentDisaggregated"
-                )  
-                mod_report <- mod_out$report
-                ssb <- SpatialSablefishAssessment::get_SSB(mod_report) %>% filter(Year == max(Year)) %>% pull(SSB)
-                rec <- SpatialSablefishAssessment::get_recruitment(mod_report) %>% filter(Year != max(Year)) %>% pull(Recruitment)
-                selex <- SpatialSablefishAssessment::get_selectivities(mod_report)
+                mod_report <- sabie_rtmb_model$rep
+                ssb <- mod_report$SSB[,y]
+                rec <- mod_report$Rec[,1:(y-1)]
+                # selex <- SpatialSablefishAssessment::get_selectivities(mod_report)
 
                 # Store assessment estimates of age composition
                 # for comparing EM and OM
                 if(y == spinup_years){
-                    naaf <- t(mod_report$natage_f[,1:(spinup_years-1)])
-                    naam <- t(mod_report$natage_m[,1:(spinup_years-1)])
+                    naaf <- mod_report$NAA[1,1:(spinup_years-1),,1]
+                    naam <- mod_report$NAA[1,1:(spinup_years-1),,2]
                     naa_est[1:(spinup_years-1),,1,] <- naaf
                     naa_est[1:(spinup_years-1),,2,] <- naam
 
-                    F_ll_f <- t(mod_report$F_ll_f[,1:(spinup_years-1)])
-                    F_ll_m <- t(mod_report$F_ll_m[,1:(spinup_years-1)])
-                    F_tw_f <- t(mod_report$F_trwl_f[,1:(spinup_years-1)])
-                    F_tw_m <- t(mod_report$F_trwl_m[,1:(spinup_years-1)])
+                    F_ll_f <- mod_report$FAA[1,1:(spinup_years-1),,1,1]
+                    F_ll_m <- mod_report$FAA[1,1:(spinup_years-1),,2,1]
+                    F_tw_f <- mod_report$FAA[1,1:(spinup_years-1),,1,2]
+                    F_tw_m <- mod_report$FAA[1,1:(spinup_years-1),,2,2]
 
                     faa_est[1:(spinup_years-1),,1,,1] <- F_ll_f
                     faa_est[1:(spinup_years-1),,2,,1] <- F_ll_m
@@ -293,27 +296,32 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
                 }
 
-                naa_est[y,,1,] <- mod_report$natage_f[,y]
-                naa_est[y,,2,] <- mod_report$natage_m[,y]
+                naa_est[y,,1,] <- mod_report$NAA[1,y,,1]
+                naa_est[y,,2,] <- mod_report$NAA[1,y,,2]
                 naa_proj <- naa_est[y,,,, drop=FALSE]
 
-                faa_est[y,,1,,1] <- mod_report$F_ll_f[,y]
-                faa_est[y,,2,,1] <- mod_report$F_ll_m[,y]
-                faa_est[y,,1,,2] <- mod_report$F_trwl_f[,y]
-                faa_est[y,,2,,2] <- mod_report$F_trwl_m[,y]
+                faa_est[y,,1,,1] <- mod_report$FAA[1,y,,1,1]
+                faa_est[y,,2,,1] <- mod_report$FAA[1,y,,2,1]
+                faa_est[y,,1,,2] <- mod_report$FAA[1,y,,1,2]
+                faa_est[y,,2,,2] <- mod_report$FAA[1,y,,2,2]
                 prop_fs <- apply(faa_est[y,,,1,, drop=FALSE], 5, max)/sum(apply(faa_est[y,,,1,, drop=FALSE], 5, max))
 
                 sel_est <- array(NA, dim=c(1, 30, 2, 1, 2))
-                sel_est[1,,1,1,1] <- selex %>% filter(gear == "fixed", sex == "female", time_block == 3) %>% pull(value)
-                sel_est[1,,1,1,2] <- selex %>% filter(gear == "trawl", sex == "female", time_block == 1) %>% pull(value)
-                sel_est[1,,2,1,1] <- selex %>% filter(gear == "fixed", sex == "male", time_block == 3) %>% pull(value)
-                sel_est[1,,2,1,2] <- selex %>% filter(gear == "trawl", sex == "male", time_block == 1) %>% pull(value)
+                sel_est[1,,1,1,1] <- mod_report$fish_sel[1,y,,1,1]
+                sel_est[1,,1,1,2] <- mod_report$fish_sel[1,y,,1,2]
+                sel_est[1,,2,1,1] <- mod_report$fish_sel[1,y,,2,1]
+                sel_est[1,,2,1,2] <- mod_report$fish_sel[1,y,,2,2]
+                
+                # sel_est[1,,1,1,1] <- selex %>% filter(gear == "fixed", sex == "female", time_block == 3) %>% pull(value)
+                # sel_est[1,,1,1,2] <- selex %>% filter(gear == "trawl", sex == "female", time_block == 1) %>% pull(value)
+                # sel_est[1,,2,1,1] <- selex %>% filter(gear == "fixed", sex == "male", time_block == 3) %>% pull(value)
+                # sel_est[1,,2,1,2] <- selex %>% filter(gear == "trawl", sex == "male", time_block == 1) %>% pull(value)
 
                 sel <- sel_est
 
-                model_outs$mods[[(y+1)-spinup_years]] <- mod_out$model
-                model_outs$fits[[(y+1)-spinup_years]] <- mod_out$opt
-                model_outs$reps[[(y+1)-spinup_years]] <- mod_out$report
+                # model_outs$mods[[(y+1)-spinup_years]] <- mod_out$model
+                # model_outs$fits[[(y+1)-spinup_years]] <- mod_out$opt
+                # model_outs$reps[[(y+1)-spinup_years]] <- mod_out$report
 
             }
 

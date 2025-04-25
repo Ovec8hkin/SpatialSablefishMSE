@@ -1,4 +1,4 @@
-generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_ISS){
+generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_survey_obs, model_options, r_ISS){
 
     # Model Dimensions
     input_list <- SPoCK::Setup_Mod_Dim(
@@ -27,11 +27,11 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
     )
 
     # Biologicals
-    WAA <- om_to_spock(om$dem_params$waa[1:nyears,,,1,drop=FALSE])
-    MatAA <- om_to_spock(om$dem_params$mat[1:nyears,,,1,drop=FALSE])
+    WAA <- om_to_spock(dem_params$waa[1:nyears,,,1,drop=FALSE])
+    MatAA <- om_to_spock(dem_params$mat[1:nyears,,,1,drop=FALSE])
     AgeingError <- as.matrix(sgl_rg_sable_data$age_error)
     SizeAgeTrans = sgl_rg_sable_data$SizeAgeTrans
-    M <- om$dem_params$mort[1,1,1,1]
+    M <- dem_params$mort[1,1,1,1]
     input_list <- SPoCK::Setup_Mod_Biologicals(
         input_list = input_list,
         WAA = WAA,
@@ -61,7 +61,7 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
 
     # Catch and Fishing Mortality
     ObsCatch <- array(
-        apply(mod_out$land_caa, c(1, 5), sum), 
+        apply(agg_land_caa, c(1, 5), sum), 
         dim=c(input_list$data$n_regions, nyears, input_list$data$n_fish_fleets)
     )
     ObsCatch[,1:3,2] <- NA
@@ -130,8 +130,8 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
     ObsSrvIdx[,,2] <- aggregated_survey_obs$rpns[,1,1,1,2] # Trawl survey
 
     ObsSrvIdx_SE <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
-    ObsSrvIdx_SE[,,1] <- om$model_options$obs_pars$rpn_cv[3]*ObsSrvIdx[,,1]
-    ObsSrvIdx_SE[,,2] <- om$model_options$obs_pars$rpw_cv[4]*ObsSrvIdx[,,2]
+    ObsSrvIdx_SE[,,1] <- model_options$obs_pars$rpn_cv[3]*ObsSrvIdx[,,1]
+    ObsSrvIdx_SE[,,2] <- model_options$obs_pars$rpw_cv[4]*ObsSrvIdx[,,2]
 
     UseSrvIdx <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
 
@@ -249,4 +249,8 @@ generate_RTMB_inputs <- function(nyears, om, mod_out, aggregated_survey_obs, r_I
 
     return(input_list)
 
+}
+
+om_to_spock <- function(x){
+    return(aperm(x, perm=c(4, 1, 2, 3)))
 }
