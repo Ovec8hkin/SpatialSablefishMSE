@@ -121,8 +121,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         full_recruitment <- array(NA, dim=c(nyears+1, nregions))
         full_recruitment[1:nrow(hist_recruitment),] <- hist_recruitment
         set.seed(seed)
-        rec_devs <- rlnorm(mse_options$n_proj_years, meanlog = 0, sdlog = 1.20)
-        global_rec_devs[1:mse_options$n_proj_years, 1, 1, 1] <- rec_devs
+        rec_devs <- rlnorm(mse_options$n_proj_years+1, meanlog = 0, sdlog = 1.20)
+        # global_rec_devs[1:(mse_options$n_proj_years+1), 1, 1, 1] <- rec_devs
     }
 
     for(y in 1:nyears_input){
@@ -141,23 +141,22 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
             global_naa <- apply(naa[y,,,,drop=FALSE], c(1, 2, 3), sum)
             global_ssb <- sum(global_naa[,,1]*dp_y$waa[,,1,1]*dp_y$mat[,,1,1])
             # ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
-            global_recruits <- projected_recruitment(ssb, y-spinup_years+1) 
+            global_recruits <- projected_recruitment(global_ssb, y-spinup_years+1) 
             recruit_apportionment <- apportion_recruitment_single(
                 recruits = as.vector(global_recruits),
                 apportionment = model_options$recruit_apportionment,
                 nregions = nregions
             )
             regional_recruits <- get_annual_recruitment(
-                recruitment = recruit_apportionment$full_recruitment,
+                recruitment = global_recruits,
                 apportionment = recruit_apportionment$rec_props,
                 apportion_random = model_options$recruit_apportionment_random,
                 apportionment_pars = model_options$recruit_apportionment_pars,
-                nregions = nregions,
-                list(naa=naa[y,,,,drop=FALSE], dem_params=dp_y)
+                nregions = nregions
             )
 
-            full_recruitment[y+1,] <- projected_recruitment(ssb, y-spinup_years+1) 
-            full_recruitment[y+1,] <- full_recruitment[y+1,]*rec_devs[y-spinup_years+1] 
+            full_recruitment[y+1,] <- regional_recruits*rec_devs[y-spinup_years+1] 
+            # full_recruitment[y+1,] <- full_recruitment[y+1,]*rec_devs[y-spinup_years+1] 
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
@@ -246,7 +245,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                                 selex=sel
                             )
                         })
-
+                data(sgl_rg_sable_data)
                 suppressMessages({
                     input_list <- generate_RTMB_inputs(
                         nyears = y,
@@ -262,7 +261,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 parameters <- input_list$par
                 mapping <- input_list$map
 
-                sabie_rtmb_model <- fit_model(
+                sabie_rtmb_model <- SPoCK::fit_model(
                     data,
                     parameters,
                     mapping,
