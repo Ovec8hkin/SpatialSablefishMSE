@@ -4,7 +4,7 @@ library(tidyverse)
 library(ggdist)
 library(ggh4x)
 library(reshape2)
-library(SpatialSablefishAssessment)
+library(SPoCK)
 library(tictoc)
 library(doParallel)
 # library(afscOM)
@@ -91,9 +91,9 @@ hcr_list <- listN(
 
 # 857, 1120, 1007, 895
 set.seed(895)
-nsims <- 9
+nsims <- 20
 seed_list <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
-seed_list <- c(3,40,311,417,1105,1259,1581,1819,2078,2330,2512,2563,2719,2861,3190,3452,3709,3899,4233,4716,4723,4852,5160,5938,6264,6533,6754,7149,7207,7284,7329,7557,7579,8003,8388,8904)#ssb_data2 %>% pull(sim) %>% unique
+# seed_list <- c(3,40,311,417,1105,1259,1581,1819,2078,2330,2512,2563,2719,2861,3190,3452,3709,3899,4233,4716,4723,4852,5160,5938,6264,6533,6754,7149,7207,7284,7329,7557,7579,8003,8388,8904)#ssb_data2 %>% pull(sim) %>% unique
 
 
 mse_options_base <- setup_mse_options()
@@ -105,8 +105,8 @@ mse_options$n_proj_years <- 75
 mse_options_list <- listN(mse_options)#, mse_options2, mse_options3)
 
 
-om_list <- listN(om_rand_recruit, om_crash_recruit, om_bhcyclic_recruit)
-hcr_list <- listN(mp_f40, mp_f40chr, mp_f50chr, mp_f55chr)
+om_list <- listN(om_rand_recruit, om_bhcyclic_recruit)
+hcr_list <- listN(mp_f40, mp_f50, mp_10perc, mp_15cap)
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
 tic()
@@ -116,91 +116,104 @@ model_runs <- run_mse_multiple(
     seed_list,
     nyears=100,
     mse_options_list=mse_options_list,
-    diagnostics = TRUE
+    save = TRUE
 )
-
 toc()
 
-filter_hcrs <- function(data, hcr_type){
-    return(
-        data %>% mutate(
-            hcr_class = case_when(
-                grepl("Harvest Cap", hcr) ~ "Harvest Cap",
-                grepl("Age", hcr) ~ "Age Structured",
-                grepl("+/-", hcr) ~ "Stability Constraints",
-                TRUE ~ "Reference Points"
-            )
-        ) %>%
-        filter(hcr_class == hcr_type | hcr == "F40")
-    )
-}
+ # Data Processing
+filetype <- ".jpeg"
+figures_dir <- file.path(here::here(), "figures")
+width_small <- 12
+height_small <- 8
 
-hcr_groups <- c("Harvest Caps", "Age Structured", "Stability Constraints", "Constant F", "Reference Points")
+# publication_hcrs <- c("F40")#, "F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
+publication_hcrs <- c("F40", "F50", "F40 +/- 10%", "15k Harvest Cap")
+publication_oms <- c("Random Recruitment", "Beverton-Holt Cyclic Recruitment")#, "Immediate Crash Recruitment")
+publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion of Years with Low SSB")
 
-om_names <- unlist(lapply(om_list, \(x) x$name))
-hcr_names <- unlist(lapply(hcr_list, \(x) x$name))
-
-extra_columns2 <- expand.grid(
-    om = unlist(lapply(om_list, \(x) x$name)),
-    hcr = unlist(lapply(hcr_list, \(x) x$name))
-) %>% as_tibble() %>%
-as.data.frame
-
-mse_runs <- get_saved_model_runs(om_order=om_names, hcr_order=hcr_names)
+mse_runs <- get_saved_model_runs(om_order=publication_oms, hcr_order=publication_hcrs)
 model_runs <- mse_runs$model_runs
-extra_columns2 <- mse_runs$extra_columns2
+extra_columns <- mse_runs$extra_columns2
+
+# extra_columns <- expand.grid(hcr=publication_hcrs, om=publication_oms)
 
 interval_widths <- c(0.50, 0.80)
 common_trajectory <- 54
+time_horizon <- c(55, 130)
 
-publication_hcrs <- c("F40", "F50", "B40/F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
-hcr_colors <- set_hcr_colors(publication_hcrs)
-
-# model_runs <- mse_runs$model_runs
-plot_mse_summary(model_runs, extra_columns2, dem_params=sable_om$dem_params, hcr_filter=hcr_names, om_filter=om_names, common_trajectory = common_trajectory)+custom_theme
-ggsave(filename=file.path("~/Desktop/", "summary2.png"), width=10, height=7, units="in")
-
-# Plot spawning biomass
-ssb_data <- get_ssb_biomass(model_runs, extra_columns2, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=om_names)
-plot_ssb(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)+custom_theme+guides(color=guide_legend(title="HCR", ncol=4))
-plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")+custom_theme+guides(color=guide_legend(title="HCR", ncol=4))
-plot_ssb_paginate(ssb_data, v1="hcr", v2="om", v3=NA, common_trajectory=common_trajectory, show_est = FALSE)
+hcr_colors <- set_hcr_colors2(publication_hcrs)
 
 
-ggsave(filename=file.path(here::here(), "figures", "rel_ssb.png"), width=8, height=8, units=c("in"))
+caa <- model_runs[[1]]$land_caa
+apply(caa, c(1, 4, 5), sum)
+
+### Plot Alaska Regions
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
 
 
-# Plot fishing mortality rates from OM and EM
-f_data <- get_fishing_mortalities(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names)
-plot_fishing_mortalities(f_data, v1="hcr", v2="om", common_trajectory = common_trajectory, show_est=FALSE)+custom_theme
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "fishing_mortality.png"), width=8, height=8, units=c("in"))
 
-# Plot management quantities (ABC, TAC, Expected Landings, and Attainment)
-abctac <- get_management_quantities(model_runs, extra_columns2, spinup_years=common_trajectory, hcr_filter=hcr_names, om_filter=om_names)
-plot_abc_tac(abctac, v1="hcr", v2="om", common_trajectory=common_trajectory)+custom_theme
-ggsave(filename=file.path("~/Desktop/sablefish_plots", "abc_tac.png"), width=10*1.7, height=6*1.7, units=c("in"))
 
-abctac %>% filter(time > 64) %>%
-    group_by(om, hcr, L1) %>%
-    median_qi(value, .width=c(0.50)) %>%
-    select(om, hcr, L1, value) %>%
-    filter(L1 %in% c("ABC")) %>%
-    pivot_wider(names_from=hcr, values_from=value)
 
-# Plot landed catch
-catch_data <- get_landed_catch(model_runs, extra_columns2, hcr_filter=publication_hcrs, om_filter=om_names)
-plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+custom_theme
-plot_catch_paginate(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr="F40")
-ggsave(filename=file.path(here::here(), "figures", "catch.png"), width=8, height=8, units=c("in"))
+### Spawning Biomass and Catch Plots
+ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
+plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 200))
+ggsave(filename=file.path(figures_dir, paste0("ssb", filetype)), width=width_small, height=height_small, units=c("in"))
+ 
+plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")
+ggsave(filename=file.path(figures_dir, paste0("rel_ssb", filetype)), width=width_small, height=height_small, units=c("in"))
 
-for(g in hcr_groups){
-    plot_ssb_catch(
-        model_runs, extra_columns2, sable_om$dem_params, 
-        v1="hcr", v2="om", v3=NA, common_trajectory = common_trajectory,
-        hcr_filter = publication_hcrs, om_filter=om_names
-    )+custom_theme
-    ggsave(filename=file.path("~/Desktop/sablefish_plots", paste0("ssb_catch_", g ,".png")), width=13, height=10, units=c("in"))
-}
+depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
+ggsave(filename=file.path(figures_dir, paste0("depletion", filetype)), width=16, height=8, units=c("in"))
+
+depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
+ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+
+    scale_y_continuous(limits=c(0, 450))+
+    facet_wrap(~om, ncol=1)+
+    guides(color="none", shape="none")+
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank()
+    )
+
+library(patchwork)
+
+ssb_agg_plots + depletion_plots + 
+    plot_layout(nrow=1, guides="collect", widths=c(0.5, 1)) & 
+    theme(legend.position = "bottom")
+ggsave(filename=file.path(figures_dir, paste0("ssb_depletion", filetype)), width=16, height=8, units=c("in"))
+
+catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+scale_y_continuous(limits=c(0, 25))
+plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)
+ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
+
+
+reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+scale_y_continuous(limits=c(0, 25))
+catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
+    facet_wrap(~om, ncol=1)+
+    guides(color="none", shape="none")+
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank()
+    )
+
+catch_agg_plot + reg_catch_plots + 
+    plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
+    theme(legend.position = "bottom")
+ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
+
+plot_ssb_catch(
+    ssb_data,
+    catch_data,
+    v1="hcr",
+    v2="om",
+    v3="region",
+    common_trajectory = common_trajectory
+)
+ggsave(filename=file.path(here::here(), "figures", "ssb_catch.jpeg"), width=16, height=10, units="in")
+
 
 # Plot phase-plane diagrams (F vs SSB, HCR v SSB, Catch v SSB)
 ref_pts <- get_reference_points(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names, seed_list)
