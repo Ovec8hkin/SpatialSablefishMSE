@@ -29,8 +29,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     # Biologicals
     WAA <- om_to_spock(dem_params$waa[1:nyears,,,1,drop=FALSE])
     MatAA <- om_to_spock(dem_params$mat[1:nyears,,,1,drop=FALSE])
-    AgeingError <- as.matrix(sgl_rg_sable_data$age_error)
-    SizeAgeTrans = sgl_rg_sable_data$SizeAgeTrans
+    AgeingError <- as.matrix(SPoCK::sgl_rg_sable_data$age_error)
+    SizeAgeTrans = SPoCK::sgl_rg_sable_data$SizeAgeTrans
     M <- dem_params$mort[1,1,1,1]
     input_list <- SPoCK::Setup_Mod_Biologicals(
         input_list = input_list,
@@ -47,14 +47,14 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     )
 
     # Movement and Tagging
-    input_list <- Setup_Mod_Movement(
+    input_list <- SPoCK::Setup_Mod_Movement(
         input_list = input_list,
         use_fixed_movement = 1,
         Fixed_Movement = NA,
         do_recruits_move = 0
     )
 
-    input_list <- Setup_Mod_Tagging(
+    input_list <-  SPoCK::Setup_Mod_Tagging(
         input_list = input_list,
         UseTagging = 0
     )
@@ -165,8 +165,14 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         srv_idx_type = c("abd", "biom"),
         SrvAgeComps_LikeType = c("Multinomial", "Multinomial"),
         SrvLenComps_LikeType = c("none", "none"),
-        SrvAgeComps_Type = c(paste0("spltRjntS_Year_1-",nyears,"_Fleet_1"), paste0("spltRjntS_Year_1-",nyears,"_Fleet_2")),
-        SrvLenComps_Type = c(paste0("none_Year_1-",nyears,"_Fleet_1"), paste0("none_Year_1-",nyears,"_Fleet_2")),
+        SrvAgeComps_Type = c(
+            paste0("spltRjntS_Year_1-",nyears,"_Fleet_1"), 
+            paste0("spltRjntS_Year_1-",nyears,"_Fleet_2")
+        ),
+        SrvLenComps_Type = c(
+            paste0("none_Year_1-",nyears,"_Fleet_1"), 
+            paste0("none_Year_1-",nyears,"_Fleet_2")
+        )
     )
 
     ### Selectivity and Catchability ------------------------
@@ -177,7 +183,11 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         cont_tv_fish_sel = c("none_Fleet_1", "none_Fleet_2"),
         # fishery selectivity blocks
         # Fixed gear block 1 1-57, block2 58-65; Trawl gear no block
-        fish_sel_blocks = c("Block_1_Year_1-57_Fleet_1", paste0("Block_2_Year_58-",nyears,"_Fleet_1"), "none_Fleet_2"), 
+        fish_sel_blocks = c(
+            paste0("Block_1_Year_1-",min(57,nyears),"_Fleet_1"), 
+            paste0("Block_2_Year_",min(58,nyears),"-",nyears,"_Fleet_1"),
+             "none_Fleet_2"
+        ), 
         # fishery selectivity form
         # Fixed gear logistic selectivity (k, a50); Trawl gear gamma
         fish_sel_model = c("logist1_Fleet_1", "gamma_Fleet_2"),
@@ -199,7 +209,11 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         # survey selectivity, whether continuous time-varying
         cont_tv_srv_sel = c("none_Fleet_1", "none_Fleet_2"),
         # survey selectivity blocks
-        srv_sel_blocks = c("Block_1_Year_1-57_Fleet_1", paste0("Block_2_Year_58-",nyears,"_Fleet_1"), "none_Fleet_2"),
+        srv_sel_blocks = c(
+            paste0("Block_1_Year_1-",min(57,nyears),"_Fleet_1"), 
+            paste0("Block_2_Year_",min(58,nyears),"-",nyears,"_Fleet_1"),
+             "none_Fleet_2"
+        ),
         # survey selectivity form
         srv_sel_model = c("logist1_Fleet_1","exponential_Fleet_2"),
         # survey catchability blocks
