@@ -371,7 +371,14 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
                 # hcr_F[y+1] <- hcr_out
                 #hcr_F[y] <- npfmc_tier3_F(assessment_ssb, ref_pts$B40, ref_pts$F40)
-                
+
+                catch_apportion_pars <- list(survey_obs=survey_obs, y=y)
+                if(all(!is.na(mp$apportionment$pars))){
+                    catch_apportion_pars <- c(catch_apportion_pars, mp$apportionment$pars)
+                }
+
+                catch_apportion <- do.call(mp$apportionment$func, catch_apportion_pars)
+
                 mgmt_out <- simulate_TAC(
                     hcr_F = hcr_out, 
                     naa = naa_proj, 
@@ -385,10 +392,10 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
 
                 abc[y2+1,1,1,1] <- mgmt_out$abc
                 tac[y2+1,1,1,1] <- mgmt_out$tac
-                exp_land[y2+1,1,1,1] <- mgmt_out$land
+                exp_land[y2+1,1,1,1:nregions] <- mgmt_out$tac*catch_apportion
                 # This is default apportionment for now
                 # TODO: generalize catch apportionment
-                landings[y2+1,,] <- mgmt_out$land*model_options$fleet_apportionment[y,,,drop=FALSE]
+                landings[y2+1,,] <- t(sweep(array(exp_land[y2+1,1,1,1:nregions], dim=c(nregions, 2)), 2, array(c(0.80, 0.20), dim=c(1, 2)), FUN="*"))#model_options$fleet_apportionment[y,,,drop=FALSE]
                 hcr_f[y2+1,,,] <- hcr_out
 
                 naa_proj <- mgmt_out$proj_N_new
