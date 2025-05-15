@@ -23,11 +23,11 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
             # join WAA and maturity-at-age for computing SSB
             left_join(
                 melt(dem_params$waa, value.name="weight"), 
-                by=c("time", "age", "sex")
+                by=c("time", "age", "sex", "region")
             ) %>%
             left_join(
                 melt(dem_params$mat, value.name="maturity"), 
-                by=c("time", "age", "sex")
+                by=c("time", "age", "sex", "region")
             ) %>%
             drop_na() %>%
             # compute derived quantities
@@ -38,7 +38,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
             # SSB is females only
             filter(sex == "F") %>%
             # summarise SSB across year and sim 
-            group_by(across(all_of(group_columns))) %>%
+            group_by(across(all_of(c(group_columns, "region")))) %>%
             summarise(
                 spbio=sum(spbio),
                 biomass=sum(biomass)
@@ -112,7 +112,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
             filter(hcr %in% hcr_filter, om %in% om_filter) %>%
             drop_na() %>%
             filter(age == 2) %>%
-            group_by(across(all_of(group_columns))) %>%
+            group_by(across(all_of(c(group_columns, "region")))) %>%
             summarise(rec=sum(value)) %>%
             mutate(
                 om = factor(om, levels=om_filter),
@@ -136,7 +136,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' @example
 #'
 get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
+    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
     return(
         bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
             as_tibble() %>%

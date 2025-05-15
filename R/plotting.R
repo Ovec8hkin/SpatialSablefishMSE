@@ -1,8 +1,13 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40", depletion=FALSE, scales="fixed"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
+    d <- data
+    if(is.na(v3)){
+        group_columns <- group_columns[group_columns != "region"]
+        d <- d %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass))
+    }
     # Plot spawning biomass from OM and EM
-    d <- data %>%
+    d <- d %>%
         select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
@@ -27,7 +32,64 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         # geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(limits=c(0, 500))+
+        coord_cartesian(ylim=c(0, 150))+
+        labs(x="Year", y="SSB")+
+        coord_cartesian(expand=0)+
+        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
+
+    if(show_est){
+        plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+    }
+
+    if(!is.na(v2) && is.na(v3)){
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
+    }
+
+    return(plot+custom_theme)
+}
+
+plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40", scales="fixed"){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
+    d <- data
+    if(is.na(v3)){
+        group_columns <- group_columns[group_columns != "region"]
+        d <- d %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass))
+    }
+    # Plot spawning biomass from OM and EM
+    d <- d %>%
+        select(-c("biomass")) %>%
+        group_by(across(all_of(group_columns[group_columns != "time"]))) %>%
+        mutate(dep=spbio/spbio[time==1]) %>%
+        ungroup() %>%
+        # Compute quantiles of SSB distribution
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(dep, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        # Reformat ggdist tibble into long format
+        reformat_ggdist_long(n=length(group_columns))
+
+    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
+
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+    base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
+
+    plot <- ggplot(d %>% filter(L1 == "naa")) + 
+        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
+        geom_hline(yintercept=0.40, linetype="dashed")+
+        # geom_hline(yintercept=121.4611, linetype="dashed")+
+        scale_fill_brewer(palette="Blues")+
+        scale_color_manual(values=hcr_colors)+
+        scale_y_continuous(limits=c(0, 1.5))+
+        # coord_cartesian(ylim=c(0, 150))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
         guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
@@ -151,7 +213,13 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
-    c <- data %>%
+    c <- data
+    if(is.na(v3)){
+        group_columns <- group_columns[group_columns != "region"]
+        c <- c %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(catch=sum(catch), total_catch=sum(total_catch))
+    }
+
+    c <- c %>%
         group_by(across(all_of(group_columns))) %>%
         median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
@@ -177,9 +245,9 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        # scale_y_continuous(limits=c(0, 60))+
+        scale_y_continuous(limits=c(0, 60))+
         labs(x="Year", y="Catch (mt)", color="Management \n Strategy")+
-        coord_cartesian(expand=0, ylim=c(0, 60))+
+        # coord_cartesian(expand=0, ylim=c(0, 30))+
         guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
 
     if(!is.na(v2) && is.na(v3)){
@@ -738,6 +806,60 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
     return(ps)
 }
 
+#' Plot Map of Alaska with NMFS Stat Areas Colored
+#' 
+#' Original code from Matt Cheng
+plot_alaska_map <- function(regions = c("BS", "AI", "WGOA", "CGOA", "EGOA")){
+    # Read in maps here
+    west = ne_states(c("United States of America", "Russia", "Canada"), returnclass = "sf")
+    west = st_shift_longitude(west) # shift ongitude for plotting
+
+    # Read in stat areas
+    nmfs_areas = read_sf(dsn = here::here("data", "NMFS_Stat_Areas", "Sablefish_Longline_Area"), layer = "Sablefish_Longline_Area")
+    nmfs_areas = nmfs_areas %>% mutate(GEN_NAME = ifelse(NAME %in% c("East Yakutat / Southeast Alaska", "West Yakutat"), "Eastern Gulf of Alaska", "A")) %>% 
+    mutate(         NAME = case_when(
+        NAME == "Aleutian Islands" ~ "AI",
+        NAME == "Bering Sea" ~ "BS",
+        NAME == "Western Gulf of Alaska" ~ "WGOA",
+        NAME == "Central Gulf of Alaska" ~ "CGOA",
+        NAME == "West Yakutat" ~ "EGOA",
+        NAME == "East Yakutat / Southeast Alaska" ~ "EGOA"
+    ), NAME = factor(NAME, levels = c("BS", "AI", "WGOA", "CGOA", "EGOA"))) %>% 
+    group_by(NAME) %>%
+    summarise(geometry = st_union(geometry))
+
+    # Coerce longline areas
+    nmfs_areas = st_make_valid(nmfs_areas) # make valid so that vertices aren't duplicated
+    nmfs_areas = nmfs_areas %>% st_transform(4326) # transform to crs 4326
+    nmfs_areas = st_shift_longitude(nmfs_areas) # shift longitude for plotting
+
+    # Set colors
+    true_colors = c("BS" = "#E31C39", "AI" = "#EA8115", "WGOA" = "#1C39E3", "CGOA" = "#30AF6C", "EGOA" = "#8115EA")
+    alphas = rep(0, length(true_colors))
+    names(alphas) = names(true_colors)
+    alphas[names(alphas) %in% regions] = 0.55
+
+
+    map <- ggplot() +
+        geom_sf(data = nmfs_areas, aes(fill = NAME, alpha=NAME)) +
+        geom_sf(data = west, lwd = 0.25, alpha = 1) +
+        coord_sf(ylim = c(45.2, 70.5), xlim = c(165, 230)) + # Restrict Map Area
+        scale_alpha_manual(values = alphas) +
+        #   scale_fill_manual(values = colors) +
+        guides(fill="none")+
+        labs(x = "Longitude", y = "Latitude")+
+        theme(
+            legend.position = "none",
+            axis.text = element_blank(),
+            axis.ticks = element_blank(),
+            axis.title = element_blank(),
+            panel.grid = element_blank(),
+            panel.background = element_blank(),
+        )
+    
+    return(map)
+}
+
 set_hcr_colors <- function(hcrs){
     hcr_colors <- scales::hue_pal()(length(hcrs))
     hcr_colors[which(hcrs == "No Fishing")] <- "#000000"
@@ -786,3 +908,11 @@ custom_theme <- ggplot2::theme_bw()+ggplot2::theme(
     legend.text = ggplot2::element_text(size=14),
     legend.position = "bottom"
 )
+
+annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, data){
+  layer(data = data, stat = StatIdentity, position = PositionIdentity, 
+        geom = ggplot2:::GeomCustomAnn,
+        inherit.aes = TRUE, params = list(grob = grob, 
+                                          xmin = xmin, xmax = xmax, 
+                                          ymin = ymin, ymax = ymax))
+}
