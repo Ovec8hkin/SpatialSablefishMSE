@@ -125,6 +125,8 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
 # Going to start an MSE Options list distinct from everything else
 mp_base <- setup_mp_options() # get default values
 mp_base$management$tac_land_reduction <- 1
+mp_base$apportionment$func <- rpw_moving_average
+mp_base$apportionment$pars <- list(window_size=5)
 
 # mp_base$management$tac_land_reduction <- list(
 #     func = stairstep_attainment,
