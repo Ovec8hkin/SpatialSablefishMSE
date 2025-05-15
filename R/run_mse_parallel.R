@@ -12,10 +12,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
             library(TMB)
             library(devtools)
             library(abind)
+            # library(SPoCK)
             # library(afscOM)
             lapply(list.files("R", full.names = TRUE), source)
             devtools::load_all("~/Desktop/Projects/afscOM")
-
         })
         
         seed <- seeds[s]
@@ -24,7 +24,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
 
     }, om=om, hcr=hcr, nyears=nyears, seeds=seeds, options=mse_options, cl=cl)
 
-    stopCluster(cl)
+    parallel::stopCluster(cl)
 
     for(s in 1:nsims){
 
@@ -53,7 +53,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
             outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,1]
             outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
 
-            if(om$model_options$run_estimation){
+            if(mse_options$run_estimation){
                 outputs$model_outs$mods[,s] <- mse$model_outs$mods
                 outputs$model_outs$fits[,s] <- mse$model_outs$fits
                 outputs$model_outs$reps[,s] <- mse$model_outs$reps
@@ -85,15 +85,15 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
-    faa_est         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
+    faa_est     = array(NA, dim=c(nyears, nages, nsexes, 1, nfleets, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"=c("Alaska"), "fleet"=c("Fixed", "Trawl"), "sim"=seeds))
     abc         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     tac         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
-    exp_land    = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
     hcr_f       = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
-    naa_est     = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
-    global_rec_devs       = array(NA, dim=c(nyears-spinup_years, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears-spinup_years), 1, 1, "region"="Alaska", "sim"=seeds))
+    naa_est     = array(NA, dim=c(nyears, nages, nsexes, 1, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"=c("Alaska"), "sim"=seeds))
+    global_rec_devs       = array(NA, dim=c(nyears-spinup_years, 1, 1, nregions, nsims), dimnames=list("time"=1:(nyears-spinup_years), 1, 1,"region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
 
     survey_obs <- list(
         ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds)),
@@ -114,3 +114,4 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, global_rec_devs, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 
 }
+
