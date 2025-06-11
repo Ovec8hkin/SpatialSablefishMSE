@@ -80,9 +80,9 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
     naa_est     = array(NA, dim=c(nyears,   nages, nsexes, 1), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"=c("alaska")))
 
-    abc         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
-    tac         = array(NA, dim=c(nyears+1, 1, 1, 1), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska"))
-    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
+    abc         = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")))
+    tac         = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")))
     hcr_f       = array(NA, dim=c(nyears+1,   1, 1, 1), dimnames=list("time"=1:(nyears+1),     1, 1, "region"="Alaska"))
     # out_f       = array(NA, dim=c(nyears,   1, 1, 1), dimnames=list("time"=1:nyears,     1, 1, "region"="Alaska"))
 
@@ -245,7 +245,6 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                                 selex=sel
                             )
                         })
-                data(sgl_rg_sable_data)
                 suppressMessages({
                     input_list <- generate_RTMB_inputs(
                         nyears = y,
@@ -377,6 +376,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                 }
 
                 catch_apportion <- do.call(mp$apportionment$func, catch_apportion_pars)
+                mp$management$abc_region_apportionment <- catch_apportion
 
                 mgmt_out <- simulate_TAC(
                     hcr_F = hcr_out, 
@@ -384,17 +384,17 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
                     recruitment = mean(rec)/2, 
                     joint_sel = joint_selret$sel, 
                     dem_params = afscOM::subset_dem_params(dp_y, 1, d=4, drop=FALSE),
-                    hist_abc = abc[y2,1,1,1],
+                    hist_abc = sum(abc[y2,1,1,,]),
                     hcr_options = mp$hcr$extra_options,
                     options = mp$management
                 )
 
-                abc[y2+1,1,1,1] <- mgmt_out$abc
-                tac[y2+1,1,1,1] <- mgmt_out$tac
-                exp_land[y2+1,1,1,1:nregions] <- mgmt_out$tac*catch_apportion
+                abc[y2+1,1,1,,] <- mgmt_out$abc
+                tac[y2+1,1,1,,] <- mgmt_out$tac
+                exp_land[y2+1,1,1,,] <- mgmt_out$land
                 # This is default apportionment for now
                 # TODO: generalize catch apportionment
-                landings[y2+1,,] <- t(sweep(array(exp_land[y2+1,1,1,1:nregions], dim=c(nregions, 2)), 2, array(c(0.80, 0.20), dim=c(1, 2)), FUN="*"))#model_options$fleet_apportionment[y,,,drop=FALSE]
+                landings[y2+1,,] <- aperm(mgmt_out$land, c(2, 1))
                 hcr_f[y2+1,,,] <- hcr_out
 
                 naa_proj <- mgmt_out$proj_N_new

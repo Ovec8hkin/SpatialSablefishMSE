@@ -122,9 +122,28 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
     return(constant_F(ref_pts$Fref))
 }
 
+abc_regionfleet_allocation <- array(
+    # c(
+    #     0.5, 0.5,   # Bering Sea Groundfish FMP
+    #     0.74, 0.25, # Bering Sea Groundfish FMP
+    #     0.8, 0.2,   # GOA Groundfish FMP
+    #     0.8, 0.2,   # GOA Groundfish FMP
+    #     0.95, 0.05  # GOA Groundfish FMP
+    # ),
+    c(0.5, 0.75, 0.8, 0.8, 0.95, 
+      0.5, 0.25, 0.2, 0.2, 0.05), # Fixed and Trawl fleets
+    dim = c(5, 2),
+    dimnames = list(
+        "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
+        "fleet"=c("Fixed", "Trawl")
+    )
+)
+
 # Going to start an MSE Options list distinct from everything else
 mp_base <- setup_mp_options() # get default values
-mp_base$management$tac_land_reduction <- 1
+mp_base$management$abc_regflt_apportionment <- abc_regionfleet_allocation
+mp_base$management$abc_tac_regflt_reduction <- array(1, dim=c(5, 2), dimnames=dimnames(abc_regionfleet_allocation))
+mp_base$management$regflt_tac_utilization <- array(1, dim=c(5, 2), dimnames=dimnames(abc_regionfleet_allocation))
 mp_base$apportionment$func <- rpw_moving_average
 mp_base$apportionment$pars <- list(window_size=5)
 

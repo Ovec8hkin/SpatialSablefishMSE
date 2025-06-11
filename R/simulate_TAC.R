@@ -25,6 +25,9 @@
 simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_abc, hcr_options, options){
     proj_faa <- joint_sel*hcr_F
     proj_N_new <- afscOM::simulate_population(naa, proj_faa, recruitment, dem_params, options=list())
+    
+    ## 1. Use harvest control rule to determine ABC including
+    ## all stability constraints and harvest caps
     abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
 
     # Implements symmetric stability constraints
@@ -41,27 +44,34 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
         }
     }
 
+    # Implements a maximum tac cap
+    if(!is.na(hcr_options$harvest_cap)){
+        abc <- ifelse(abc > hcr_options$harvest_cap, hcr_options$harvest_cap, abc)
+    }
+
+    ## 2. Apportion ABC to different regions using supplied 
+    ## apportionment scheme
+
+    ## 3. Allocate regional ABCs to fleets within regions based
+    ## on supplied region-fleet splits
+
+    ## 4. Allow for TAC to differ from ABC based on supplied
+    ## values.
     if(!is.list(options$abc_tac_reduction)){
         tac <- abc * options$abc_tac_reduction
     }else{
         tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
     }
 
-    # Implements a maximum tac cap
-    if(!is.na(hcr_options$harvest_cap)){
-        tac <- ifelse(tac > hcr_options$harvest_cap, hcr_options$harvest_cap, tac)
-    }
-
-    # if(abc == 0 && tac > abc){
-    #     tac <- 0
-    # }
-
+    ## 6. Allow for region-fleet specific TAC utilizations based
+    ## on supplied values.
     if(!is.list(options$tac_land_reduction)){
         land <- tac * options$tac_land_reduction
     }else{
         land <- tac*do.call(options$tac_land_reduction$func, c(list(v=tac), options$tac_land_reduction$pars))
     }
     
+    # abc, tac, land are now all of dimensions [1, nages, nsexes, nregions, nfleets]
 
     return(afscOM::listN(abc, tac, land, proj_N_new$naa))
 }
