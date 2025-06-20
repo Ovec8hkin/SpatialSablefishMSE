@@ -38,10 +38,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
         outputs$naa[,,,,s] <- mse$naa
         outputs$naa_est[,,,,s] <- mse$naa_est
         outputs$out_f[,,,,s] <- mse$out_f
-        outputs$exp_land[,,,,s] <- mse$exp_land
+        outputs$exp_land[,,,,,s] <- mse$exp_land
         outputs$hcr_f[,,,,s] <- mse$hcr_f
-        outputs$abc[,,,,s] <- mse$abc
-        outputs$tac[,,,,s] <- mse$tac
+        outputs$abc[,,,,,s] <- mse$abc
+        outputs$tac[,,,,,s] <- mse$tac
         outputs$global_rec_devs[,,,,s] <- mse$global_rec_devs
 
         if(diagnostics){
@@ -86,9 +86,9 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     caa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     faa_est     = array(NA, dim=c(nyears, nages, nsexes, 1, nfleets, nsims), dimnames=list("time"=1:(nyears), "age"=2:31, "sex"=c("F", "M"), "region"=c("Alaska"), "fleet"=c("Fixed", "Trawl"), "sim"=seeds))
-    abc         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
-    tac         = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
-    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
+    abc         = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl"), "sim"=seeds))
+    tac         = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl"), "sim"=seeds))
+    exp_land    = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl"), "sim"=seeds))
     hcr_f       = array(NA, dim=c(nyears+1, 1, 1, 1, nsims), dimnames=list("time"=1:(nyears+1), 1, 1, "region"="Alaska", "sim"=seeds))
     out_f       = array(NA, dim=c(nyears, 1, 1, 1, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"="Alaska", "sim"=seeds))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions, nsims), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))

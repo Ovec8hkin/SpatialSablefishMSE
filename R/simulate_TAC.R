@@ -51,27 +51,39 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
 
     ## 2. Apportion ABC to different regions using supplied 
     ## apportionment scheme
+    abc_reg <- abc*options$abc_region_apportionment
 
     ## 3. Allocate regional ABCs to fleets within regions based
     ## on supplied region-fleet splits
+    abc_regflt <- abc_reg*options$abc_regflt_apportionment
 
     ## 4. Allow for TAC to differ from ABC based on supplied
     ## values.
-    if(!is.list(options$abc_tac_reduction)){
-        tac <- abc * options$abc_tac_reduction
-    }else{
-        tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
-    }
+    tac_regflt <- tac <- abc_regflt * options$abc_tac_regflt_reduction
+    
+    # if(!is.list(options$abc_tac_reduction)){
+    #     tac <- abc_regflt * options$abc_tac_regflt_reduction
+    # }else{
+    #     tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
+    # }
 
     ## 6. Allow for region-fleet specific TAC utilizations based
     ## on supplied values.
-    if(!is.list(options$tac_land_reduction)){
-        land <- tac * options$tac_land_reduction
-    }else{
-        land <- tac*do.call(options$tac_land_reduction$func, c(list(v=tac), options$tac_land_reduction$pars))
-    }
+    land_regflt <- tac_regflt * options$regflt_tac_utilization
+
+    # if(!is.list(options$tac_land_reduction)){
+    #     land <- tac * options$tac_land_reduction
+    # }else{
+    #     land <- tac*do.call(options$tac_land_reduction$func, c(list(v=tac), options$tac_land_reduction$pars))
+    # }
     
     # abc, tac, land are now all of dimensions [1, nages, nsexes, nregions, nfleets]
 
-    return(afscOM::listN(abc, tac, land, proj_N_new$naa))
+    # return(afscOM::listN(abc, tac, land, proj_N_new$naa))
+    return(list(
+        abc = abc_regflt,
+        tac = tac_regflt,
+        land = land_regflt,
+        proj_N_new = proj_N_new$naa
+    ))
 }

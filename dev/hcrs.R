@@ -123,15 +123,18 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
 }
 
 abc_regionfleet_allocation <- array(
-    # c(
-    #     0.5, 0.5,   # Bering Sea Groundfish FMP
-    #     0.74, 0.25, # Bering Sea Groundfish FMP
-    #     0.8, 0.2,   # GOA Groundfish FMP
-    #     0.8, 0.2,   # GOA Groundfish FMP
-    #     0.95, 0.05  # GOA Groundfish FMP
-    # ),
     c(0.5, 0.75, 0.8, 0.8, 0.95, 
       0.5, 0.25, 0.2, 0.2, 0.05), # Fixed and Trawl fleets
+    dim = c(5, 2),
+    dimnames = list(
+        "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
+        "fleet"=c("Fixed", "Trawl")
+    )
+)
+
+regionfleet_tac_utilization <- array(
+    c(0.644, 0.511, 0.947, 1.03, 1.01, 
+      0.185, 0.104, 0293, 0.835, 0.491), # Fixed and Trawl fleets
     dim = c(5, 2),
     dimnames = list(
         "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
