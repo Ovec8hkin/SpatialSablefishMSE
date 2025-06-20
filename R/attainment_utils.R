@@ -50,3 +50,18 @@ stairstep_attainment <- function(v, breakpoints, levels, phase_ins){
    }
 
 }
+
+average_regflt_tac_utilization <- array(
+    c(0.644, 0.511, 0.947, 1.03, 1.01, 
+      0.185, 0.104, 0.293, 0.835, 0.491), # Fixed and Trawl fleets
+    dim = c(5, 2),
+    dimnames = list(
+        "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
+        "fleet"=c("Fixed", "Trawl")
+    )
+)
+
+full_attainment <- array(1, dim=c(5, 2), dimnames=list(
+   "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
+   "fleet"=c("Fixed", "Trawl")
+))
