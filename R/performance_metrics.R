@@ -240,7 +240,7 @@ average_ssb <- function(
     avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
             ungroup() %>%
             filter(L1 != "naa_est") %>%
-            select(-c("L1", "biomass")) %>%
+            dplyr::select(-c("L1", "biomass")) %>%
             filter_times(time_horizon=time_horizon) %>%
             round_to_zero("spbio") %>%
             relativize_performance(
@@ -534,12 +534,12 @@ average_age <- function(
             ungroup() %>%
             filter_hcr_om(hcr_filter, om_filter) %>%
             filter_times(time_horizon=time_horizon) %>%
-            group_by(time, age, sim, om, hcr) %>%
-            mutate(value = sum(value)) %>%
+            # group_by(time, age, sim, om, hcr) %>%
+            # mutate(value = sum(value)) %>%
             # round_to_zero("value") %>%
             filter(sex == "F") %>%
             ungroup() %>%
-            group_by(time, sim, hcr, om) %>%
+            group_by(time, sim, hcr, om, region) %>%
             summarise(
                 avg_age = compute_average_age(value, 2:31)
             ) %>%
@@ -915,7 +915,8 @@ average_annual_value <- function(
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
 
     group_columns <- c("sim", summarise_by)
@@ -953,11 +954,14 @@ average_annual_value <- function(
         avg_rel_value <- avg_rel_value %>% filter(eval(extra_filter))
     }
 
-    return(
-        avg_rel_value %>%
+    out <- avg_rel_value
+    if(summary_out){
+        out <- avg_rel_value %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(annual_value, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+    return(out)
 }
 
 #' Compute Average Annual Dynamic Value of Catch across projection period
@@ -992,7 +996,8 @@ average_annual_dynamic_value <- function(
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
     relative=NULL, 
-    summarise_by=c("om", "hcr")
+    summarise_by=c("om", "hcr"),
+    summary_out=TRUE
 ){
     
     compute_dynamic_value <- function(landings, min_price_age, max_price_age, breakpoints=c(15, 30)){
@@ -1057,11 +1062,15 @@ average_annual_dynamic_value <- function(
         dyn_value <- dyn_value %>% filter(eval(extra_filter))
     }
 
-    return(
-        dyn_value %>%
+    out <- dyn_value
+    if(summary_out){
+        out <- dyn_value %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(dyn_annual_value, .width=interval_widths, .simple_names=FALSE)
-    )
+    }
+
+
+    return(out)
 
 }
 

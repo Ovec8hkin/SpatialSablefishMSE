@@ -1,5 +1,5 @@
 rm(list=ls())
-
+    
 library(tidyverse)
 library(ggdist)
 library(ggh4x)
@@ -78,6 +78,14 @@ hcr_list <- listN(
     mp_pfmc4010
 )
 
+mp_f40_sq <- mp_f40
+mp_f40_sq$management$regflt_tac_utilization <- average_regflt_tac_utilization
+mp_f40_sq$name <- "F40 Status Quo"
+
+mp_f40_fullattainment <- mp_f40
+mp_f40_fullattainment$management$regflt_tac_utilization <- full_attainment
+mp_f40_fullattainment$name <- "F40 Full Attainment"
+
 #' 3. Run the closed-loop MSE simulation
 #' A single MSE simulation can be run using the `run_mse(...)`
 #' function, while multiple MSE simulations can be run (serially)
@@ -106,13 +114,13 @@ mse_options_list <- listN(mse_options)#, mse_options2, mse_options3)
 
 
 om_list <- listN(om_rand_recruit, om_bhcyclic_recruit)
-hcr_list <- listN(mp_f40, mp_f50, mp_10perc, mp_15cap)
+hcr_list <- listN(mp_f40_sq, mp_f40_fullattainment)
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
 tic()
 model_runs <- run_mse_multiple(
     om_list, 
-    hcr_list, 
+    listN(mp_f40_sq), 
     seed_list,
     nyears=100,
     mse_options_list=mse_options_list,
@@ -127,7 +135,7 @@ width_small <- 12
 height_small <- 8
 
 # publication_hcrs <- c("F40")#, "F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
-publication_hcrs <- c("F40", "F50", "F40 +/- 10%", "15k Harvest Cap")
+publication_hcrs <- c("F40 Status Quo", "F40 Full Attainment")
 publication_oms <- c("Random Recruitment", "Beverton-Holt Cyclic Recruitment")#, "Immediate Crash Recruitment")
 publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion of Years with Low SSB")
 
@@ -158,7 +166,7 @@ library(sf)
 
 ### Spawning Biomass and Catch Plots
 ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
-plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 200))
+plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 120))+scale_color_manual(values=c("red", "blue"))
 ggsave(filename=file.path(figures_dir, paste0("ssb", filetype)), width=width_small, height=height_small, units=c("in"))
  
 plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")
@@ -167,9 +175,10 @@ ggsave(filename=file.path(figures_dir, paste0("rel_ssb", filetype)), width=width
 depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
 ggsave(filename=file.path(figures_dir, paste0("depletion", filetype)), width=16, height=8, units=c("in"))
 
-depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
+depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 1.5))+scale_color_manual(values=c("red", "blue"))
 ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+
-    scale_y_continuous(limits=c(0, 450))+
+    scale_y_continuous(limits=c(0, 300))+
+    scale_color_manual(values=c("red", "blue"))+
     facet_wrap(~om, ncol=1)+
     guides(color="none", shape="none")+
     theme(
@@ -190,8 +199,12 @@ plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_traj
 ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
 
 
-reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+scale_y_continuous(limits=c(0, 25))
-catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
+reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = common_trajectory)+
+    scale_y_continuous(limits=c(0, 20))+
+    scale_color_manual(values=c("red", "blue"))
+    # ggh4x::facet_nested(om +fleet~ region)
+catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE, common_trajectory = common_trajectory)+
+    scale_color_manual(values=c("red", "blue"))+
     facet_wrap(~om, ncol=1)+
     guides(color="none", shape="none")+
     theme(
@@ -213,6 +226,66 @@ plot_ssb_catch(
     common_trajectory = common_trajectory
 )
 ggsave(filename=file.path(here::here(), "figures", "ssb_catch.jpeg"), width=16, height=10, units="in")
+
+# Plot ABC, TAC, and Landed Catch
+abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+
+abc_tac_land_reg <- abc_tac_land %>%
+    filter(L1 != "attainment") %>%
+    mutate(
+        L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Landed Catch")),
+    ) %>%
+    group_by(time, region, om, hcr, fleet, L1) %>%
+    median_qi(value, .width=interval_widths) %>%
+    filter(.width == 0.50)
+
+regional_abctac_plots <- ggplot(abc_tac_land_reg, aes(x=time, y=value, color=L1, linetype=fleet))+
+    geom_line()+
+    ggh4x::facet_nested(om + hcr ~ region, scales="free_y")+
+    custom_theme+
+    labs(title="Regional ABC, TAC, and Landed Catch")+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 10)),
+            scale_y_continuous(limits=c(0, 10)),
+            scale_y_continuous(limits=c(0, 25)),
+            scale_y_continuous(limits=c(0, 25))
+        )
+    )
+
+abc_tac_land_agg <- abc_tac_land %>%
+    filter(L1 != "attainment") %>%
+    mutate(
+        L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Landed Catch")),
+    ) %>%
+    group_by(time, om, hcr, fleet, L1, sim) %>%
+    summarise(value=sum(value)) %>%
+    group_by(time, om, hcr, fleet, L1) %>%
+    median_qi(value, .width=interval_widths) %>%
+    filter(.width == 0.50)
+
+agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=L1, linetype=fleet))+
+    geom_line()+
+    facet_wrap(om ~ hcr, scales="free_y", ncol=1)+
+    labs(title="Alaska-Wide ABC, TAC, and Landed Catch")+
+    custom_theme+
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank()
+    )+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 25)),
+            scale_y_continuous(limits=c(0, 25)),
+            scale_y_continuous(limits=c(0, 60)),
+            scale_y_continuous(limits=c(0, 60))
+        )
+    )
+
+agg_abctac_plot + regional_abctac_plots + 
+    plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
+    theme(legend.position = "bottom")
+
 
 
 # Plot phase-plane diagrams (F vs SSB, HCR v SSB, Catch v SSB)
@@ -246,27 +319,79 @@ time_horizon <- c(55, 130)
 
 performance_metrics <- performance_metric_summary(
     model_runs, 
-    extra_columns2, 
+    extra_columns, 
     sable_om$dem_params, 
     ref_naa,
     interval_widths=c(0.50, 0.80),
     time_horizon = time_horizon, 
     extra_filter = NULL,
     relative=NULL, 
-    summarise_by=c("om", "hcr"),
-    hcr_filter=hcr_names,
-    om_filter=om_names
+    summarise_by=c("om", "hcr", "region"),
+    hcr_filter=publication_hcrs,
+    om_filter=publication_oms,
+    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "avg_catch_lg", "annual_value", "dynamic_value")
 )
 
 # perf_data <- performance_metrics$perf_data %>% filter(hcr %in% publication_hcrs)
-publication_metrics = c("Annual Catch", "Catch AAV", "Large Catch", "SSB", "Average Age", "Proprtion Years Low SSB")
+publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion Large Catch", "Annual Value", "Dynamic Annual Value")
+publication_metrics2 = c("Annual\nCatch", "Catch\nAAV", "SSB", "Average\nAge", "Average Catch\nLarge", "Annual\nValue", "Dynamic\nValue")
 perf_data2 <- performance_metrics$perf_data %>% 
     filter(hcr %in% publication_hcrs, name %in% publication_metrics) %>%
     mutate(
             hcr = factor(hcr, levels=publication_hcrs),
-            om = factor(om, labels=c("Random Recruitment", "BH Recruitment", "BH Regime Recruitment", "Crash Recruitment")),
-            name = factor(name, levels=publication_metrics)
+            om = factor(om, labels=publication_oms),
+            name = factor(name, levels=publication_metrics, labels=publication_metrics2)
+    ) %>%
+    filter(.width == 0.5) %>%
+    group_by(om, region, name) %>%
+    mutate(
+        scaled = case_when(
+            name == "Catch\nAAV" ~ (max(median)-median)/(max(median)-min(median)),
+            TRUE ~ median/inf_max(median)
+        )
     )
+
+
+perf_data2 %>% select(om, hcr, region, name, scaled) %>%
+    pivot_wider(names_from=name, values_from=scaled) %>%
+    # filter(om == "Beverton-Holt Cyclic Recruitment") %>%
+    print(n=100) %>%
+
+    ggRadar(aes(color=hcr, facet=c(region, om)))+
+        facet_grid(om~region)+
+        custom_theme+
+        theme(
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank()
+        )
+
+perf_data2 %>% select(om, hcr, region, name, scaled) %>%
+    pivot_wider(names_from=name, values_from=scaled) %>%
+
+    ggplot(aes(x=name, y=scaled, color=hcr, fill=hcr, group=hcr))+
+        geom_point(size=3)+
+        geom_line()+
+        geom_polygon(alpha=0)+
+        scale_y_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25))+
+        ggiraphExtra::coord_radar()+
+        facet_grid(om~region)+
+        custom_theme+
+        theme(
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank()
+        )
+ggsave(file.path(here::here(), "figures", "performance_metrics_radar.png"))
+
+
+
+
+
+
+
+
+
+
+
 
 plot_performance_metric_summary(perf_data2, v2="om", is_relative=FALSE)+
     custom_theme+guides(color="none", shape="none")+

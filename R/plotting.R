@@ -239,9 +239,9 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
     base_hcr_c <- c %>% filter(hcr == base_hcr)
 
     plot <- ggplot(c %>% left_join(traj, by=traj_column) %>% filter(time > common-1))+
-        geom_lineribbon(data = base_hcr_c, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_lineribbon(data = base_hcr_c, aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]],fleet), color=.data[[v1]], linetype=fleet), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]], fleet), color=.data[[v1]], linetype=fleet), size=0.85)+
+        geom_line(data = common, aes(x=time, y=median, linetype=fleet), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
@@ -425,13 +425,13 @@ plot_atage_density_ternary <- function(data, col_names){
 
 # }
 
-plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="F40"){
+plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
     q <- data %>%
         mutate(
-            L1 = factor(L1, levels=c("abc", "tac", "exp_land", "attainment"), labels=c("ABC", "TAC", "Expected Landings", "Attainment"))
+            L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Expected Landings"))
         ) %>%
         # filter(L1 != "Expected Landings") %>%
         group_by(across(all_of(group_columns))) %>%
@@ -447,28 +447,25 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="
     base_hcr_q <- q %>% filter(hcr == base_hcr)
 
     plot <- ggplot(q %>% filter(time > common_trajectory-1))+
-        geom_lineribbon(data = base_hcr_q, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]], L1), color=.data[[v1]]), size=0.85)+
+        # geom_lineribbon(data = base_hcr_q, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(L1, fleet), color=L1, linetype=fleet), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
         coord_cartesian(expand=0)
 
-    if(!is.na(v2)){
-        plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")
-    }else{
-        plot <- plot + facet_wrap(~L1, scales="free_y")
-    }
+    # if(!is.na(v2)){
+    #     plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")
+    # }else{
+    #     plot <- plot + facet_wrap(~L1, scales="free_y")
+    # }
 
-    plot <- plot + ggh4x::facetted_pos_scales(
-            y = list(
-                scale_y_continuous(limits=c(0, 60)),
-                scale_y_continuous(limits=c(0, 60)),
-                scale_y_continuous(limits=c(0, 50)),
-                scale_y_continuous(limits=c(0.5, 1.5))
-            )
-        )
+    if(!is.na(v2) && is.na(v3)){
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + ggh4x::facet_nested(.data[[v2]] + .data[[v1]] ~ .data[[v3]])+guides(fill="none")
+    }
 
     return(plot+custom_theme)
 }
