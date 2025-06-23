@@ -15,10 +15,45 @@ resample_recruits <- function(hist_recruits, nyears, seed){
     return(sample(hist_recruits, size=nyears, replace=TRUE))
 }
 
+#' Resample recruitment from historical spatial recruits timeseries
+#'
+#' Resample, with replacement, from the historical recruitment timeseries.
+#'
+#' @param hist_recruits historical timeseries of recruitment (or deviates)
+#' @param nyears total number of years to resample
+#' @param seed random seed for reproducability
+#'
+#' @export resample_recruits_spatial
+#'
+#' @example
+#'
 resample_recruits_spatial <- function(hist_recruits, nyears, seed){
     set.seed(seed)
     idx <- sample(1:nrow(hist_recruits), size=nyears, replace=TRUE)
     return(hist_recruits[idx,])
+}
+
+#' Generate Random Spatial Recruitment matrix
+#' 
+#' Use a mutilvariate normal distribution to generate a random vector/matrix
+#' of spatial recruitment events, while preserving historical correlations
+#' and covariances through a variance-covariance matrix.
+#'
+#' @param nyears total number of years to simulate
+#' @param seed random seed for reproducability
+#'
+#' @export multivariate_recruits
+#'
+#' @example
+#'
+multivariate_recruits <- function(nyears, seed){
+    set.seed(seed)
+    sdrep <- readRDS(file.path(here::here(), "data", "sabietmb_rep.RDS"))
+    recdevs <- array(sdrep$par.fixed[names(sdrep$par.fixed) == 'ln_RecDevs'], dim = c(5,62))
+    recdevs <- recdevs[,15:62] 
+    varcovar <- cov(t(recdevs))
+    samples <- exp(mvtnorm::rmvnorm(nyears, rep(0,5), sigma = varcovar))
+    return(samples)
 }
 
 #' Regime-like recruitment
@@ -188,3 +223,27 @@ resample_recruit_apportionment <- function(hist_recruits){
     props <- t(apply(hist_recruits, 1, function(x) x/sum(x)))
     return(props[idx,])
 }
+
+#' Generate Random Spatial Recruitment Apportionment matrix
+#' 
+#' Use a mutilvariate normal distribution to generate a random vector/matrix
+#' of spatial recruitment apportionment, while preserving historical correlations
+#' and covariances through a variance-covariance matrix.
+#'
+#' @param nyears total number of years to simulate
+#' @param seed random seed for reproducability
+#'
+#' @export multivariate_recruit_apportionment
+#'
+#' @example
+#'
+multivariate_recruit_apportionment <- function(nyears, seed){
+    set.seed(seed)
+    sdrep <- readRDS(file.path(here::here(), "data", "sabietmb_rep.RDS"))
+    recdevs <- array(sdrep$par.fixed[names(sdrep$par.fixed) == 'ln_RecDevs'], dim = c(5,62))
+    recdevs <- recdevs[,15:62] 
+    varcovar <- cov(t(recdevs))
+    samples <- exp(mvtnorm::rmvnorm(nyears, rep(0,5), sigma = varcovar))
+    return(t(apply(samples, 1, function(x) x/sum(x))))
+}
+
