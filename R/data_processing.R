@@ -35,11 +35,11 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
             drop_na() %>%
             # join WAA and maturity-at-age for computing SSB
             left_join(
-                melt(dem_params$waa, value.name="weight"), 
+                melt(dem_params$waa, value.name="weight"),
                 by=c("time", "age", "sex", "region")
             ) %>%
             left_join(
-                melt(dem_params$mat, value.name="maturity"), 
+                melt(dem_params$mat, value.name="maturity"),
                 by=c("time", "age", "sex", "region")
             ) %>%
             drop_na() %>%
