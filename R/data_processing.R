@@ -209,12 +209,16 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
                 as_tibble() %>%
-                filter(hcr %in% hcr_filter, om %in% om_filter) %>%
+                filter_hcr_om(hcrs=hcr_filter, oms=om_filter) %>%
                 drop_na() %>%
                 select(cols) %>%
                 pivot_wider(names_from=L1, values_from=value) %>%
                 # mutate(attainment = exp_land/tac) %>%
-                pivot_longer(abc:exp_land, names_to="L1", values_to="value") 
+                pivot_longer(abc:exp_land, names_to="L1", values_to="value") %>%
+                mutate(
+                    om = factor(om, levels=om_filter),
+                    hcr = factor(hcr, levels=hcr_filter)
+                )
 
     return(mgmt)
 }
