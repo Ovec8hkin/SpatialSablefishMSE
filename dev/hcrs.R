@@ -281,7 +281,32 @@ mp_10perc$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
-        max_stability = 0.10,
+        max_stability = array(0.10, dim=c(1, 2)),
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp_10perc_regional <- mp_base
+mp_10perc_regional$name <- "F40 +/- 10% Regional"
+mp_10perc_regional$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = array(rep(0.10, 5), dim=c(5, 2)), # 10% up and down for each region
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp_10perc_regflt <- mp_base
+mp_10perc_regflt$name <- "F40 +/- 10% Fleet"
+mp_10perc_regflt$hcr <- list(
+    func = tier3,
+    extra_pars = NA,
+    extra_options = list(
+        # 10% up and down for Fixed Gear in each region, no constraint for Trawl
+        max_stability = aperm(array(matrix(c(0.1, 1.0)), dim=c(2, 2, 5)), c(3, 1, 2)), 
         harvest_cap = NA
     ),
     units = "F"
