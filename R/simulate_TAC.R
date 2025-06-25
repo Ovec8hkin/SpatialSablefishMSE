@@ -30,20 +30,31 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     ## all stability constraints and harvest caps
     abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
 
-    # Implements symmetric stability constraints
-    if(!all(is.na(hcr_options$max_stability)) & !is.na(hist_abc)){
-        if(length(hcr_options$max_stability) == 1){
-            hcr_options$max_stability <- rep(hcr_options$max_stability, 2)
-        }
-        max_abc <- hist_abc*(1+hcr_options$max_stability[2])
-        min_abc <- hist_abc*(1-hcr_options$max_stability[1])
-        if(abc > max_abc){
-            abc <- max_abc
-        }else if(abc < min_abc){
-            abc <- min_abc
+    model_dims <- afscOM::get_model_dimensions(dem_params$sel)
+    # model_dims <- dim(dem_params$movement)
+    # nregions <- if(model_dims$nregions
+    nregions <- ifelse(!is.null(dem_params$movement), dim(dem_params$movement)[1], 1)
+    nfleets <- model_dims$nfleets
+
+    # A single value of max stability provided. Assuming it applies
+    # at the global ABC level.
+    if(nrow(hcr_options$max_stability)==1 && !all(is.na(hcr_options$max_stability)) && !all(is.na(hist_abc))){
+        # Implements symmetric stability constraints
+        if(TRUE){
+            # if(length(hcr_options$max_stability) == 1){
+            #     hcr_options$max_stability <- rep(hcr_options$max_stability, 2)
+            # }
+            hist_abc2 <- sum(hist_abc) # sum historical ABCs across all regions and fleets
+            max_abc <- hist_abc2*(1+hcr_options$max_stability[2])
+            min_abc <- hist_abc2*(1-hcr_options$max_stability[1])
+            if(abc > max_abc){
+                abc <- max_abc
+            }else if(abc < min_abc){
+                abc <- min_abc
+            }
         }
     }
-
+    
     # Implements a maximum tac cap
     if(!is.na(hcr_options$harvest_cap)){
         abc <- ifelse(abc > hcr_options$harvest_cap, hcr_options$harvest_cap, abc)
@@ -53,9 +64,49 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     ## apportionment scheme
     abc_reg <- abc*options$abc_region_apportionment
 
+    # A nregions x 2 matrix of max stability provided. Assuming it applies at the
+    # regional ABC level.
+    if(nrow(hcr_options$max_stability) == nregions & length(dim(hcr_options$max_stability)) == 2 && !all(is.na(hcr_options$max_stability)) && !all(is.na(hist_abc))){
+        if(TRUE){
+            # hist_abc2 <- sum(hist_abc) # sum historical ABCs across all regions and fleets
+            abc_reg <- sapply(abc_reg, function(a){
+                max_abc <- a*(1+hcr_options$max_stability[2])
+                min_abc <- a*(1-hcr_options$max_stability[1])
+                if(abc > max_abc){
+                    abc <- max_abc
+                }else if(abc < min_abc){
+                    abc <- min_abc
+                }
+            })
+
+        } 
+    }
+
     ## 3. Allocate regional ABCs to fleets within regions based
     ## on supplied region-fleet splits
     abc_regflt <- abc_reg*options$abc_regflt_apportionment
+
+    # A nregions x nfleets x 2 matrix of max stability provided. Assuming it applies at the
+    # region-fleet ABC level.
+    if(nrow(hcr_options$max_stability) == nregions & ncol(hcr_options$max_stability) == nfleets & length(dim(hcr_options$max_stability)) == 3 && !all(is.na(hcr_options$max_stability)) && !all(is.na(hist_abc))){
+        if(TRUE){
+            # hist_abc2 <- sum(hist_abc) # sum historical ABCs across all regions and fleets
+            adj_abc_regflt <- abc_regflt
+            abc_regflt <- t(apply(matrix(1:nregions), 1, function(r){
+                a <- hist_abc[r,]
+                abc <- abc_regflt[r,]
+                max_abc <- a*(1+hcr_options$max_stability[r,,2])
+                min_abc <- a*(1-hcr_options$max_stability[r,,1])
+                if(any(abc_regflt[r,] > max_abc)){
+                    abc[which(abc_regflt[r,] > max_abc)] <- max_abc[which(abc_regflt[r,] > max_abc)]
+                }else if(any(abc_regflt[r,] < min_abc)){
+                    abc[which(abc_regflt[r,] < min_abc)] <- min_abc[which(abc_regflt[r,] < min_abc)]
+                }
+                adj_abc_regflt[r,] <- abc
+            }))
+
+        } 
+    }
 
     ## 4. Allow for TAC to differ from ABC based on supplied
     ## values.
