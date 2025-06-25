@@ -217,7 +217,7 @@ get_saved_model_runs_old <- function(om_order=NULL, hcr_order=NULL){
 #'
 get_saved_model_runs <- function(om_order=NULL, hcr_order=NULL){
     fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
-    fs <- sapply(hcr_order, \(x) fs[grepl(sub("/", "", sub(" ", "_", tolower(x))), fs)])
+    fs <- unlist(sapply(hcr_order, \(x) fs[grepl(sub("/", "", sub(" ", "_", tolower(x))), fs)]))
     model_runs <- lapply(seq_along(fs), function(i){
         x <- fs[i]
         m <- readRDS(x)
