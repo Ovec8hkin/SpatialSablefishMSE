@@ -15,6 +15,19 @@
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
+
+    dem_params$waa <- array(
+        dem_params$waa[,,,1], 
+        dim=c(dim(dem_params$waa)[1:3], dim(dem_params$waa)[4]+1),
+        dimnames=c(dimnames(dem_params$waa)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
+    )
+
+    dem_params$mat <- array(
+        dem_params$mat[,,,1], 
+        dim=c(dim(dem_params$mat)[1:3], dim(dem_params$mat)[4]+1),
+        dimnames=c(dimnames(dem_params$mat)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
+    )
+
     return(
         bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
             as_tibble() %>%
