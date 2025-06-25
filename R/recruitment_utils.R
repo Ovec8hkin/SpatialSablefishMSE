@@ -218,7 +218,8 @@ retro_recruitment <- function(hist_recruits, nyears, seed, sim_func, ...){
 }
 
 # Apportionment schemes
-resample_recruit_apportionment <- function(hist_recruits){
+resample_recruit_apportionment <- function(hist_recruits, seed){
+    set.seed(seed)
     idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
     props <- t(apply(hist_recruits, 1, function(x) x/sum(x)))
     return(props[idx,])
@@ -237,13 +238,13 @@ resample_recruit_apportionment <- function(hist_recruits){
 #'
 #' @example
 #'
-multivariate_recruit_apportionment <- function(nyears, seed){
+multivariate_recruit_apportionment <- function(seed){
     set.seed(seed)
     sdrep <- readRDS(file.path(here::here(), "data", "sabietmb_rep.RDS"))
     recdevs <- array(sdrep$par.fixed[names(sdrep$par.fixed) == 'ln_RecDevs'], dim = c(5,62))
     recdevs <- recdevs[,15:62] 
     varcovar <- cov(t(recdevs))
-    samples <- exp(mvtnorm::rmvnorm(nyears, rep(0,5), sigma = varcovar))
+    samples <- exp(mvtnorm::rmvnorm(1, rep(0,5), sigma = varcovar))
     return(t(apply(samples, 1, function(x) x/sum(x))))
 }
 
