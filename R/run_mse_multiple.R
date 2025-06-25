@@ -50,7 +50,10 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, nye
             mse_run <- run_mse_parallel(nsims2, seeds, om, hcr, mse_options=opt, nyears=nyears, diagnostics=diagnostics)
             
             counter <- counter+1
-            mse_objects[[j]] <- mse_run
+
+            z <- ifelse(!save && nsim_iters==1, i, j)
+
+            mse_objects[[z]] <- mse_run
 
             print(save)
             if(save || nsim_iters>1){
