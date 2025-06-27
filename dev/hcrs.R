@@ -146,7 +146,7 @@ regionfleet_tac_utilization <- array(
 mp_base <- setup_mp_options() # get default values
 mp_base$management$abc_regflt_apportionment <- abc_regionfleet_allocation
 mp_base$management$abc_tac_regflt_reduction <- array(1, dim=c(5, 2), dimnames=dimnames(abc_regionfleet_allocation))
-mp_base$management$regflt_tac_utilization <- array(1, dim=c(5, 2), dimnames=dimnames(abc_regionfleet_allocation))
+mp_base$management$regflt_tac_utilization <- average_regflt_tac_utilization
 mp_base$apportionment$func <- rpw_moving_average
 mp_base$apportionment$pars <- list(window_size=5)
 
