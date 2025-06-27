@@ -70,9 +70,7 @@ generate_aggregated_comp <- function(ac, weight_type, selex, weights, total_samp
     return(agg_comp)
 }
 
-om_to_spock <- function(x){
-    return(aperm(x, perm=c(4, 1, 2, 3)))
-}
+
 
 #' 1. Set up the OM by defining demographic parameters
 #' model options (such as options governing the observation
@@ -118,7 +116,7 @@ for(s in 1:nsims){
         seed=seeds[s]
     )
 
-    rISS <- get_rISS(nyears, nsamples=10, weight_type = 1, om, model_runs)
+    # rISS <- get_rISS(nyears, nsamples=10, weight_type = 1, om, model_runs)
 
     model_dimensions <- afscOM::get_model_dimensions(om$dem_params$sel)
 
@@ -127,19 +125,23 @@ for(s in 1:nsims){
     for(i in 1:nyears){
         aggregated_acs[i,,,,] <- aggregate_comps(i, nfleets=4, weight_type = 1)
     }
-    
     aggregated_survey_obs$acs <- aggregated_acs
 
+    rISS <- sapply(1:4, function(f){
+        if(f > 2){
+            sel <- subset_matrix(om$dem_params$surv_sel[1:(nyears+1),,,,,drop=FALSE], f-2, 5, drop=TRUE)
+        }else{
+            sel <- subset_matrix(om$dem_params$sel[1:(nyears+1),,,,,drop=FALSE], f, 5, drop=TRUE)
+        }
+        calculate_realized_samplesize(
+            ac_obs = aggregated_survey_obs$acs[,,,,f,drop=FALSE],
+            naa = model_runs$naa,
+            selex=sel
+        )
+    })
 
 
-
-
-
-
-
-
-
-    input_list <- generate_RTMB_inputs(nyears, om, model_runs, aggregated_survey_obs, rISS)
+    input_list <- generate_RTMB_inputs(nyears, om, model_runs, aggregated_survey_obs, r_ISS = rISS)
 
     data <- input_list$data
     parameters <- input_list$par
@@ -170,7 +172,7 @@ sd <- RTMB::sdreport(sabie_rtmb_model)
 
 
 
-get_rISS <- function(nyears, nsamples, weight_type, om, model_runs, obs){
+get_rISS <- function(nyears, nsamples, weight_type, om, model_runs){
     age_comp_obs <- array(NA, dim=c(nyears, 30, 2, 1, 4, nsamples))
     r_sampsize <- array(NA, dim=c(nyears, 4, nsamples))
     for(s in 1:nsamples){
