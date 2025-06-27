@@ -177,36 +177,66 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
     return(plot)
 }
 
-plot_recruitment <- function(data, v1="hcr", v2=NA, show_est=FALSE, common_trajectory=64){
+plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "rec")]
 
-    r <- data %>%
+    r <- data
+    if(is.na(v3)){
+        group_columns <- group_columns[group_columns != "region"]
+        r <- r %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(rec=sum(rec))
+        mean_rec <- r %>% filter(time > common_trajectory, L1=="naa") %>%
+            group_by(om) %>%
+            summarise(
+                rec = mean(rec, na.rm=TRUE)
+            )
+    }else{
+        mean_rec <- r %>% filter(time > common_trajectory, L1=="naa") %>%
+            group_by(om, region) %>%
+            summarise(
+                rec = mean(rec, na.rm=TRUE)
+            )
+    }
+
+    r <- r %>%
         # summarise SSB across year and sim 
         group_by(across(all_of(group_columns))) %>%
         median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
 
-    mean_rec <- r %>% pull(median) %>% mean
+    hcr1 <- as.character((r %>% pull(hcr) %>% unique)[1])
+
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- r %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- r %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+
+    base_hcr_d <- r %>% filter(L1 == "naa", hcr == base_hcr)
+
+    max_year <- r %>% pull(time) %>% max
 
     plot <- ggplot(r %>% filter(L1 == "naa")) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.4)+
-        # geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)+
-        geom_hline(yintercept = mean_rec, linetype="dashed") + 
+        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed") + 
+        geom_text(data=mean_rec, aes(x=max_year*0.85, y=70, label=round(rec, 2)), size=5)+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(limits=c(0, 120))+
+        scale_y_continuous(name="Recruits (millions)", limits=c(0, 75))+
         coord_cartesian(expand=0)
 
     if(show_est){
         plot <- plot + geom_pointrange(data = f %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
     }
 
-    if(!is.na(v2)){
-        plot <- plot + facet_wrap(~.data[[v2]])
+    if(!is.na(v2) && is.na(v3)){
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=64, base_hcr="F40"){
