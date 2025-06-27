@@ -51,3 +51,6 @@ rsconnect/
 
 # Intermediate TMB DLL files
 inst/*.*o
+
+# Figures directory
+figures/*
