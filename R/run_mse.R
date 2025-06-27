@@ -43,6 +43,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
    
     # Load OM parameters into global environment
     list2env(om, env=environment())
+    model_options$recruit_apportionment_pars <- c(model_options$recruit_apportionment_pars, list(seed=seed))
 
     # Load OM dimensions into global environment
     list2env(afscOM::get_model_dimensions(dem_params$sel), env=environment())
