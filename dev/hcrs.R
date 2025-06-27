@@ -276,7 +276,7 @@ mp_5perc$hcr <- list(
 )
 
 mp_10perc <- mp_base
-mp_10perc$name <- "F40 +/- 10%"
+mp_10perc$name <- "F40 Global 10% Stability"
 mp_10perc$hcr <- list(
     func = tier3,
     extra_pars = NA,
@@ -288,7 +288,7 @@ mp_10perc$hcr <- list(
 )
 
 mp_10perc_regional <- mp_base
-mp_10perc_regional$name <- "F40 +/- 10% Regional"
+mp_10perc_regional$name <- "F40 Regional 10% Stability"
 mp_10perc_regional$hcr <- list(
     func = tier3,
     extra_pars = NA,
@@ -300,7 +300,7 @@ mp_10perc_regional$hcr <- list(
 )
 
 mp_10perc_regflt <- mp_base
-mp_10perc_regflt$name <- "F40 +/- 10% Fleet"
+mp_10perc_regflt$name <- "F40 Fleet 10% Stability"
 mp_10perc_regflt$hcr <- list(
     func = tier3,
     extra_pars = NA,
@@ -518,6 +518,34 @@ mp_f00chr$hcr <- list(
     units = "TAC"
 )
 mp_f00chr$ref_points$spr_target <- c(1, 0.001)
+
+
+mp_f10chr <- mp_base
+mp_f10chr$name <- "Constant F10"
+mp_f10chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+mp_f10chr$ref_points$spr_target <- c(0.10, 0.001)
+
+
+mp_f90chr <- mp_base
+mp_f90chr$name <- "Consatant F90"
+mp_f90chr$hcr <- list(
+    func = chr,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+mp_f90chr$ref_points$spr_target <- c(0.90, 0.001)
 
 #'
 #' Other HCRs
