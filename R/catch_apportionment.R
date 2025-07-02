@@ -4,3 +4,7 @@ rpw_moving_average <- function(survey_obs, y, window_size=5){
     app <- t(apply(roll, 1, \(x) x/sum(x)))
     return(app[nrow(app),])
 }
+
+fixed_apportionment <- function(app, ...){
+    return(app)
+}
