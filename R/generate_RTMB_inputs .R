@@ -15,7 +15,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     input_list <- SPoCK::Setup_Mod_Rec(
         input_list = input_list,
         do_rec_bias_ramp = 1,
-        bias_year = c(length(1960:1979), length(1960:1989), (length(1960:2023) - 5), length(1960:2024) - 2) + 1,
+        bias_year = c(length(1960:1979), length(1960:1989), (length(1960:(1960+nyears-1)) - 5), length(1960:(1960+nyears)) - 2) + 1,
         sigmaR_switch = as.integer(length(1960:1975)), 
         dont_est_recdev_last = 1, 
         ln_sigmaR = log(c(0.4, 1.2)),
@@ -23,7 +23,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         sigmaR_spec = "fix_early_est_late", 
         sexratio = as.vector(c(0.5, 0.5)), 
         init_age_strc = 1,
-        init_F_prop = 0.1
+        init_F_prop = 0
     )
 
     # Biologicals
@@ -78,7 +78,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         # Model options
         Use_F_pen = 1,
         sigmaC_spec = 'fix',
-        Catch_Constant = c(0.01, 0.8)
+        Catch_Constant = c(0, 0)#c(0.01, 0.8)
     )
 
     ### Fishery Index and Composition Data ---------------------
@@ -130,8 +130,11 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     ObsSrvIdx[,,2] <- aggregated_survey_obs$rpns[,1,1,1,2] # Trawl survey
 
     ObsSrvIdx_SE <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
-    ObsSrvIdx_SE[,,1] <- model_options$obs_pars$rpn_cv[3]*ObsSrvIdx[,,1]
-    ObsSrvIdx_SE[,,2] <- model_options$obs_pars$rpw_cv[4]*ObsSrvIdx[,,2]
+    n=1000
+    rpn1_idx <- apply(sapply(ObsSrvIdx[,,1], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[3], n=n)), 2, sd)/sqrt(n)
+    rpn2_idx <- apply(sapply(ObsSrvIdx[,,2], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[4], n=n)), 2, sd)/sqrt(n)
+    ObsSrvIdx_SE[,,1] <- rpn1_idx #model_options$obs_pars$rpn_cv[3]*ObsSrvIdx[,,1]
+    ObsSrvIdx_SE[,,2] <- rpn2_idx #model_options$obs_pars$rpw_cv[4]*ObsSrvIdx[,,2]
 
     UseSrvIdx <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
 
@@ -230,30 +233,33 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     ### Model Weighting -----------------------------------
     Wt_FishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
-    Wt_FishAgeComps[,,1,1] <- 1.018256
-    Wt_FishAgeComps[,,1,2] <- 0.6406668
+    Wt_FishAgeComps[,,1,1] <- 1 #1.018256
+    Wt_FishAgeComps[,,1,2] <- 1 #0.6406668
 
     Wt_FishLenComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
     Wt_SrvAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_srv_fleets))
-    Wt_SrvAgeComps[,,1,1] <- 1.072216
-    Wt_SrvAgeComps[,,1,2] <- 1.749187
+    Wt_SrvAgeComps[,,1,1] <- 1 #1.072216
+    Wt_SrvAgeComps[,,1,2] <- 1 #1.749187
 
     Wt_SrvLenComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_srv_fleets))
 
     input_list <- SPoCK::Setup_Mod_Weighting(
         input_list = input_list,
-        sablefish_ADMB = 1,
-        likelihoods = 0,
-        Wt_Catch = 50,
+        sablefish_ADMB = 0,
+        likelihoods = 1,
+        Wt_Catch = 1, #50,
         Wt_FishIdx = 0,
-        Wt_SrvIdx = 5,
-        Wt_Rec = 1.5,
-        Wt_F = 0.1,
+        Wt_SrvIdx = 1, #5,
+        Wt_Rec = 1, #1.5,
+        Wt_F = 1, #0.1,
         Wt_FishAgeComps = Wt_FishAgeComps,
         Wt_FishLenComps = Wt_FishLenComps,
         Wt_SrvAgeComps = Wt_SrvAgeComps,
         Wt_SrvLenComps = Wt_SrvLenComps
     )
+
+    ### Extra Parameter Setting ---------------------------
+    input_list$parameters$ln_sigmaC - array(0.02, dim=c(2, 1))
 
     ### Mapping -------------------------------------------
     input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
