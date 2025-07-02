@@ -1,7 +1,7 @@
 library(tidyverse)
 
 historical_data <- read_csv(
-    file.path("~/Desktop", "sablefish_historical_regional_TACs.csv")
+    file.path("data", "sablefish_historical_regional_TACs.csv")
 )
 
 historical_data_long <- historical_data %>% slice(c(2, 3, 6, 8, 9)) %>%
@@ -309,3 +309,27 @@ cov(hist_recruits)
 apply(t(apply(hist_recruits, 1, \(x) x/sum(x))), 2, mean)
 
 cor(hist_recruits)
+
+
+historical_data %>% slice(c(2, 3, 6, 8, 9, 10)) %>%
+    setNames(c("Region", paste0(rep(c(2024:1986), each=3), "_", rep(c("OFL", "ABC", "TAC"), 3)))) %>%
+    mutate(Region=ifelse(is.na(Region), "AK", Region)) %>%
+    pivot_longer(
+        2:ncol(.), 
+        names_to="quantity",
+        values_to="value"
+    ) %>%
+    separate(
+        quantity, 
+        into=c("Year", "quantity"), 
+        sep="_"
+    ) %>%
+    mutate(
+        value = as.numeric(gsub(",", "", value)),
+        Year = as.integer(Year),
+        quantity = factor(quantity, levels=c("OFL", "ABC", "TAC"), ordered=TRUE),
+        Region = factor(Region, levels=c("BS", "AI", "WGOA", "CGOA", 'EGOA', "AK"))
+    ) %>%
+    arrange(Year, Region, quantity) %>%
+    filter(Region == "AK", quantity == "ABC", Year > 2014) %>%
+    pull(value) %>% summary
