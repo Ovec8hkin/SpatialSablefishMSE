@@ -118,7 +118,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         # global_rec_devs[1:(mse_options$n_proj_years+1), 1, 1, 1] <- rec_devs
     }
 
-    for(y in 1:53){
+    for(y in 1:nyears_input){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
         dp_y <- afscOM::subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)
