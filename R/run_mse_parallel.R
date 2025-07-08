@@ -1,4 +1,17 @@
-run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnostics=FALSE, ...){
+#' Run Multiple MSE Simulations in Parallel
+#' 
+#' @param nsims number of simulations to run
+#' @param seeds simulation seeds to use
+#' @param om operating model object
+#' @param hcr management procedure object
+#' @param mse_options MSE options object
+#' @param diagnostics whether to return EM model objects for diagnostic testing
+#' 
+#' @return list of MSE outputs (NAA, CAA, FAA, etc.)
+#' 
+#' @export run_mse_parallel
+#' 
+run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FALSE, ...){
 
     outputs <- setup_output_arrays(mse_options$n_proj_years+mse_options$n_spinup_years, nsims, seeds, mse_options$n_spinup_years)
 
@@ -6,7 +19,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
     cl <- parallel::makeCluster(cores, outfile="")
     registerDoParallel(cl)
 
-    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, nyears, seeds, options){
+    out <- pbapply::pblapply(1:nsims, function(s, om, hcr, seeds, options){
         suppressMessages({
             library(tidyverse)
             library(TMB)
@@ -19,10 +32,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, nyears, diagnos
         })
         
         seed <- seeds[s]
-        mse <- run_mse(om=om, mp=hcr, mse_options=options, nyears_input=nyears, seed=seed, file_suffix = seed)
+        mse <- run_mse(om=om, mp=hcr, mse_options=options, seed=seed, file_suffix = seed)
         return(mse)
 
-    }, om=om, hcr=hcr, nyears=nyears, seeds=seeds, options=mse_options, cl=cl)
+    }, om=om, hcr=hcr, seeds=seeds, options=mse_options, cl=cl)
 
     parallel::stopCluster(cl)
 

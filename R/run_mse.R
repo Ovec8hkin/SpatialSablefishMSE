@@ -7,20 +7,12 @@
 #' list object specifying recruitment, and a list of model_options).
 #' @param mp a list object specifying the management procedure to be applied during
 #' the projection period
-#' @param ... parameters to pass to the `hcr` function
-#' @param run_estimation whether to run the estimation procedure or not. If FALSE, 
-#' management procedures will use OM outputs rather than EM estimates to compute
-#' future harvest from the management procedure function.
-#' @param nyears_input number of years to simulate forward (will override the dimensions
-#' of the demagraphic parameters matrices defined in the OM)
-#' @param spinup_years number of years before estimation process should begin
+#' @param mse_options a list object specified MSE options
 #' @param seed random seed
 #'
 #' @export run_mse
 #'
-#' @example
-#'
-run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix=""){
+run_mse <- function(om, mp, mse_options, seed=1120){
    
     spinup_years <- mse_options$n_spinup_years
     nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
@@ -126,7 +118,7 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         # global_rec_devs[1:(mse_options$n_proj_years+1), 1, 1, 1] <- rec_devs
     }
 
-    for(y in 1:nyears_input){
+    for(y in 1:53){
         # Subset the demographic parameters list to only the current year
         # and DO NOT drop lost dimensions.
         dp_y <- afscOM::subset_dem_params(dem_params = dem_params, y, d=1, drop=FALSE)

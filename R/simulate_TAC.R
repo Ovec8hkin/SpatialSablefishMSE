@@ -10,13 +10,13 @@
 #' @param hcr_F fishing mortality rate identified by HCR
 #' @param naa numbers-at-age vector (dimensions [1, nages, nsexes, nregions])
 #' @param recruitment projected recruitment in next year
-#' @param join_sel joint fishery selectivity
+#' @param joint_sel joint fishery selectivity
 #' @param dem_params demographic parameter matrices subsetted to 1 year
-#' @param hist_tac TAC from the previous year
+#' @param hist_abc ABC from the previous year [1, nregions, nfleets]
 #' @param hcr_options list of additional management options such as stability
 #' constraints and harvest caps
 #' @param options list of additional ABC/TAC simulation options such as ABC-TAC
-#' reduction levels and attainment functions.
+#' reduction levels, utilization functions, or regional ABC apportionment methods.
 #'
 #' @export simulate_TAC
 #'
@@ -112,21 +112,10 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     ## values.
     tac_regflt <- tac <- abc_regflt * options$abc_tac_regflt_reduction
     
-    # if(!is.list(options$abc_tac_reduction)){
-    #     tac <- abc_regflt * options$abc_tac_regflt_reduction
-    # }else{
-    #     tac <- abc*do.call(options$abc_tac_reduction$func, c(list(v=abc, naa=proj_N_new$naa), options$abc_tac_reduction$pars))
-    # }
 
     ## 6. Allow for region-fleet specific TAC utilizations based
     ## on supplied values.
     land_regflt <- tac_regflt * options$regflt_tac_utilization
-
-    # if(!is.list(options$tac_land_reduction)){
-    #     land <- tac * options$tac_land_reduction
-    # }else{
-    #     land <- tac*do.call(options$tac_land_reduction$func, c(list(v=tac), options$tac_land_reduction$pars))
-    # }
     
     # abc, tac, land are now all of dimensions [1, nages, nsexes, nregions, nfleets]
 

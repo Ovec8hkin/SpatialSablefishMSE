@@ -115,7 +115,7 @@ filter_times <- function(data, time_horizon){
 #' @param oms vector of OM names to retain in the data
 #' 
 #' @export filter_hcr_om 
-
+#'
 filter_hcr_om <- function(data, hcrs, oms){
     return(
         data %>% filter(hcr %in% hcrs, om %in% oms)

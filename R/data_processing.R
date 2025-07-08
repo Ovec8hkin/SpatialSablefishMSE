@@ -3,15 +3,13 @@
 #' Process MSE simulations for spawning biomass,
 #' and total stock biomass.
 #'
-#' @param model_runs list of completed MSE simualtion objects
+#' @param model_runs list of completed MSE simualation objects
 #' @param extra_columns additional columns to append to output
 #' @param dem_params demographic parameter matrix
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_ssb_biomass
-#'
-#' @example
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
@@ -66,16 +64,15 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
 #' Get Annual Fishing Mortality
 #' 
 #' Process MSE simulations for fishing mortality by fleet.
-#' Total fishing mortality across fleets is alsoc computed.
+#' Total fishing mortality across fleets is also computed as the
+#' sum of fleet-specific fishing mortality.
 #'
-#' @param model_runs list of completed MSE simualtion objects
+#' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_fishing_mortalities
-#'
-#' @example
 #'
 get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
@@ -108,14 +105,12 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
 #' 
 #' Process MSE simulations for annual recruits.
 #'
-#' @param model_runs list of completed MSE simualtion objects
+#' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_recruits
-#'
-#' @example
 #'
 get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "sim", "L1", names(extra_columns))
@@ -137,16 +132,14 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' Get Landed Catches
 #' 
 #' Process MSE simulations for landed catches by fleet.
-#' Total landed catch across fleets is alsoc computed.
+#' Total landed catch across fleets is also ccomputed.
 #'
-#' @param model_runs list of completed MSE simualtion objects
+#' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
 #' @export get_landed_catch
-#'
-#' @example
 #'
 get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
@@ -177,9 +170,8 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' Get ABC, TAC, and Expected Landings
 #' 
 #' Process MSE simulations for ABC, TAC, and expected 
-#' landings quantities. Historical ABCs, TACs, and landings
-#' appendded to begining of output data.frame, and are from
-#' Goethel et al. 2023.
+#' landings quantities. Historical ABCs, TACs, and landings (e.g., from the
+#' conditioning period) are not available.
 #'
 #' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
@@ -189,23 +181,8 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @export get_management_quantities
 #'
-#' @example
-#'
 get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=64){
     cols <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
-
-    # hist_abcs <- c(44200, 37100, 33400, 28800, 25200, 25000, 28800, 25300, 19600, 17200, 16800, 15900, 17200, 16900, 17300, 20900, 23000, 21000, 21000, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 22000, 29600, 34500, 40500)
-    # hist_tacs <- c(18000, 19300, 17300, 14500, 14800, 13500, 21400, 27700, 36400, 32200, 33200, 28800, 25200, 25000, 28800, 25300, 19400, 16800, 16800, 15400, 17200, 16900, 17300, 20900, 22600, 21000, 20700, 20100, 18000, 16100, 15200, 16000, 17200, 16200, 13700, 13700, 11800, 13100, 15000, 15100, 18300, 26100, 34500, 39600)
-    # hist_land <- c(10400, 12600, 12000, 11800, 14100, 14500, 28900, 35200, 38400, 34800, 30200, 26400, 23900, 25400, 23600, 20700, 17400, 14600, 13900, 13600, 15600, 14100, 14700, 16400, 17500, 16600, 15600, 16000, 14600, 13100, 11900, 13000, 13900, 13600, 11500, 10900, 10200, 12300, 14200, 16600, 19000, 21300, 26900, 20400)
-    # historical_management <- data.frame(
-    #     time = (1980:2023)-1960+1,
-    #     abc = c(rep(NA, length(hist_tacs) - length(hist_abcs)), hist_abcs/1000),
-    #     tac = c(rep(NA, length(hist_tacs) - length(hist_tacs)), hist_tacs/1000),
-    #     exp_land = c(rep(NA, length(hist_tacs) - length(hist_land)), hist_land/1000)
-    # ) %>% as_tibble() %>%
-    # filter(time <= spinup_years) %>%
-    # mutate(attainment = exp_land/tac) %>%
-    # pivot_longer(abc:attainment, names_to="L1", values_to="value")
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
                 as_tibble() %>%
@@ -213,7 +190,6 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
                 drop_na() %>%
                 select(cols) %>%
                 pivot_wider(names_from=L1, values_from=value) %>%
-                # mutate(attainment = exp_land/tac) %>%
                 pivot_longer(abc:exp_land, names_to="L1", values_to="value") %>%
                 mutate(
                     om = factor(om, levels=om_filter),
@@ -257,8 +233,6 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
 #' @param make_segments whether to generate data.frame of segment for use in plotting 
 #'
 #' @export get_atage_groups
-#'
-#' @example
 #'
 get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
     data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
@@ -313,9 +287,6 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #' 
 #' Derive fishing mortality and biomass reference points
 #' from completed MSE simulations.
-#' 
-#' Note that this function hasn't been tested when multiple
-#' MSE simulations are present in the `model_runs` list.
 #'
 #' @param model_runs list of completed MSE simulations
 #' @param extra_columns additional columns that should be
@@ -325,8 +296,6 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #' @param seed_list simulation seeds used in `model_runs`
 #'
 #' @export get_reference_points
-#'
-#' @example
 #'
 get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list){
 
@@ -405,16 +374,47 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 #' appended to the resultant data frame
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#' 
+#' @return timeseries of B40 reference point summarised across simulations
 #'
 #' @export get_b40_timeseries
 #'
-#' @example
-#'
 get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
+    b40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter, om_filter, refpt="Bref", spr_target=0.40)
+
+    b40s <- b40_tseries %>% 
+        group_by(time, om) %>%
+        median_qi(B40, .width=interval_widths)
+
+    return(b40s)
+
+}
+
+
+#' Get Timeseries of Refernce Point from MSE Simulations
+#' 
+#' Derive timeseries of a given reference point from completed MSE
+#' simulations.
+#'
+#' @param model_runs list of completed MSE simulations
+#' @param extra_columns additional columns that should be
+#' appended to the resultant data frame
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#' @param ref_pt the reference point to return (one of "Fmax", "Fref", "Bref", or "B0")
+#' @param spr_target target SPR reference level to compute timeseries of (if "hcr", will calculate
+#' uniquely for each HCR based on the the SPR target reference point defined in the HCR object)
+#' 
+#' @return timeseries of reference point value
+#'
+#' @export get_rp_timeseries
+#'
+get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, ref_pt, spr_target="hcr"){
+
     get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
-        om <- om_list[which(om_names == om_name)]
-        hcr <- hcr_list[which(hcr_names == hcr_name)]
+        om <- om_list[which(om_filter == om_name)]
+        hcr <- hcr_list[which(hcr_filter == hcr_name)]
 
         om <- om[[1]]
 
@@ -424,6 +424,7 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
             ret=om$dem_params$ret[year,,,,,drop=FALSE],
             prop_fs = prop_fs
         )
+
         ref_pts <- calculate_ref_points(
             30,
             om$dem_params$mort[year,,1,1],
@@ -432,18 +433,18 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
             joint_selret$sel[,,1,,drop=FALSE],
             joint_selret$ret[,,1,,drop=FALSE],
             recruitment/2,
-            spr_target = 0.40
+            spr_target = ifelse(spr_target=="hcr", hcr$ref_points$spr_target, spr_target)
         )
-        return(ref_pts$Bref)
+        return(ref_pts[[ref_pt]])
     }
 
-    avg_recruitment <- get_recruits(model_runs, extra_columns2, hcr_filter, om_filter) %>% 
-        filter(L1 == "naa") %>% 
+    avg_recruitment <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter) %>% 
+        filter(L1 == "naa_est") %>% 
         group_by(sim, om, hcr) %>%
-        mutate(avg_rec = unlist(lapply(slide(rec, ~.x, .before=Inf), \(x) mean(x)))) %>%
+        mutate(avg_rec = unlist(lapply(slider::slide(rec, ~.x, .before=Inf), \(x) mean(x)))) %>%
         arrange(hcr, om, sim)
 
-    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns2, hcr_filter, om_filter) %>%
+    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>%
         filter(L1 != "faa_est") %>%
         group_by(time, sim, om, hcr, fleet) %>%
         mutate(
@@ -455,13 +456,13 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
         group_by(time, sim, om, hcr) %>%
         summarise(Fixed = mean(Fixed), Trawl=mean(Trawl))
 
-    b40s <- prop_fs_df %>% 
+    rps <- prop_fs_df %>% 
         left_join(avg_recruitment %>% select(-c(L1)), by=c("time", "sim", "om", "hcr")) %>%
-        mutate(B40 = get_rps(om, hcr, avg_rec, c(Fixed, Trawl))) %>% 
-        group_by(time, om) %>%
-        median_qi(B40, .width=interval_widths)
+        mutate(rp = get_rps(om, hcr, avg_rec, c(Fixed, Trawl))) #%>% 
+        # group_by(time, om) %>%
+        # median_qi(B40, .width=interval_widths)
 
-    return(b40s)
+    return(rps)
 
 }
 

@@ -51,6 +51,14 @@ stairstep_attainment <- function(v, breakpoints, levels, phase_ins){
 
 }
 
+#' Average Region-Fleet TAC Utilization
+#' 
+#' Average Region-Fleet TAC utilization rates from 2000-2020 as derived
+#' from historical regional ABCs, fleet allocations, and region-specific
+#' landings by fleet. See `dev/historical_TAC_analyses.R`.
+#' 
+#' @export average_regflt_tac_utilization
+#' 
 average_regflt_tac_utilization <- array(
     c(0.644, 0.511, 0.947, 1.03, 1.01, 
       0.185, 0.104, 0.293, 0.835, 0.491), # Fixed and Trawl fleets
@@ -61,7 +69,13 @@ average_regflt_tac_utilization <- array(
     )
 )
 
-full_attainment <- array(1, dim=c(5, 2), dimnames=list(
+#' Full TAC Utilization
+#' 
+#' Fully TAC utilization by the fleets within each region
+#' 
+#' @export full_utilization
+#' 
+full_utilization <- array(1, dim=c(5, 2), dimnames=list(
    "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
    "fleet"=c("Fixed", "Trawl")
 ))

@@ -210,14 +210,20 @@ recruits_crash <- function(crash_start_year, crash_length, crash_value, hist_rec
     return(rec)
 }
 
-retro_recruitment <- function(hist_recruits, nyears, seed, sim_func, ...){
-    rec <- rep(NA, nyears)
-    rec[1:length(hist_recruits)] <- hist_recruits
-    rec[(length(hist_recruits)+1):nyears] <- do.call(sim_func, c(list(hist_recruits=hist_recruits), list(nyears=nyears), list(seed=seed), list(...)))#rlnorm(nyears-length(rec[!is.na(rec)]), meanlog=log(15), sdlog=0.20)
-    return(rec)
-}
 
-# Apportionment schemes
+
+### Apportionment schemes -----------------------------
+
+#' Resample from Historical Spatial Recruit Apportionment
+#' 
+#' Resample, with replacement, from the timeseries of historical
+#' regional recruit apportionment.
+#'
+#' @param hist_recruits historical timeseries of recruitment (or deviates)
+#' @param seed random seed for reproducability
+#'
+#' @export resample_recruit_apportionment
+#'
 resample_recruit_apportionment <- function(hist_recruits, seed){
     set.seed(seed)
     idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
@@ -235,8 +241,6 @@ resample_recruit_apportionment <- function(hist_recruits, seed){
 #' @param seed random seed for reproducability
 #'
 #' @export multivariate_recruit_apportionment
-#'
-#' @example
 #'
 multivariate_recruit_apportionment <- function(seed){
     set.seed(seed)

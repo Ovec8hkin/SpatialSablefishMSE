@@ -1,3 +1,16 @@
+#' Generate Data, Parameter, and Mapping Inputs for SPoRK Estimation Model
+#' 
+#' @param nyears number of years data observations
+#' @param dem_params list of demographic parameters
+#' @param agg_land_caa aggregated landed catch at age array [nyears, nages, nsexes, 1, nfleets]
+#' @param aggregated_survey_obs list of aggregated survey observations (indices and age compositions)
+#' @param model_options OM model options
+#' @param r_ISS input sample sizes for age composition data [nyears, nfleets+nsurveys]
+#' 
+#' @returns list of data, parameters, and parameter mappings for SPoRK TMB model
+#' 
+#' @export generate_RTMB_inputs
+#' 
 generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_survey_obs, model_options, r_ISS){
 
     # Model Dimensions
