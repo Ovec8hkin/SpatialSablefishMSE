@@ -13,29 +13,47 @@ aggregate_indices <- function(survey_obs, y){
 
 }
 
+#' Generate Regionally Weighted Aggregated Age Compositions 
+#' 
+#' Create a single-region aggregate age composition from a spatially-explicit
+#' OM. Regional age-compositions are weighted by modifying the ISS to the
+#' random multinomial draw based on the proportion of stock biomass or total
+#' landings in each region. This deviates slightly from the operational method,
+#' where regional weights come from the LL RPW index and CAA in numbers of
+#' inidviduals.
+#' 
+#' @param dem_params list of demographic parameters from the OM [1, nages, nsexes, nregions, nfleets]
+#' @param naa array of numbers at age [1, nages, nsexes, nregions]
+#' @param caa array of catch at age [1, nages, nsexes, nregions
+#' @param obs_pars list of observation parameters from OM
+#' 
+#' @return array of age compositions [1, nages, nsexes, 1, nfleets+surveys]
+#' 
+#' @export generate_aggregate_comps
+#' 
+generate_aggregate_comps <- function(dem_params, naa, caa, obs_pars){
+    nfleets <- dim(dem_params$sel)[5]
+    nsurveys <- dim(dem_params$surv_sel)[5]
 
-generate_aggregate_comps <- function(y, nfleets, weight_type=1){
+    tmp <- array(NA, dim=c(1, 30, 2, 1, nfleets+nsurveys))
 
-    dp_y <- afscOM::subset_dem_params(om$dem_params, y, d=1, drop=FALSE)
+    for(i in 1:(nfleets+nsurveys)){
+        ISS <- obs_pars$ac_samps[i]
+        agg_sex <- obs_pars$acs_agg_sex[i]
+        as_int <- obs_pars$ac_as_integers[i]
 
-    tmp <- array(NA, dim=c(1, 30, 2, 1, nfleets))
-    for(f in 1:nfleets){
-        ISS <- om$model_options$obs_pars$ac_samps[f]
-        agg_sex <- om$model_options$obs_pars$acs_agg_sex[f]
-        as_int <- om$model_options$obs_pars$ac_as_integers[f]
-
-        is_survey <- om$model_options$obs_pars$is_survey[f]
+        is_survey <- obs_pars$is_survey[i]
         if(is_survey){
-            selex <- subset_matrix(dp_y$surv_sel, r=f-2, d=5, drop=TRUE)
-            weights <- apply(model_runs$naa[y,,,,drop=FALSE]*om$dem_params$waa[y,,,,drop=FALSE], 4, sum)
+            selex <- subset_matrix(dp_y$surv_sel, r=i-2, d=5, drop=TRUE)
+            weights <- apply(naa*dp_y$waa, c(1, 4), sum)
         }else{
-            selex <- subset_matrix(dp_y$sel, r=f, d=5, drop=TRUE)
-            weights <- apply(model_runs$caa[y,,,,,drop=FALSE], 4, sum)
+            selex <- subset_matrix(dp_y$sel, r=i, d=5, drop=TRUE)
+            weights <- apply(caa, c(1, 4), sum) # this is landings (caa*weight)
         }
 
-        test <- simulate_aggregated_comp(
-            ac = model_runs$naa[y,,,,drop=FALSE],
-            weight_type = weight_type,
+        agg_comp <- simulate_weighted_comps(
+            ac = naa,
+            weight_type = 1,
             weights = weights,
             selex = selex,
             total_samples = ISS,
@@ -43,7 +61,8 @@ generate_aggregate_comps <- function(y, nfleets, weight_type=1){
             as_integers = as_int
         )
 
-        tmp[,,,,f] <- test
-    } 
+        tmp[,,,,i] <- agg_comp
+    }
+
     return(tmp)
 }

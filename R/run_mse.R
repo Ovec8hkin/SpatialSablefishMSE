@@ -187,35 +187,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
         
         # Aggregate age composition observations to single regions for EM
-        bio <- apply(out_vars$naa*dp_y$waa, c(1, 4), sum)
-        cat <- apply(out_vars$caa, c(1, 4), sum)
-
-        for(i in 1:(nfleets+nsurveys)){
-            ISS <- model_options$obs_pars$ac_samps[i]
-            agg_sex <- model_options$obs_pars$acs_agg_sex[i]
-            as_int <- model_options$obs_pars$ac_as_integers[i]
-
-            is_survey <- model_options$obs_pars$is_survey[i]
-            if(is_survey){
-                selex <- subset_matrix(dp_y$surv_sel, r=i-2, d=5, drop=TRUE)
-                weights <- bio
-            }else{
-                selex <- subset_matrix(dp_y$sel, r=i, d=5, drop=TRUE)
-                weights <- cat
-            }
-
-            agg_comp <- simulate_weighted_comps(
-                ac = out_vars$naa_tmp,
-                weight_type = 1,
-                weights = weights,
-                selex = selex,
-                total_samples = ISS,
-                aggregate_sex = agg_sex,
-                as_integers = as_int
-            )
-
-            survey_obs$agg_acs[y,,,,i] <- agg_comp
-        }
+        agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=out_vars$naa_tmp, caa=out_vars$caa_tmp, model_options=model_options)
+        survey_obs$agg_acs[y,,,,] <- agg_comps
 
         if((y+1) > spinup_years && do_assessment[y]){
 
@@ -408,8 +381,8 @@ run_mse <- function(om, mp, mse_options, nyears_input=NA, seed=1120, file_suffix
         }   
     }
 
-    file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
-    file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
+    # file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
+    # file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
     return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, global_rec_devs, survey_obs, survey_preds, model_outs))
 
