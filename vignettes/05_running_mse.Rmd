@@ -13,38 +13,50 @@ Once an operating model (OM) object, a recruitment object, and a management proc
 A list of MSE options must be defined to control internal aspects of the MSE simulation loop, primarily how long to run the MSE for. The MSE options object requires the following inputs:
 
 - `n_proj_years` - the number of projection years to run the MSE for. This is the number of years for which the specified management procedure will be applied.
-- `n_spinup_years` - the number of years for which to apply the specified OM before, applying the specified MP. For sablefish, this parameter is the number of years since 1960 (0-64), and indicates the calendar year you would like to begin MSE simulations from.
+- `n_spinup_years` - the number of years for which to apply the specified OM before, applying the specified MP. For sablefish, this parameter is the number of years since 1960 (0-60), and indicates the calendar year you would like to begin MSE simulations from.
 - `recruitment_start_year` - which year of the simulation new recruitment events should begin in. Often this is the same as `n_spinup_years` but can be longer if the user wants to use a specific recruitment timeseries at the beginning of the MSE simulations.
 - `run_estimation` - whether the estimation method should run or not. If `FALSE` the management procedure will be applied to OM outputs directly rather than to estimates from the EM. 
 
-Sensible defaults are available via the `setup_mse_options` function. Using them will begin the MSE simulations from the estimated population state in 2024, and project forward for 100 years.
+Sensible defaults are available via the `setup_mse_options` function. Using them will begin the MSE simulations from the estimated population state in 2014, and project forward for 75 years.
 
 ```{r, source, include=FALSE}
 source(file.path(here::here(), "R/setup_mse_options.R"))
 ```
 
-```{r, mse_options2, eval=TRUE, echo=TRUE}
+```{r, mse_options2, eval=TRUE}
 options <- setup_mse_options()
 options
 ```
 
 Note that the total number of simulation years for a single MSE run is `n_spinup_years + n_proj_years`.
 
+### Running a Single MSE Simulation
+After defining an OM object, a recruiment projection object, and MP object, and an MSE Options object, an MSE simulation can be run using the `run_mse` function. This function will run a single MSE simulation, applying the specified MP and OM, and returning the results in a list object.
+
+```{r, run_mse, eval=FALSE}
+run_mse(
+    om = om1, # Operating model object
+    mp = mp1, # Management procedure object
+    mse_options = options, # MSE options object
+    seed = 895 # Random seed to use for the simulation
+)
+```
+
 ### Parallel MSE Simulations
 Frequently, it is desirable to run multiple MSE simulations across different random seeds, to evaluate an MP in the face of uncertainty. 
 
 The `run_mse_parallel(...)` function is designed to act as a simple parallel wrapper for the base `run_mse(...)` function that will run multiple MSE simulations, with the same OM and MP specifications, where each simulation will only vary by the random seed used to generate annual recruitment levels and simulate observations.
 
-To use `run_mse_parallel` users must specify the number of simulations to run, and provide a list of simulation seeds in addition to the OM, MP, and options objects that are required for the base `run_mse` function. `run_mse_parallel` will handle parallelizing the MSE simulations and aggregating the output data as simulations complete.
+To use `run_mse_parallel` users must specify the number of simulations to run, and provide a list of simulation seeds in addition to the OM, MP, and MSE options objects that are required for the base `run_mse` function. `run_mse_parallel` will handle parallelizing the MSE simulations and aggregating the output data as simulations complete.
 
 ```{r, run_mse_parallel, eval=FALSE, echo=TRUE}
 run_mse_parallel(
-    nsims = 10,
-    seeds = sample(1:1000, 10),
-    om=om,
-    hcr=mp,
-    mse_options=options,
-    nyears = 1
+    nsims = 10, # Number of simulations to run
+    seeds = sample(1:1000, 10), # List of random seeds to use for each simulation
+    om=om, # Operating model object
+    hcr=mp, # Management procedure object
+    mse_options=options, # MSE options object
+    diagnostics = FALSE # whether to return EM diagnostics or not
 )
 ```
 
@@ -53,19 +65,21 @@ Note that this function will use up to `N-2` available compute cores on a machin
 ### Multiple MSE Simulations
 Often, multiple combinations of MPs and OMs are tested together within an MSE to evaluate MPs across different states of nature. A wrapper function `run_mse_multiple` is provided to facilitate this and return appropiately formatted MSE outputs.
 
-To use `run_mse_multiple`, users should define multiple OM, MP, and/or MSE options objects, place them into lists, and pass the respective lists to `run_mse_multiple`:
+To use `run_mse_multiple`, users should define multiple OM, MP, and/or MSE options objects, place them into _NAMED_ lists, and pass the respective lists to `run_mse_multiple`:
 
 ```{r, run_mse_multiple, eval=FALSE}
 run_mse_multiple(
     # List of OMs to run
-    om_list = list(om1, om2),
+    om_list = list(om1=om1, om2=om2),
     # List of MPs to run
-    hcr_list = list(mp1, mp2),
+    hcr_list = list(mp1=mp1, mp2=mp2),
     # List of MSE options to run
-    mse_options_list = list(options)
+    mse_options_list = list(options=options)
     seed_list = sample(1:1000, 10),
-    nyears=1
+    save = FALSE, # Whether to save the output data to a file
 )
 ```
 
 `run_mse_multiple` will run all combinations of OMs, MPs, and MSE Options provided in their respective lists, each for the number of simulations provided in `seed_list`. 
+
+Outputs from `run_mse_multiple` can be saved to file by setting `save=TRUE`, which will save the output data to the "data/active" directory of the repository.

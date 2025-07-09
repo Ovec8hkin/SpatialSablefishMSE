@@ -11,25 +11,49 @@ vignette: >
 devtools::load_all()
 ```
 
-A management procedure (MP) object is required to define aspects of the management regime being applied to the population. Nominally, this includes defining: (1) a harvest control rule (HCR), (2) a method for calculating reference points, (3) whether/how to reduce allowable catch from the HCR recommended catch levels, and (4) the frequency with which surveys and stock assessments occur. The MP object has been designed based on the existing management practices for Alaska sablefish under the jurisdiction of the North Pacific Fisheries Management Council.
+The management submodule handles applying the harvest control rule (HCR) to calculate a maximum Acceptable Biological Catch (ABC) and then allocating that catch to the different fleets within each spatial region. It generally follows the following steps:
+
+1. Harvest Control Rule: Use estimates of SSB and reference points to compute a recommended fishing mortality rate ($F$). This is $F_{ABC}$.
+2. Calculate ABC: Using $F_{ABC}$, solve for ABC (in mt of catch) by performing a 1 year population projection assuming average recruitment, and applying the Baranov catch equation. This is now $C_{ABC}$.
+3. Apply Harvest Constraints: Apply stability constraint (maximum annual changes in catch) or harvest caps (maximum permissible catch levels) to $C_{ABC}$. This is the final, Alaska-wide, ABC. 
+4. Apportion ABC to Regions: Allocate a portion of the Alaska-wide ABC to each spatial region. This quantity is $ABC_R$.
+5. Apportion Regional ABC to Fleets: Allocate a portion of each $ABC_R$ to each of the fishery fleets within each region. These allocations are defined in the GOA and BSAI FMPs. This quantity is $ABC_{R,F}$.
+6. Calculate TAC for each Region-Fleet: Calculate a $TAC_{R,F}$ as a proportion of $ABC_{R,F}$. This proportion should usually be bounded 0-1, but may slightly eclipse 1 for some combinations of region and fleet. This is meant to emulate the council's ability to optionally reduce the TAC from the HCR recommended ABC.
+7. Calculate Fleet Utilization: Calculate a total expected landings $C_{R,F}$ as a proportion of $TAC_{R,F}$. This proportion should usually be bounded 0-1, but may slightly eclipse 1 for some combinations of region and fleet. This is meant to emulate the utilization of the allocated TAC by fleets within each region. 
+
+A management procedure (MP) object is required to define these aspects of the management regime being applied to the population. The MP object has been designed based on the existing management practices for Alaska sablefish under the jurisdiction of the North Pacific Fisheries Management Council.
 
 To define an MP object, five elements are required:
 
-- `hcr` - a harvest control rule definition
 - `ref_points` - a method and level of reference point
+- `hcr` - a harvest control rule definition
 - `management` - aspects of the management regime such as ABC-TAC reductions and realized TAC attainment
+- `apportionment` - a method for apportioning global harvest levels to individual regions
 - `survey_frequency` - a frequency with which to simulate survey data
 - `assessment_frequency` - a frequency with which to perform a stock assessment
 
-A default MP object is available through the `setup_mp_option()` function, though no default HCR is available.
+A default MP object is available through the `setup_mp_option()` function to closely replicate how sablefish are presently managed in Alaska, though no default HCR is made available.
 
 ```{r, mp_object, eval=TRUE}
 mp <- setup_mp_options()
 mp
 ```
 
+### Defining a Reference Point Object
+`SpatialSablefishMSE` calculates annual reference points using spawning potential ratio (SPR) methods. A target SPR level can be set by the `mp$ref_pts$spr_target` parameter. The parameter can be either a single value, or a vector of two values. If two values are supplied, the first value corresponds to the fishing mortality reference point and the second value corresponds to the biological reference point. If a single value is supplied, it is used for both reference points. The default value is `mp$ref_pts$spr_target = 0.40`, corresponding to an $F_{40\%}$ and $B_{40\%}$ reference point level.
+
+The MSE simulation loop reference point function, `calculate_ref_points`, computes and returns 4 values:
+
+- `Fmax` - a maximum permissible fishing mortality rate corresponding to the fishing mortality that yields $\text{SPR}=0.35$.
+- `Fref` - the fishing mortality rate that yields $\text{SPR}=\text{spr_target}$
+- `Bref` - the spawning biomass resulting from fishing at `Fref`
+- `B0` - the spawning biomass resulting from fishing at `F=0.0`
+
+The two biological reference points, `Bref` and `B0` are calculated using the average recruitment across the entire simulation.
+
+
 ### Defining a Harvest Control Rule
-The harvest control rule (HCR) defines the maximum catch that can be taken from the population in the following annual timestep. HCRs can range from as simple as constant catch rules (where the same catch is taken every year) to complex threshold functions that scale allowable catch based on stock status relative to one or more reference points. 
+The harvest control rule (HCR) defines the maximum catch that can be taken from the population (across all regions) in the following annual timestep. HCRs can range from as simple as constant catch rules (where the same catch is taken every year) to complex threshold functions that scale allowable catch based on stock status relative to one or more reference points. 
 
 An HCR is defined as a complex list object with four parameters:
 
@@ -64,17 +88,18 @@ hcr_obj <- list(
 )
 ```
 
+The `max_stability` option allows for constraining the maximum allowable annual change in catch recommendations by the HCR. Values should be in the range 0-1 and represent a proportional annual change (e.g., `max_stability=0.10` restricts catches from increasing/decreasing by >10% year-over-year). This constraint is always applied to the recommended catch even if the HCR function output is in fishing mortality units. 
 
-The `max_stability` option allows for constraining the maximum allowable annual change in catch recommendations by the HCR. Values should be in the range 0-1. This constraint is always applied to the recommended catch even if the HCR function output is in fishing mortality units.
+Stability constraints can be define at many different levels, depending on the dimensions of the `max_stability` option. If a single value is provided, the constraint applies to the system-wide ABC (as recommended by the HCR, before regional apportionment occurs). If an array of values of dimension `[1, nregions]` is provided, the constraints apply at the regional ABC level (after regional apportionment, but before in-region fleet allocations occur). Finally, if an array of values of dimension `[1, nregions, nfleets]` is provided, the constraints apply at the fleet ABC level (after regional apportionment and in-region fleet allocations).
 
-The `harvest_cap` option allows for constraining the allowable catch to a maximum value, even if the catch recommendation from the HCR is higher. Values are interpreted in units of 1000s mt.
+The `harvest_cap` option allows for constraining the allowable catch to a maximum value, even if the catch recommendation from the HCR is higher. Values are interpreted in units of 1000s mt. This option only applies at the system-wide ABC level.
 
 ##### Existing Harvest Control Rule Functions
 Several MP/HCR objects are provided with the `SablefishMSE` package:
 
 - `mp_f40` - a threshold HCR using F40/B40 reference points. This is the current HCR used to managed sablefish in Alaska.
 - `mp_f50` - a threshold HCR using F50/B50 reference points.
-- `mp_5perc` - the `mp_f40` HCR but with a stability constraint of 5%
+- `mp_5perc` - the `mp_f40` HCR but with a global stability constraint of 5%
 - `mp_15cap` - the `mp_f40` HCR but with a maximum harvest cap of 15,000mt.
 
 ##### Custom Harvest Control Rule Functions
@@ -91,15 +116,18 @@ Below is an example of a custom HCR that recommends a fishing mortality of 10% w
 ```{r, stepwise_hcr_example, eval=FALSE}
 
 # the four required function arguemnts are present
-step_hcr <- function(ref_pts, naa, dem_params, avgrec){
+step_hcr <- function(ref_pts, naa, dem_params, avgrec, step_level, step_fs){
     # Calculate ssb as naa*waa*mat (female only) in units of 1,000s tons
     ssb <- apply(naa[,,1,]*dem_params$waa[,,1,,drop=FALSE]*dem_params$mat[,,1,,drop=FALSE], 1, sum)
-    return(ifelse(ssb > 100, 0.10, 0.01))
+    return(ifelse(ssb > step_level, step_fs[2], step_fs[1]))
 }
 
 hcr <- list(
     func = step_hcr, # the HCR function to evaluate
-    extra_pars = NA, # no extra parameters needed
+    extra_pars = list(
+        step_level = 100, # the SSB level at which to switch F
+        step_fs = c(0.01, 0.10) # the F values to use above and below the step level
+    ), # no extra parameters needed
     extra_options = list(
         max_stability = NA, # no stability constraints
         harvest_cap = NA # no harvest caps
@@ -155,25 +183,60 @@ mp <- setup_mp_options()
 mp$hcr <- hcr
 ```
 
+### Regional Harvest Apportionment
+Harvest Control Rule functions are used to calculate a maximum permissible catch level for the population __across all regions__, for a given year. This value must subsequently be broken into region specific catch levels, a process called "apportionment". The process for defining an apportionment method is very similar to defining an HCR, consisting of: (1) an R function defining the apportionment method (`apportionment$func`), and (2) a list of parameter values required by the function (`apportionment$pars`). An `apportionment` object is subsequently added to the MP object.
+
+The default apportionment method is a 5-year moving average of the proportional regional RPW survey index from the Alaska Longline Survey.
+```{r, harvest_apportionment, eval=TRUE}
+mp <- setup_mp_options()
+mp$apportionment
+```
+
+Custom apportionment functions can also be defined, but must minimally accept:
+
+- `survey_obs` - a list of survey observations, as generated by the OM
+- `y` - the current simulation year
+
+All other parameters, must be defined at the start of the simulation, as the apportionment function does not have access to internal state variables of the MSE. The apportionment function must return a vector of length `[1, nregions]` that defines the proportion of the total allowable catch that should be allocated to each region. 
+
+For example:
+
+```{r, custom_apportionment_function, eval=FALSE}
+# A custom apportionment function that simply return a static input vector of
+# relative proportions. The `survey_obs` and `y` arguments are not used, but must be present.
+fixed_apportionment <- function(survey_obs, y, app){
+    return(app)
+}
+
+nregions = 5
+mp$apportionment <- list(
+    func = fixed_apportionment, # the apportionment function to evaluate
+    pars = list(
+        app = rep(0.20, nregions), # a vector of relative proportions for each region
+    )
+)
+
+```
+
+
 ### Defining a Management Object
-`SablefishMSE` applies HCR functions at the level of Acceptable Biological Catch (ABC), consistent with how the North Pacific Fisheries Management Council utilizes HCRs to manage groundfish fisheries in Alaska. Total Allowable Catch (TAC), the management quantity that constrains the maximum catch that can be removed the population annually, is subsequently constrained such that $\text{TAC} <= \text{ABC}$. Finally, landed catch is further constrained such that $\text{Catch} <= \text{TAC}$, to reflect that the entire TAC is not taken in every year.
 
-The amount by which the ABC is reduced to yield a TAC, and the amount by which the TAC is reduced to yield an annual catch, are customizable through the `mp$management` object.
+These first four steps of the management process are handlded by the HCR and apportionment functions described above. The remaining steps (5-7) are handled by the `mp$management` object:
 
-- `mp$management$abc_tac_reduction` - a multiplicative factor reflecting what proportion of the ABC to set the TAC too. 
-- `mp$management$tac_land_reduction` - multiplicative factor reflecting what proportion of the TAC to set annual landings too. This is otherwise known as "attainment".
+Each of steps 5-7, can be defined as an array of dimensions [`nregions`, `nfleets`] and added to the `mp$management` object. 
 
-Both the `abc_tac_reduction` and `tac_land_reduction` parameters are, by default, set to 1, such that the $\text{ABC} = \text{TAC} = \text{Catch}$. If set to a single value, the same multiplicative factor is applied in every year of the simulation.
+- `management$abc_regflt_apportionment` - proportion of regional ABC that should be allocated to each fleet within a region. Values should sum to 1.0 across fleets within a region.
+- `management$abc_tac_regflt_reduction` - proportion of the region-fleet ABC that should be considered the total allowable catch (TAC).
+- `management$regflt_tac_utilization` - proportion of the TAC that is expected to be utilized by each fleet within a region. 
 
-### Defining a Reference Point Object
-`SablefishMSE` calculates annual reference points using spawning potential ratio (SPR) methods. A target SPR level can be set by the `mp$ref_pts$spr_target` parameter. The parameter can be either a single value, or a vector of two values. If two values are supplied, the first value corresponds to the fishing mortality reference point and the second value corresponds to the biological reference point.
+There is not support for these options to change dynamically during a simulation. The default values for these options are:
 
-The MSE simulation loop reference point function, `calculate_ref_points`, computes and returns 4 values:
+```{r, management_object, eval=TRUE}
+mp <- setup_mp_options()
+mp$management
+```
 
-- `Fmax` - a maximum permissible fishing mortality rate corresponding to the fishing mortality that yields $\text{SPR}=0.50$.
-- `Fref` - the fishing mortality rate that yields $\text{SPR}=\text{spr_target}$
-- `Bref` - the spawning biomass resulting from fishing at `Fref`
-- `B0` - the spawning biomass resulting from fishing at `F=0.0`
+The default values for `management$abc_regflt_apportionment` come from the GOA and BSAI FMPs for sablefish, and represent the proportion of the regional ABC that is allocated to each fleet within a region. Default values for `mp$management$abc_tac_regflt_reduction` are set to 1, meaning that their is no reduction in the ABC to yield a TAC (e.g., $ABC = TAC$). Finally, the default values for `mp$management$regflt_tac_utilization` represent the proportion of the TAC that is expected to be utilized by each fleet within a region, and come from average utilization rates from 2000-2020. 
 
-The two biological reference points, `Bref` and `B0` are calculated using the average recruitment across the entire simulation.
+
 

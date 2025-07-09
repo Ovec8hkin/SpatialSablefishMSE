@@ -7,16 +7,21 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-As part of the operating model (OM) list object (`om`) that is a required input to the MSE simulation function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and two different functions that specify distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necessary. 
+As part of the operating model (OM) list object (`om`) that is a required input to the MSE simulation function, users must specify a recruitment function as well as relevant parameter values for the OM to project future recruitment. Some simple recruitment functions are prepackaged with the model -- a Beverton-Holt stock recruit function, a function that resamples from a historical recruitment timeseries, and a function that specifies distinct recruitment regimes -- but users are also able to specify their own custom recruitment functions, as necessary. 
 
 ### The Recruitment Object
-The recruitment list object requires two components: (1) a reference to an R function that specifies how future recruitment is to be generated, and (2) a list of parameters values to pass to said function.
+The recruitment list object requires two components: (1) a reference to an R function that specifies how future recruitment is to be generated (the "recruitment function"), and (2) a list of parameter values to pass to said function (the "recruitment parameters").
 
-In the most simple case (as in the example below), future recruitment is generated from the `recruit_func` function, which simply returns a recruitment of "10" for the next 100 years. 
+The recruitment function must return either a single value, indicating the total recruitment for the population across all spatial regions, or a vector/array of values indicating the recruitment to each spatial region (should be dimension `[1, nregions]`). If a single, system-wide, recruitment value is returned, additional steps are required to define how to apportion recruits to the different spatial regions in the model (a "recruit apportionment method").
+
+In the most simple case (below), future recruitment is generated from the `recruit_func` function, which simply returns a recruitment of "10" for each of the 5 regions for the next 100 years.
 
 ```{r, recruitment_obj, eval=FALSE}
-recruit_func <- function(nyears){
-    return(rep(10, nyears))
+om <- readRDS(file.path("data", "spatial_sablefish_om.RDS"))
+
+recruit_func <- function(nyears, nregions, seed){
+    set.seed(seed)
+    return(array(10, dim = c(nyears, nregions)))
 }
 
 recruitment_obj <- list(
@@ -24,31 +29,61 @@ recruitment_obj <- list(
     func = recruit_func,
     # extra parameters to pass to `func`
     pars = list(
-        nyears = 100
+        nyears = 100,
+        nregions = 5
     )
 )
 
 om$recruitment <- recruitment_obj
 ```
+Note that the `seed` parameter is a required input to the recruitment function, but does not need to be specified in the `recruitment$pars` list object. The MSE simulation loop will automatically pass the appropriate seed value to the recruitment function internally.
 
-Recruitment functions can be as complicated as necessary, and can also make use of annual population state variables, such as spawning biomass. Examples are more complex recruitment functions are available at the end of this page.
+For recruitment functions that return only a single value, two additional entries in the recruitment list object must be provided to specify how to apportion recruits to the different spatial regions in the model: (1) a reference to an R function that specifies how recruits should be apportioned (the "recruit apportionment function"), and (2) a list of parameters values to pass to said function (the "recruit apportionment parameters"). The example below defines a recruit apportionment functions that divides the total recruitment evenly across all spatial regions every year:
+
+```{r, recruit_apportionment, eval=FALSE}
+nregions <- 5
+
+recruit_apportionment_func <- function(nregions, seed){
+    return(array(1 / nregions, dim = c(1, nregions)))
+}
+
+om$recruitment$apportionment <- list(
+    # function from which to apportion recruits
+    func = recruit_apportionment_func,
+    # extra parameters to pass to `func`
+    pars = list(
+        nregions = nregions
+    )
+)
+
+```
+Note that the `seed` parameter is a required input to the recruit apportionment function, but does not need to be specified in the `recruitment$apportionment$pars` list object. The MSE simulation loop will automatically pass the appropriate seed value to the recruit apportionment function internally. Also note that recruit apportionment functions should only return a vector/array of dimension `[1, nregions]`. Recruit apportionment should not be calculated for all years up front, but rather for each year as the MSE simulation loop runs.
+
+Recruitment functions can be as complicated as necessary, and can also make use of annual population state variables, such as spawning biomass. Examples of more complex recruitment functions are available at the end of this page.
 
 ### Provided Recruitment Functions
 
-Five generic recruitment functions are provided as part of the `SablefishMSE` package. They cover four common ways to simulate future fisheries recruitment.
+Four generic recruitment functions are provided as part of the `SpatialSablefishMSE` package. They cover four common ways to simulate future fisheries recruitment.
 
 ##### Resample Recruitment
-The first provided recruitment function generates future recruitment by resampling from a vector of provided values. Most often, the vector being resampled from is a vector of historical recruitment events, but can also include other values. 
+The first provided recruitment function generates future recruitment by resampling from an array of provided values. Most often, the array being resampled from is an array of historical spatial recruitment events, but can also include other values. 
 
 ```{r, resample_recruitment, eval=FALSE}
-om$recruitment$func <- resample_recruits
+resample_recruits_spatial <- function(hist_recruits, nyears, seed){
+    set.seed(seed)
+    idx <- sample(1:nrow(hist_recruits), size=nyears, replace=TRUE)
+    return(hist_recruits[idx,])
+}
+
+om$recruitment$func <- resample_recruits_spatial
 om$recruitment$pars <- list(
-    # vector of values to resample from
+    # array of values to resample from
     hist_recruits = hist_recruits,
     # number of years to generate future recruitment for
     nyears = nyears
 )
 ```
+Because this recruitment function returns a recruitment value for each spatial region, no additional recruit apportionment function is required.
 
 ##### Beverton-Holt Recruitment
 The second provided recruitment function generates future recruitment via a Beverton-Holt stock recruitment relationship (Beverton and Holt, 1957), parameterized using steepness. The Beverton-Holt function is defined as:
@@ -65,32 +100,25 @@ om$recruitment$pars <- list(
     S0 = 300,   # unfished spawning biomass
     sigR = 1.20 # recruitment variability
 )
+
+resample_recruit_apportionment <- function(hist_recruits, seed){
+    set.seed(seed)
+    idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
+    props <- t(apply(hist_recruits, 1, function(x) x/sum(x)))
+    return(props[idx,])
+}
+
+om$recruitment$apportionment$func <- resample_recruit_apportionment
+om$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
+)
 ```
+This recruitment function returns a single value for total recruitment, which is then apportioned to each spatial region using the `resample_recruit_apportionment` function. 
 
 Annual spawning biomass (SSB) is passed to the underlying `beverton_holt` function automatically inside the MSE simulation loop. 
 
 ##### Regime Recruitment
-The third and fourth provided recruitment functions generate future recruitment in distinct alternating regimes. Users have the ability to control the length, order, and relative strength of the two regimes. 
-
-The first regime recruitment function works similarly to the simpler `resample_recruits` function in that it resamples from distinct vectors of values depending on which regime is active.
-
-```{r, regime_recruitment1, eval=FALSE}
-om$recruitment$func <- resample_regime_recruits
-om$recruitment$pars <- list(
-    # Vector of recruits to resample from in regime 1
-    regime1_recruits = seq(1, 25, 1)],
-    # Vector of recruits to resample from in regime 2
-    regime2_recruits = seq(60, 100, 10),
-    # Total number of years to generate future recruitment for
-    nyears = nyears,
-    # Lengths of each regime
-    regime_length = c(20, 5),
-    # Start with the first regime
-    starting_regime = 0
-)
-```
-
-The second regime recruitment function works by parameterizing two separate Beverton-Holt stock recruit relationships, differing in their value of unfished recruitment ($R_0$).  
+The third provided recruitment functions generate future recruitment in distinct alternating regimes parameterize by different Beverton-Holt functions. Users have the ability to control the length, order, and relative strength of the two regimes. The recruitment function works by parameterizing two separate Beverton-Holt stock recruit relationships, differing in their value of unfished recruitment ($R_0$).  
 
 ```{r, regime_recruitment2, eval=FALSE}
 om$recruitment$func <- bevholt_regimes
@@ -107,10 +135,15 @@ om$recruitment$pars <- list(
     nyears = nyears,            
     # Lengths of each regime
     regime_length = c(20, 5),   
-    # Start with first regim
+    # Start with first regime
     starting_regime = 0
 )
+om$recruitment$apportionment$func <- resample_recruit_apportionment
+om$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
+)
 ```
+Like with the base Beverton-Holt recruitment function, this recruitment function returns a single value for total recruitment, which is then apportioned to each spatial region using the `resample_recruit_apportionment` function.
 
 ##### Crash Recruitment
 The final provided recruitment function generates future recruitment through resampling, as in the "Resample Recruitment" option, but with a defined period where recruitment is different. This different period can be used to simulate a period depressed recruitment (e.g. a recruitment crash) or a period of amplified recruitment (e.g. a recruitment boom), depending on how it is parameterized. Users can specify the simulation year in which the alternative recruitment period begins, the length of that period, and the mean value of recruitment during that period. During the alternative recruitment period, lognormal deviations about the specified mean recruitment are applied using a $\text{CV}=0.1$.
@@ -128,6 +161,10 @@ om$recruitment$pars <- list(
     hist_recruits = hist_recruits,
     # Total number of years to generte future recruitment for
     nyears = nyears
+)
+om$recruitment$apportionment$func <- resample_recruit_apportionment
+om$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
 )
 ```
 
@@ -167,7 +204,7 @@ om$recruitment <- recruitment_obj
 ##### State-Dependent Recruitment Functions
 State-dependent recruitment functions are those that do require knowledge of the current state of the population to appropriately generate future recruitment. These types of recruitment functions commonly require knowledge of annual SSB to parameterize some stock-recruit relationship, such as the Beverton-Holt or Ricker curves. The provided `beverton_holt` and `bevholt_regimes` functions are good examples of such state-dependent recruitment functions.   
 
-The primary difference between defining state-dependent and state-independent recruitment functions is that state-dependent functions must be written as a ["function factory"](https://adv-r.hadley.nz/function-factories.html). Function factories are functions that parameterize, and then return a reference too, another function. Here, a function factory is used so that the parameter values of a stock recruit relationship can be defined by the user external to the simulation loop, and then the model can calculate annual SSB internally and pass that along to the output of the function factory.
+The primary difference between defining state-dependent and state-independent recruitment functions is that state-dependent functions must be written as a ["function factory"](https://adv-r.hadley.nz/function-factories.html). Function factories are functions that parameterize, and then return a reference too, another function. Here, a function factory is used so that the parameter values of a stock recruit relationship can be defined by the user external to the simulation loop, and then the model can calculate annual SSB internally and pass that along to the output of the function factory. Additionally, many of these types of recruitment functions will require defining a recruit apportionment function as part of the recruitment object.
 
 Below is an example of creating a new Beverton-Holt style stock recruit relationship, this time parameterized using $\alpha$ and $\beta$:
 
@@ -191,6 +228,8 @@ recruitment_obj <- list(
 )
 
 om$recruitment <- recruitment_obj
+
+# Add recruit apportionment function as well
 
 ```
 

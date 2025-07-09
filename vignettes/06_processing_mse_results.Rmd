@@ -7,14 +7,14 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-MSEs output large amounts of data -- numbers-at-age across years, landed catch by year, fishing mortality by year, recommended harvest levels by year, etc. -- and this data output quickly grows as the number of operating models (OMs), management procedures (MPs), and simulations grows. `SablefishMSE` provides several wrapper functions to facilitate easier processing of large MSE outputs and computation of common derived quantities (spawning biomass, total biomass, total catch, etc.)
+MSEs output large amounts of data -- numbers-at-age across years, landed catch by year, fishing mortality by year, recommended harvest levels by year, etc. -- and this data output quickly grows as the number of operating models (OMs), management procedures (MPs), and simulations grows. `SpatialSablefishMSE` provides several wrapper functions to facilitate easier processing of large MSE outputs and computation of common derived quantities (spawning biomass, total biomass, total catch, etc.)
 
 ### MSE Output Data
 All three of the MSE functions (`run_mse`, `run_mse_parallel`, and `run_mse_multiple`) output the same types of data in a similar format. 
 
 - `run_mse` - data is output as a named list of multidimensional arrays of maximum dimension `[n_proj_years+n_spinup_years, nages, nsexes, nregions, nfleets]`. 
 - `run_mse_parallel` - data is output as a named list of multidimensional arrays the same as `run_mse` but with an added dimension referring to the simulation
-- `run_mse_multiple` - data is output at a list of completed MSE simulations from `run_mse_parallel`, with each list element referring to one combination of OM, MP, and MSE option.
+- `run_mse_multiple` - data is output as a list of completed MSE simulations from `run_mse_parallel`, with each list element referring to one combination of OM, MP, and MSE option.
 
 ##### Description of Output Data
 The following data is output with every call to `run_mse` and is consequently available with calls to `run_mse_parallel` and `run_mse_multiple`:
@@ -23,14 +23,14 @@ The following data is output with every call to `run_mse` and is consequently av
 - `disc_caa` - discarded catch-at-age from the OM (`[nyears, nages, nsexes, nregions, nfleets]`)
 - `caa` - total catch-at-age (landed + discarded) from the OM (`[nyears, nages, nsexes, nregions, nfleets]`)
 - `faa` - fishing mortality -at-age from the OM (`[nyears, nages, nsexes, nregions, nfleets]`)
-- `faa_est` - fishing mortality -at-age estimated from the EM (`[nyears, nages, nsexes, nregions, nfleets]`)
-- `naa` - numbers-at-age from the OM (`[nyears, nages, nsexes, nregions]`)
-- `naa_est` - numbers-at-age estimated from the EM (`[nyears, nages, nsexes, nregions]`)
+- `faa_est` - fishing mortality -at-age estimated from the EM (`[nyears, nages, nsexes, 1, nfleets]`)
+- `naa` - numbers-at-age from the OM (`[nyears+1, nages, nsexes, nregions]`)
+- `naa_est` - numbers-at-age estimated from the EM (`[nyears, nages, nsexes, 1]`)
 - `hcr_f` - the fishing mortality recommended by the HCR (`[nyears, 1]`)
-- `abc` - the Acceptable Biological Catch resulting from applying the HCR (`[nyears, 1]`)
-- `tac` - the Total Allowable Catch resulting from applying the HCR and subsequent stability constraint or harvest caps (`[nyears, 1]`) 
-- `exp_land` - the expected landings after accounting for partial attainment of the TAC (`[nyears, 1]`)
-- `global_rec_devs` - recruitment deviates from the OM (`[nyears, 1]`)
+- `abc` - the Acceptable Biological Catch resulting from applying the HCR (`[nyears+1, 1, 1, nregion, nfleets]`)
+- `tac` - the Total Allowable Catch resulting from applying the HCR and subsequent stability constraint or harvest caps (`[nyears+1, 1, 1, nregions, nfleets]`) 
+- `exp_land` - the expected landings after accounting for partial attainment of the TAC (`[nyears+1, 1, 1, nregions, nfleets]`)
+- `global_rec_devs` - recruitment deviates from the OM (`[nyears, nregions]`)
 
 Additionally, if `diagnostics=TRUE` for `run_mse_parallel` or `run_mse_multiple`, the following outputs are also available:
 
@@ -43,8 +43,12 @@ The functions discussed below were not developed with the intent to be used on t
 If `run_mse_multiple` is used, users can optionally specify `save=TRUE` to save MSE outputs to a file. These outputs can be read back into R using the provided `get_saved_model_runs` function:
 
 ```{r, get_saved_model_runs, eval=FALSE}
-model_runs <- get_saved_model_runs()
+model_runs <- get_saved_model_runs(
+    om_order = c("OM1", "OM2"), # Factor order of OMs
+    hcr_order = c("MP1", "MP2"), # Factor order of MPs
+)
 ```
+The optional parameters `om_order` and `hcr_order` allow users to specify the factor level ordering of the OMs and MPs in the output data. If `hcr_order` is specified, only files containing the MSE model runs from that MP will be collected; otherwise, all MSE model runs in the "data/active" directory will be read. This function returns as output a list of completed MSE model runs (as read from the saved files), and a data.frame specifying the OM and MP (or HCR) associated with each model run. The data.frame is ordered as `om`, `hcr`, which is the same order used in `run_mse_multiple`.
 
 ### `bind_mse_outputs`
 Because users will frequently deal with data of up to 8 dimensions (`[nyears, nages, nsexes, nregions, nfleets, nsims, nMPs, nOMs]`), spread across multiple list objects, a helper function has been provided to facilitate collating specific data outputs across all available MSE models: `bind_mse_outputs`.
@@ -70,26 +74,26 @@ Several processing functions are available through the `SablefishMSE` package al
 - `get_fishing_mortalities` - calculates fleet-specific and total fishing mortality for every year across all model runs and simulations. Total fishing mortality is assumed to be the maximum age-specific fishing mortality aggregated across fleets.
 - `get_recruits` - calculates recruitment for every year across all model runs and simulations. This function does not handle recruitment deviates.
 - `get_landed_catch` - calculates fleet-specific and total landed catch for every year across all model runs and simulations.
-- `get_management_quantities` - aggregates ABC, TAC, and expected landings data for every year across all model runs and simulations. Historical ABC, TAC, and realized landings are hard coded into the function.
+- `get_management_quantities` - aggregates ABC, TAC, and expected landings data for every year across all model runs and simulations. Historical ABC, TAC, and realized landings (e.g., from the historical period) are not included in the output.
 - `get_reference_points` - calculates median `Fref`, `Bref`, `Fmax` and `B0` reference points across the simulation period across all models runs and simulations.
-- `get_*_phaseplane_data` - aggregates SSB and either realized fishing mortality (`get_phaseplane_data`), HCR recommended fishing mortality (`get_hcrphase_data`), or landed catch (`get_phaseplane_catch_data`) for all years across all model runs and simulations.
 
 ### Performance Metrics
 Many functions are available for calculating common and sablefish-specific performance metrics from MSE output data. All functions calculate their performance metric across the projection period only, and across all model runs. 
 
 - `average_catch` - average annual catch
 - `total_catch` - total catch (sum of catch over all years)
-- `prop_years_catch` - proportion of projection years in which catch exceeded some threshold value
+- `prop_years_catch` - proportion of simulation years in which catch exceeded some threshold value
 - `average_ssb` - average annual spawning biomass
-- `prop_low_biomass` - proportion of projection years in which SSB was $<0.4\text{SSB}_{1960}$
+- `prop_low_biomass` - proportion of projection years in which SSB was $<B_{35}$
 - `average_age` - average age of an individual in the population
 - `average_abi` - average ABI of the population (Griffiths et al. 2023)
+- `average_annual_catch_variation` - average annual variation in catch
 - `average_proportion_catch_large` - average annual proportion of the landed catch >9yo 
 - `average_proportion_biomass_old` - average annual proportion of the biomass >21yo
 - `annual_value` - average annual value of the catch assuming a fixed relative price per age class
-- `dynamic_annual_value` - average annual value of the catch assuming prices fluctuate with landed catch volume
-- `biomass_crash_time` - average time required for the SSB to decline to $<0.20\text{SSB}_{1960}$. This metric is only calculated over the first 20 years of the projection period.
-- `biomass_recovery_time` - average time required for the SSB to recover to $>0.40\text{SSB}_{1960}$. This metric is calculated starting year 21 of the projection period.  
+- `average_annual_dynamic_value` - average annual value of the catch assuming prices fluctuate with landed catch volume
+- `biomass_crash_time` - average time required for the SSB to decline to $<0.185B_0$. This metric is only calculated over the first 20 years of the projection period.
+- `biomass_recovery_time` - average time required for the SSB to recover to $>B_{35}$. This metric is calculated starting year 21 of the projection period.  
 
 For additional information on any of these functions, see their function documentation.
 
@@ -105,8 +109,11 @@ performance_metric_summary(
     hcr_filter=c("MP1", "MP2"),
     om_filter=c("OM1", "OM2"),
     interval_widths=c(0.50, 0.95), 
+    time_horizon = c(54, 130),
+    summarise_by = c("om", "hcr", "region"),
+    summary_out=TRUE,
     # List of metrics to calculate
     metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "prop_years_lowssb")
 )
 ```
-The `metric_list` parameter controls which performance metrics to calculate and return in the output `data.frame`. Refer to the function documentation for a list of valid values to provide in `metric_list`.
+The `metric_list` parameter controls which performance metrics to calculate and return in the output `data.frame`. Refer to the function documentation for a list of valid values to provide in `metric_list`. The `summarise_by` parameter controls over what variables the performance metrics are summarised by. The default is to summarise by `om`, `hcr` only, yielding performance metrics across all regions. Summarising by `region` as well will yield region-specific performance metric values. The `summary_out` parameter controls whether the outputs is a summaised data frame across simulations, or a long format data frame.

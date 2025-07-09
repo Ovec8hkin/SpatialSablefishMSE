@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-The `SablefishMSE` package makes use of the `afscOM` package for defining the operating model (OM) component of the MSE simulation loop. As such, defining OMs to use within the MSE framework is identical to the process of defining a model with `afscOM`.
+The `SpatialSablefishMSE` package makes use of the `afscOM` package for defining the operating model (OM) component of the MSE simulation loop. As such, defining OMs to use within the MSE framework is identical to the process of defining a model with `afscOM`.
 
 ### An Introduction to `afscOM`
 `afscOM` is a age-structured, multi-sex, multi-fleet, spatially explicit fisheries model that can be parameterized to elicit a range of complex population dynamics. Users can define how specific demographic parameters (e.g. natural mortality, weight-at-age, selectivity) change across time, age, sex, space, or by fleet, and the model internally projects a population with such demographic characteristics forwards in time. Observation processes can additionally be defined allowing the users to simulate observations (with associated error levels) from the population at each time step.
@@ -56,9 +56,9 @@ If observations are being simulated, survey selectivity must also be specified:
 
 For spatial models (those where nregions > 1), a “movement” demographic matrix is also required as input. Movement can be specified to vary by age and sex, but can not currently vary through time.
 
-- `movement`: Movement matrix `[nregions, nregions, nages, nsexes]`
+- `movement`: Movement matrix `[nregions, nregions, nyears, nages, nsexes]`
 
-For additional infromation on building the demographic arrays, see the [`afscOM` documentation](https://benwilliams-noaa.github.io/afscOM/articles/specifying_demographic_parameters.html).
+For additional information on building the demographic arrays, see the [`afscOM` documentation](https://benwilliams-noaa.github.io/afscOM/articles/specifying_demographic_parameters.html).
 
 ### Observation Processes
 `afscOM` is capable of optionally simulating observations (with associated observation error) from the population at each timestep. Observation that can be simulated include:
@@ -68,7 +68,7 @@ For additional infromation on building the demographic arrays, see the [`afscOM`
 - relative population weight indices (biomass indices)
 - landed catch volume
 
-To simulate observations from the OM, `om$model_options$simulae_observations = TRUE` should be specified. Additionally, a list of observation parameters also needs to be defined. Required observation parameters include:
+To simulate observations from the OM, `om$model_options$simulate_observations = TRUE` should be specified. Additionally, a list of observation parameters also needs to be defined. Required observation parameters include:
 
 Required items in the obs_pars list are:
 
@@ -83,19 +83,18 @@ Required items in the obs_pars list are:
 - `ac_as_integers`: whether age composition observations should be provided as integers or proportions (0 = no, 1 = yes)
 - `acs_agg_sex`: whether age composition observations should be aggregated by sex (0 = no, 1 = yes)
 
-While not required, when used within the wider MSE simulation loop, the OM should always be parameterized to yield observations, so that observation data is available to the estimation method submodule of the MSE. 
-
-The types of observations (RPN, RPW, age compositions, etc.) specified in the provided `sable_om$model_options$obs_pars` object should be retained when used in the MSE simulation loop to ensure compatibility with the estimation model.
+Each list item should be of dimensions `[1, nfleets+surveys]`, as observation processes must be defined for all fleets. 
 
 ### The Full Operating Model Object
-A fully parameterized OM object, `sable_om`, is available through the `SablefishMSE` package. This OM object contains a full set of demographic parameter matrices, observation process parameters, and an array of initial numbers-at-age.
+A fully parameterized OM object, `sable_om`, is available through the `SpatialSablefishMSE` package. This OM object contains a full set of demographic parameter matrices, observation process parameters, and an array of initial numbers-at-age. Demographic parameters for this bassed OM do not vary over space, but a 
+movement matrix, as estimation by Cheng et al. 2025, is implemented to simulate spatial dynamics.
 
 ```{r, sable_om, eval=FALSE}
-sable_om <- readRDS(file.path(here::here(), "data", "sablefish_om_big.RDS"))
+# sable_om <- readRDS(file.path(here::here(), "data", "spatial_sablefish_om.RDS"))
 
-sable_om$dem_params
-sable_om$model_options$obs_pars
-sable_om$init_naa
+# subset_dem_params(sable_om$dem_params, 55, 1, drop=FALSE)
+# sable_om$model_options$obs_pars
+# sable_om$init_naa
 
 ```
 
