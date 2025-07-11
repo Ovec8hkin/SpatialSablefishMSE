@@ -32,7 +32,7 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FAL
         })
         
         seed <- seeds[s]
-        mse <- run_mse(om=om, mp=hcr, mse_options=options, seed=seed, file_suffix = seed)
+        mse <- run_mse(om=om, mp=hcr, mse_options=options, seed=seed)
         return(mse)
 
     }, om=om, hcr=hcr, seeds=seeds, options=mse_options, cl=cl)
