@@ -75,7 +75,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
 #' @export get_fishing_mortalities
 #'
 get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "fleet", "sim", "L1", names(extra_columns))
+    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
     
     return(
         bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
@@ -87,13 +87,13 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
             summarise(
                 F = max(value)
             ) %>%
-            ungroup() %>%
-            group_by(across(all_of(group_columns[-2]))) %>%
-            # total F is the sum of fleet-based Fs
-            mutate(
-                total_F = sum(F)
-            ) %>%
-            ungroup() %>%
+            # ungroup() %>%
+            # group_by(across(all_of(group_columns[-2]))) %>%
+            # # total F is the sum of fleet-based Fs
+            # mutate(
+            #     total_F = sum(F)
+            # ) %>%
+            # ungroup() %>%
             mutate(
                 om = factor(om, levels=om_filter),
                 hcr = factor(hcr, levels=hcr_filter)

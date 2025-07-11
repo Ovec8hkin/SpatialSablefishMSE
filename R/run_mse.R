@@ -17,25 +17,26 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     spinup_years <- mse_options$n_spinup_years
     nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
 
-    # Setup what years to perform assessment in based on assessment_frequency
-    # input. If input as a vector, use the vector literally. If input as a single
-    # number, assumes an annual frequency.
+    # # Setup what years to perform assessment in based on assessment_frequency
+    # # input. If input as a vector, use the vector literally. If input as a single
+    # # number, assumes an annual frequency.
     do_assessment <- generate_annual_frequency(mp$assessment_frequency, nyears_input)
     do_assessment[spinup_years] <- 1
     assessment_years <- which(do_assessment == 1)
     assessment_years[length(assessment_years)] <- nyears_input+1
 
-    # Setup what years to perform surveys in based on *_survey_frequency
-    # inputs. If input as a vector, use the vector literally. If input as a single
-    # number, assumes an annual frequency.
-    do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
-    do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
+    # # Setup what years to perform surveys in based on *_survey_frequency
+    # # inputs. If input as a vector, use the vector literally. If input as a single
+    # # number, assumes an annual frequency.
+    # do_survey_ll <- generate_annual_frequency(mp$ll_survey_frequency, nyears_input - spinup_years)
+    # do_survey_tw <- generate_annual_frequency(mp$tw_survey_frequency, nyears_input - spinup_years)
 
     spatial_assessment <- dget(file.path(here::here(), "data", "spatial_sablefsh_inputs.rdat"))
    
     # Load OM parameters into global environment
     list2env(om, env=environment())
-    model_options$recruit_apportionment_pars <- c(model_options$recruit_apportionment_pars, list(seed=seed))
+    # model_options$recruit_apportionment_pars <- c(model_options$recruit_apportionment_pars, list(seed=seed))
+    om$recruitment$apportionment$pars <- c(om$recruitment$apportionment$pars, list(seed=seed))
 
     # Load OM dimensions into global environment
     list2env(afscOM::get_model_dimensions(dem_params$sel), env=environment())
@@ -137,14 +138,14 @@ run_mse <- function(om, mp, mse_options, seed=1120){
             global_recruits <- projected_recruitment(global_ssb, y-spinup_years+1) 
             recruit_apportionment <- apportion_recruitment_single(
                 recruits = as.vector(global_recruits),
-                apportionment = model_options$recruit_apportionment,
+                apportionment = om$recruitment$apportionment$func, #model_options$recruit_apportionment,
                 nregions = nregions
             )
             regional_recruits <- get_annual_recruitment(
                 recruitment = global_recruits,
                 apportionment = recruit_apportionment$rec_props,
                 apportion_random = model_options$recruit_apportionment_random,
-                apportionment_pars = model_options$recruit_apportionment_pars,
+                apportionment_pars = om$recruitment$apportionment$pars, #model_options$recruit_apportionment_pars,
                 nregions = nregions
             )
 
@@ -153,7 +154,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         }
 
         prev_naa <- naa[y,,,, drop = FALSE]
-        out_vars <- project_single(
+        out_vars <- afscOM::project_single(
             removals = removals_input,
             dem_params=dp_y,
             prev_naa=prev_naa,
@@ -179,7 +180,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
         
         # Aggregate age composition observations to single regions for EM
-        agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=out_vars$naa_tmp, caa=out_vars$caa_tmp, model_options=model_options)
+        agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=out_vars$naa_tmp, caa=out_vars$caa_tmp, obs_pars=model_options$obs_pars)
         survey_obs$agg_acs[y,,,,] <- agg_comps
 
         if((y+1) > spinup_years && do_assessment[y]){
@@ -199,18 +200,21 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 aggregated_survey_obs$acs <- survey_obs$agg_acs[1:y,,,,,drop=FALSE]
                 aggregate_land_caa <- array(apply(land_caa[1:y,,,,,drop=FALSE], c(1, 2, 3, 5), sum), dim=c(y, nages, nsexes, 1, nfleets))
 
-                rISS <- sapply(1:4, function(i){
-                            if(i > 2){
-                                sel <- subset_matrix(dem_params$surv_sel[1:y,,,,,drop=FALSE], i-2, 5, drop=TRUE)
-                            }else{
-                                sel <- subset_matrix(dem_params$sel[1:y,,,,,drop=FALSE], i, 5, drop=TRUE)
-                            }
-                            calculate_realized_samplesize(
-                                ac_obs = aggregated_survey_obs$acs[,,,,i,drop=FALSE],
-                                naa = naa[1:y,,,,drop=FALSE],
-                                selex=sel
-                            )
-                        })
+                # rISS <- sapply(1:4, function(i){
+                #             if(i > 2){
+                #                 sel <- subset_matrix(dem_params$surv_sel[1:y,,,,,drop=FALSE], i-2, 5, drop=TRUE)
+                #             }else{
+                #                 sel <- subset_matrix(dem_params$sel[1:y,,,,,drop=FALSE], i, 5, drop=TRUE)
+                #             }
+                #             calculate_realized_samplesize(
+                #                 ac_obs = aggregated_survey_obs$acs[,,,,i,drop=FALSE],
+                #                 naa = naa[1:y,,,,drop=FALSE],
+                #                 selex=sel
+                #             )
+                #         })
+
+                rISS <- matrix(rep(c(200, 100, 200, 100), nyears), nrow=nyears, byrow=TRUE)
+
                 suppressMessages({
                     input_list <- generate_RTMB_inputs(
                         nyears = y,
@@ -231,7 +235,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                     parameters,
                     mapping,
                     random = NULL,
-                    newton_loops = 0,
+                    newton_loops = 3,
                     silent = TRUE
                 )
 

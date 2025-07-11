@@ -58,10 +58,10 @@ generate_aggregate_comps <- function(dem_params, naa, caa, obs_pars){
 
         is_survey <- obs_pars$is_survey[i]
         if(is_survey){
-            selex <- subset_matrix(dp_y$surv_sel, r=i-2, d=5, drop=TRUE)
-            weights <- apply(naa*dp_y$waa, c(1, 4), sum)
+            selex <- subset_matrix(dem_params$surv_sel, r=i-2, d=5, drop=TRUE)
+            weights <- apply(naa*dem_params$waa, c(1, 4), sum)
         }else{
-            selex <- subset_matrix(dp_y$sel, r=i, d=5, drop=TRUE)
+            selex <- subset_matrix(dem_params$sel, r=i, d=5, drop=TRUE)
             weights <- apply(caa, c(1, 4), sum) # this is landings (caa*weight)
         }
 

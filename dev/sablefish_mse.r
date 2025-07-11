@@ -29,16 +29,13 @@ sable_om <- readRDS("data/spatial_sablefish_om.RDS") # Read this saved OM from a
 # sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
 
 source("dev/oms.R")
-om_list <- listN(
-    om_rand_recruit,
-    om_cylic_recruit,
-    om_bh_recruit,
-    om_low_recruit,
-    om_high_recruit, 
-    om_crash_recruit,
-    om_bhcyclic_recruit
-)
-
+# om_list <- listN(
+#     om_rand_recruit,
+#     om_rand_mv_recruit
+# )
+om_nomove <- om_rand_recruit
+om_nomove$dem_params$movement[,,54:200,,] <- array(diag(1, 5, 5), dim=dim(om_nomove$dem_params$movement[,,54:200,,,drop=FALSE]), dimnames=dimnames(om_nomove$dem_params$movement[,,54:200,,,drop=FALSE]))
+om_nomove$name <- "No Movement"
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
 #' in future years. Such function must take accept the following parameters:
@@ -52,39 +49,22 @@ om_list <- listN(
 #' Below is an example implementation of the NPFMCs Tier 3a HCR     
 source("dev/hcrs.R")
 
-hcr_list <- listN(
-    mp_f40, 
-    mp_b30f40, 
-    mp_b30f50, 
-    mp_b40f50, 
-    mp_b40f55, 
-    mp_f50, 
-    mp_f40cons,
-    mp_10cap,
-    mp_15cap,
-    mp_20cap,
-    mp_20cap_cons,
-    mp_25cap,
-    mp_25cap_cons,
-    mp_10perc,
-    mp_15perc,
-    mp_25perc,
-    mp_f50chr,
-    mp_f55chr,
-    mp_f00chr,
-    mp_agedevs,
-    mp_ageblocks,
-    mp_ageswitch,
-    mp_pfmc4010
-)
-
 mp_f40_sq <- mp_f40
-mp_f40_sq$management$regflt_tac_utilization <- average_regflt_tac_utilization
 mp_f40_sq$name <- "F40 Status Quo"
 
 mp_f40_fullattainment <- mp_f40
-mp_f40_fullattainment$management$regflt_tac_utilization <- full_attainment
+mp_f40_fullattainment$management$regflt_tac_utilization <- full_utilization
 mp_f40_fullattainment$name <- "F40 Full Attainment"
+
+mp_f40_egoa <- mp_f40_sq
+mp_f40_egoa$name <- "F40 Status EGOA Catch"
+mp_f40_egoa$apportionment$func <- fixed_apportionment
+mp_f40_egoa$apportionment$pars <- list(app=c(0, 0, 0, 0, 1))
+
+mp_f40_egoa_bs <- mp_f40_sq
+mp_f40_egoa_bs$name <- "F40 Status EGOA/BS Catch"
+mp_f40_egoa_bs$apportionment$func <- fixed_apportionment
+mp_f40_egoa_bs$apportionment$pars <- list(app=c(0.20, 0, 0, 0, 0.80))
 
 #' 3. Run the closed-loop MSE simulation
 #' A single MSE simulation can be run using the `run_mse(...)`
@@ -108,40 +88,52 @@ mse_options_base <- setup_mse_options()
 mse_options <- mse_options_base
 mse_options$n_spinup_years <- 54
 mse_options$recruitment_start_year <- 54
-mse_options$n_proj_years <- 75
+mse_options$n_proj_years <- 25
 
 mse_options_list <- listN(mse_options)#, mse_options2, mse_options3)
 
 
-om_list <- listN(om_rand_recruit, om_bhcyclic_recruit)
-hcr_list <- listN(mp_f40_sq, mp_f40_fullattainment)
+om_list <- listN(om_rand_recruit, om_nomove)#, om_bhcyclic_recruit)#, om_mv_recruit)
+hcr_list <- listN(mp_f40_sq, mp_f10chr, mp_f90chr)#, mp_f40_egoa, mp_f40_egoa_bs)
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
 tic()
 model_runs <- run_mse_multiple(
     om_list, 
-    listN(mp_f40_sq), 
+    hcr_list, 
     seed_list,
-    nyears=100,
     mse_options_list=mse_options_list,
-    save = TRUE
+    save = FALSE
 )
 toc()
+extra_columns <- expand.grid(hcr=lapply(hcr_list, function(x) x$name), om=lapply(om_list, function(x) x$name))
 
  # Data Processing
 filetype <- ".jpeg"
-figures_dir <- file.path(here::here(), "figures")
+figures_dir <- file.path(here::here(), "figures", "om_tests", "move_nomove")
 width_small <- 12
 height_small <- 8
 
 # publication_hcrs <- c("F40")#, "F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
-publication_hcrs <- c("F40 Status Quo", "F40 Full Attainment")
+publication_hcrs <- c("F40 Status Quo", "F40 Full Attainment", "F40 +/- 10%")
 publication_oms <- c("Random Recruitment", "Beverton-Holt Cyclic Recruitment")#, "Immediate Crash Recruitment")
 publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion of Years with Low SSB")
 
-mse_runs <- get_saved_model_runs(om_order=publication_oms, hcr_order=publication_hcrs)
+hcrs <- c("F40 Status Quo", "F40 Alaska Stability", "F40 Region Stability", "F40 Fleet Stability")
+names(hcrs) <- NULL
+oms <- unlist(lapply(om_list, function(x) x$name))
+names(oms) <- NULL
+
+mse_runs <- get_saved_model_runs(om_order=oms, hcr_order=unlist(lapply(hcr_list, function(x) x$name)))
 model_runs <- mse_runs$model_runs
 extra_columns <- mse_runs$extra_columns2
+
+hcrs <- unlist(lapply(hcr_list, function(x) x$name))
+names(hcrs) <- NULL
+oms <- unlist(lapply(om_list, function(x) x$name))
+names(oms) <- NULL
+extra_columns <- expand.grid(om=oms, hcr=unlist(lapply(hcr_list, function(x) x$name)))
+
 
 # extra_columns <- expand.grid(hcr=publication_hcrs, om=publication_oms)
 
@@ -151,23 +143,10 @@ time_horizon <- c(55, 130)
 
 hcr_colors <- set_hcr_colors2(publication_hcrs)
 
-
-caa <- model_runs[[1]]$land_caa
-apply(caa, c(1, 4, 5), sum)
-
-### Plot Alaska Regions
-library(rnaturalearth)
-library(rnaturalearthdata)
-library(sf)
-
-
-
-
-
 ### Spawning Biomass and Catch Plots
-ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
-plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 120))+scale_color_manual(values=c("red", "blue"))
-ggsave(filename=file.path(figures_dir, paste0("ssb", filetype)), width=width_small, height=height_small, units=c("in"))
+ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params, hcr_filter=hcrs, om_filter=oms)
+plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 120))+scale_color_manual(values=c("red", "blue", "green", "purple"))
+ggsave(filename=file.path(figures_dir, paste0("ssb_new", filetype)), width=width_small, height=height_small, units=c("in"))
  
 plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")
 ggsave(filename=file.path(figures_dir, paste0("rel_ssb", filetype)), width=width_small, height=height_small, units=c("in"))
@@ -175,11 +154,15 @@ ggsave(filename=file.path(figures_dir, paste0("rel_ssb", filetype)), width=width
 depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
 ggsave(filename=file.path(figures_dir, paste0("depletion", filetype)), width=16, height=8, units=c("in"))
 
-depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 1.5))+scale_color_manual(values=c("red", "blue"))
-ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+
-    scale_y_continuous(limits=c(0, 300))+
-    scale_color_manual(values=c("red", "blue"))+
+depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+
+    scale_y_continuous(limits=c(0, 3.5))+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")
+ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, scales="free_y")+
+    scale_y_continuous(limits=c(0, 350))+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
     facet_wrap(~om, ncol=1)+
+    labs(title="Alaska-Wide Spawning Biomass")+
     guides(color="none", shape="none")+
     theme(
         strip.background = element_blank(),
@@ -191,9 +174,9 @@ library(patchwork)
 ssb_agg_plots + depletion_plots + 
     plot_layout(nrow=1, guides="collect", widths=c(0.5, 1)) & 
     theme(legend.position = "bottom")
-ggsave(filename=file.path(figures_dir, paste0("ssb_depletion", filetype)), width=16, height=8, units=c("in"))
+ggsave(filename=file.path(figures_dir, paste0("ssb_depletion_new", filetype)), width=16, height=8, units=c("in"))
 
-catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
 plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+scale_y_continuous(limits=c(0, 25))
 plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)
 ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
@@ -201,12 +184,14 @@ ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, hei
 
 reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = common_trajectory)+
     scale_y_continuous(limits=c(0, 20))+
-    scale_color_manual(values=c("red", "blue"))
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    labs(title="Regional Landed Catch")
     # ggh4x::facet_nested(om +fleet~ region)
 catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE, common_trajectory = common_trajectory)+
-    scale_color_manual(values=c("red", "blue"))+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
     facet_wrap(~om, ncol=1)+
     guides(color="none", shape="none")+
+    labs(title="Alaska-Wide Landed Catch")+
     theme(
         strip.background = element_blank(),
         strip.text = element_blank()
@@ -215,20 +200,46 @@ catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE
 catch_agg_plot + reg_catch_plots + 
     plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
     theme(legend.position = "bottom")
-ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
+ggsave(filename=file.path(figures_dir, paste0("catch_new", filetype)), width=16, height=8, units=c("in"))
 
-plot_ssb_catch(
-    ssb_data,
-    catch_data,
-    v1="hcr",
-    v2="om",
-    v3="region",
-    common_trajectory = common_trajectory
-)
-ggsave(filename=file.path(here::here(), "figures", "ssb_catch.jpeg"), width=16, height=10, units="in")
+
+summ_catch_data <- catch_data %>% filter(time > common_trajectory) %>%
+    group_by(time, fleet, region, om, hcr) %>%
+    median_qi(catch, .width=interval_widths)
+
+summ_catch_data %>% filter(.width == 0.50) %>%
+    filter(om == "Beverton-Holt Cyclic Recruitment", hcr %in% c("F40 Status Quo", "F40 Regional 10% Stability")) %>%
+    select(time, fleet, region, om, hcr, catch) %>%
+    group_by(hcr, region, fleet) %>%
+    mutate(
+        perc_change = catch / lag(catch, 1)
+    ) %>%
+    select(-catch) %>%
+    pivot_wider(names_from="region", values_from="perc_change") %>%
+    print(n=100)
+
+# Plot Recruitment
+recruit_data <- get_recruits(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
+reg_rec_plots <- plot_recruitment(recruit_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))
+
+recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    scale_y_continuous("Recruits (millions)", limits=c(0, 100))+
+    facet_wrap(~om, ncol=1)+
+    labs(title="Alaska-Wide Recruitment")+
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank()
+    )
+
+recruit_agg_plot + reg_rec_plots + 
+    plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
+    theme(legend.position = "bottom")
+ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=16, height=8, units=c("in"))
 
 # Plot ABC, TAC, and Landed Catch
-abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
 
 abc_tac_land_reg <- abc_tac_land %>%
     filter(L1 != "attainment") %>%
@@ -239,17 +250,18 @@ abc_tac_land_reg <- abc_tac_land %>%
     median_qi(value, .width=interval_widths) %>%
     filter(.width == 0.50)
 
-regional_abctac_plots <- ggplot(abc_tac_land_reg, aes(x=time, y=value, color=L1, linetype=fleet))+
+regional_abctac_plots <- ggplot(abc_tac_land_reg, aes(x=time, y=value, color=hcr, linetype=L1))+
     geom_line()+
-    ggh4x::facet_nested(om + hcr ~ region, scales="free_y")+
+    ggh4x::facet_nested(om + fleet ~ region, scales="free_y")+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
     custom_theme+
     labs(title="Regional ABC, TAC, and Landed Catch")+
     ggh4x::facetted_pos_scales(
         y = list(
-            scale_y_continuous(limits=c(0, 10)),
-            scale_y_continuous(limits=c(0, 10)),
-            scale_y_continuous(limits=c(0, 25)),
-            scale_y_continuous(limits=c(0, 25))
+            scale_y_continuous(limits=c(0, 15)),
+            scale_y_continuous(limits=c(0, 5)),
+            scale_y_continuous(limits=c(0, 15)),
+            scale_y_continuous(limits=c(0, 8))
         )
     )
 
@@ -264,10 +276,11 @@ abc_tac_land_agg <- abc_tac_land %>%
     median_qi(value, .width=interval_widths) %>%
     filter(.width == 0.50)
 
-agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=L1, linetype=fleet))+
+agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=hcr, linetype=L1))+
     geom_line()+
-    facet_wrap(om ~ hcr, scales="free_y", ncol=1)+
+    facet_wrap(om ~ fleet, scales="free_y", ncol=1)+
     labs(title="Alaska-Wide ABC, TAC, and Landed Catch")+
+    scale_color_manual(values=c("red", "blue", "green", "purple"))+
     custom_theme+
     theme(
         strip.background = element_blank(),
@@ -275,18 +288,20 @@ agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=L1, linet
     )+
     ggh4x::facetted_pos_scales(
         y = list(
-            scale_y_continuous(limits=c(0, 25)),
-            scale_y_continuous(limits=c(0, 25)),
-            scale_y_continuous(limits=c(0, 60)),
-            scale_y_continuous(limits=c(0, 60))
+            scale_y_continuous(limits=c(0, 35)),
+            scale_y_continuous(limits=c(0, 10)),
+            scale_y_continuous(limits=c(0, 40)),
+            scale_y_continuous(limits=c(0, 15))
         )
     )
 
 agg_abctac_plot + regional_abctac_plots + 
     plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
     theme(legend.position = "bottom")
+ggsave(file.path(here::here(), "figures", "abc_tac_land.jpeg"), width=16, height=8, units="in")
 
-
+# Reference Points
+f40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms, ref_pt="Fref", spr_target=0.40)
 
 # Plot phase-plane diagrams (F vs SSB, HCR v SSB, Catch v SSB)
 ref_pts <- get_reference_points(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names, seed_list)
@@ -315,7 +330,7 @@ rec_data <- get_recruits(model_runs, extra_columns2, hcr_filter=hcr_names, om_fi
 plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)+custom_theme
 
 ###### Performance Metrics
-time_horizon <- c(55, 130)
+time_horizon <- c(55, 75)
 
 performance_metrics <- performance_metric_summary(
     model_runs, 
@@ -327,8 +342,8 @@ performance_metrics <- performance_metric_summary(
     extra_filter = NULL,
     relative=NULL, 
     summarise_by=c("om", "hcr", "region"),
-    hcr_filter=publication_hcrs,
-    om_filter=publication_oms,
+    hcr_filter=hcrs,
+    om_filter=oms,
     metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "avg_catch_lg", "annual_value", "dynamic_value")
 )
 
@@ -336,37 +351,24 @@ performance_metrics <- performance_metric_summary(
 publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion Large Catch", "Annual Value", "Dynamic Annual Value")
 publication_metrics2 = c("Annual\nCatch", "Catch\nAAV", "SSB", "Average\nAge", "Average Catch\nLarge", "Annual\nValue", "Dynamic\nValue")
 perf_data2 <- performance_metrics$perf_data %>% 
-    filter(hcr %in% publication_hcrs, name %in% publication_metrics) %>%
+    # filter(hcr %in% hcrs, name %in% oms) %>%
+    filter_hcr_om(hcrs, oms) %>%
     mutate(
-            hcr = factor(hcr, levels=publication_hcrs),
-            om = factor(om, labels=publication_oms),
+            hcr = factor(hcr, levels=hcrs),
+            om = factor(om, labels=oms),
             name = factor(name, levels=publication_metrics, labels=publication_metrics2)
     ) %>%
     filter(.width == 0.5) %>%
     group_by(om, region, name) %>%
     mutate(
         scaled = case_when(
-            name == "Catch\nAAV" ~ (max(median)-median)/(max(median)-min(median)),
+            name == "Catch\nAAV" ~ (inf_max(median)-median)/(inf_max(median)-min(median)),
             TRUE ~ median/inf_max(median)
         )
     )
 
-
 perf_data2 %>% select(om, hcr, region, name, scaled) %>%
-    pivot_wider(names_from=name, values_from=scaled) %>%
-    # filter(om == "Beverton-Holt Cyclic Recruitment") %>%
-    print(n=100) %>%
-
-    ggRadar(aes(color=hcr, facet=c(region, om)))+
-        facet_grid(om~region)+
-        custom_theme+
-        theme(
-            axis.text.y = element_blank(),
-            axis.ticks.y = element_blank()
-        )
-
-perf_data2 %>% select(om, hcr, region, name, scaled) %>%
-    pivot_wider(names_from=name, values_from=scaled) %>%
+    # pivot_wider(names_from=name, values_from=scaled) %>%
 
     ggplot(aes(x=name, y=scaled, color=hcr, fill=hcr, group=hcr))+
         geom_point(size=3)+

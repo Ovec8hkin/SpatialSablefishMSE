@@ -139,27 +139,28 @@ plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_
 plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "F", "total_F")]
+    group_columns <- group_columns[! group_columns %in% c("sim", "F")]
 
     f <- data %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(F, total_F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
-        reformat_ggdist_long(n=length(group_columns)) %>%
-        filter(name == "total_F")
+        median_qi(F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        reformat_ggdist_long(n=length(group_columns))
 
     hcr1 <- as.character((f %>% pull(hcr) %>% unique)[1])
     traj_column <- ifelse(is.na(v3), v2, v3)
     traj <- f %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
-    common <- f %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
+    common <- f %>% left_join(traj, by=traj_column) %>% 
+                filter(hcr==hcr1, time <= common, .width == 0.50, L1=="faa")
 
+    base_hcr_f <- f %>% filter(L1 == "faa", hcr == hcr1)
 
-    plot <- ggplot(f %>% filter(time > common_trajectory-1)) + 
-        geom_lineribbon(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]))+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+    plot <- ggplot(f %>% filter(time > common_trajectory-1, L1 == "faa")) + 
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]], fleet), linetype=fleet, color=.data[[v1]]))+
+        geom_line(data = common, aes(x=time, y=median, linetype=fleet), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
-        scale_color_manual(values=hcr_colors)+
+        scale_color_manual(values=c("Red", "Blue"))+
         scale_y_continuous(limits=c(0, 0.20))+
         coord_cartesian(expand=0)+
         guides(fill="none")
@@ -174,7 +175,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
         plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
     }
 
-    return(plot)
+    return(plot+custom_theme)
 }
 
 plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){

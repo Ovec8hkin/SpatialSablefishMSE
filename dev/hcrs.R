@@ -122,15 +122,7 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
     return(constant_F(ref_pts$Fref))
 }
 
-abc_regionfleet_allocation <- array(
-    c(0.5, 0.75, 0.8, 0.8, 0.95, 
-      0.5, 0.25, 0.2, 0.2, 0.05), # Fixed and Trawl fleets
-    dim = c(5, 2),
-    dimnames = list(
-        "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"),
-        "fleet"=c("Fixed", "Trawl")
-    )
-)
+
 
 regionfleet_tac_utilization <- array(
     c(0.644, 0.511, 0.947, 1.03, 1.01, 
@@ -550,52 +542,52 @@ mp_f90chr$ref_points$spr_target <- c(0.90, 0.001)
 #'
 #' Other HCRs
 #' 
-mp_agedevs <- mp_base
-mp_agedevs$name <- "Age Structure Deviations"
-mp_agedevs$hcr <- list(
-    func = age_structure_percentage,
-    extra_pars = list(
-        desired_abi = 1.5,
-        ref_naa = ref_naa
-    ),
-    extra_options = list(
-        max_stability = NA,
-        harvest_cap = NA
-    ),
-    units = "F"
-)
+# mp_agedevs <- mp_base
+# mp_agedevs$name <- "Age Structure Deviations"
+# mp_agedevs$hcr <- list(
+#     func = age_structure_percentage,
+#     extra_pars = list(
+#         desired_abi = 1.5,
+#         ref_naa = ref_naa
+#     ),
+#     extra_options = list(
+#         max_stability = NA,
+#         harvest_cap = NA
+#     ),
+#     units = "F"
+# )
 
-mp_ageblocks <- mp_base
-mp_ageblocks$name <- "Age Structure Blocks"
-mp_ageblocks$hcr <- list(
-    func = age_structure_rt_reduction,
-    extra_pars = list(
-        ref_naa = ref_naa,
-        breakpoints=c(0.4, 0.8, 10), 
-        levels=c(0.50, 0.75, 1.0)
-    ),
-    extra_options = list(
-        max_stability = NA,
-        harvest_cap = NA
-    ),
-    units = "F"
-)
+# mp_ageblocks <- mp_base
+# mp_ageblocks$name <- "Age Structure Blocks"
+# mp_ageblocks$hcr <- list(
+#     func = age_structure_rt_reduction,
+#     extra_pars = list(
+#         ref_naa = ref_naa,
+#         breakpoints=c(0.4, 0.8, 10), 
+#         levels=c(0.50, 0.75, 1.0)
+#     ),
+#     extra_options = list(
+#         max_stability = NA,
+#         harvest_cap = NA
+#     ),
+#     units = "F"
+# )
 
-mp_ageswitch <- mp_base
-mp_ageswitch$name <- "Age Structure RP Switch"
-mp_ageswitch$hcr <- list(
-    func = ref_point_switch,
-    extra_pars = list(
-        abi_switch = 0.8,
-        ref_naa = ref_naa,
-        new_refpts = c(0.50, 0.40)
-    ),
-    extra_options = list(
-        max_stability = NA,
-        harvest_cap = NA
-    ),
-    units = "F"
-)
+# mp_ageswitch <- mp_base
+# mp_ageswitch$name <- "Age Structure RP Switch"
+# mp_ageswitch$hcr <- list(
+#     func = ref_point_switch,
+#     extra_pars = list(
+#         abi_switch = 0.8,
+#         ref_naa = ref_naa,
+#         new_refpts = c(0.50, 0.40)
+#     ),
+#     extra_options = list(
+#         max_stability = NA,
+#         harvest_cap = NA
+#     ),
+#     units = "F"
+# )
 
 mp_pfmc4010 <- mp_base
 mp_pfmc4010$name <- "PFMC 40-10"
