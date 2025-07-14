@@ -29,7 +29,7 @@ hcr_list <- afscOM::listN(mp_f40, mp_20cap)
 # Setup MSE options with helper function
 mse_options <- setup_mse_options()
 # Going to only project 15 years for simplicity
-mse_options$n_proj_years <- 75
+mse_options$n_proj_years <- 15
 
 # Define a number of simulations and simulation seeds
 # Parallel processing function can run up to N-1 simulations concurrently
@@ -40,7 +40,7 @@ seeds <- sample(1:1e4, nsims, replace=FALSE)
 model_runs <- run_mse_multiple(
     om_list = om_list,
     hcr_list = hcr_list,
-    mse_options_list = listN(mse_options),
+    mse_options_list = afscOM::listN(mse_options),
     seed_list = seeds,
     diagnostics = FALSE,
     save = FALSE
@@ -76,21 +76,30 @@ ssb_data <- get_ssb_biomass(
 
 # Aggregated SSB data across simulations according to the set interval widths
 # and plot as regional depletion and Alaska-wide spawning biomass.
-depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+
+depletion_plots <- plot_depletion(
+        ssb_data, 
+        v1="hcr", 
+        v2="om", 
+        v3="region", 
+        common_trajectory=common_trajectory, 
+        show_est = FALSE, 
+        scales="fixed"
+    )+
     scale_y_continuous(limits=c(0, 3.5))+
     scale_color_manual(values=c("red", "blue"))+
     labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")
 
-ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, scales="free_y")+
-    scale_y_continuous(limits=c(0, 350))+
+ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est=TRUE, scales="free_y", base_hcr = "F45")+
+    # scale_y_continuous(limits=c(0, 350))+
+    coord_cartesian(ylim=c(0, 350))+
     scale_color_manual(values=c("red", "blue"))+
     facet_wrap(~om, ncol=1)+
-    labs(title="Alaska-Wide Spawning Biomass")+
-    guides(color="none", shape="none")+
-    theme(
-        strip.background = element_blank(),
-        strip.text = element_blank()
-    )
+    labs(title="Alaska-Wide Spawning Biomass")
+    # guides(color="none", shape="none")
+    # theme(
+    #     strip.background = element_blank(),
+    #     strip.text = element_blank()
+    # )
 # Combine the plots into a single figure
 ssb_agg_plots + depletion_plots + 
     plot_layout(nrow=1, guides="collect", widths=c(0.5, 1)) & 
@@ -108,7 +117,7 @@ catch_data <- get_landed_catch(
 
 # Aggregate landings data across simulations according to the set interval widths
 # and plot as regional landings and Alaska-wide landings.
-reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = common_trajectory)+
+reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=FALSE, common_trajectory = common_trajectory)+
     scale_y_continuous(limits=c(0, 20))+
     scale_color_manual(values=c("red", "blue", "green", "purple"))+
     labs(title="Regional Landed Catch")
@@ -118,10 +127,10 @@ catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE
     facet_wrap(~om, ncol=1)+
     guides(color="none", shape="none")+
     labs(title="Alaska-Wide Landed Catch")+
-    theme(
-        strip.background = element_blank(),
-        strip.text = element_blank()
-    )
+    # theme(
+    #     strip.background = element_blank(),
+    #     strip.text = element_blank()
+    # )
 
 catch_agg_plot + reg_catch_plots + 
     plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 

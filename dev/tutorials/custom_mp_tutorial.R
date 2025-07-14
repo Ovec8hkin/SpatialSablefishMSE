@@ -31,7 +31,16 @@ mp_new <- setup_mp_options()
 target_spr <- c(0.50, 0.40) # c(Ftar, Btar) --> c(F50, B40)
 mp_new$ref_points$spr_target <- target_spr
 
-
+calculate_ref_points(
+    nages=30,
+    mort = dp_y$mort[,,1,1],
+    mat = dp_y$mat[,,1,1],
+    waa = dp_y$waa[,,1,1],
+    sel =  joint_selret$sel[,,1,1,drop=FALSE],
+    ret = joint_selret$ret[,,1,1,drop=FALSE],
+    avg_rec = mean(apply(hist_recruits/2, 1, sum)),
+    spr_target = target_spr
+)
 
 # Define the harvest control rule
 
@@ -43,15 +52,15 @@ mp_new$ref_points$spr_target <- target_spr
 #
 #' Can probably get around the required arguments by using `...` in the function definition,
 #' but this is not recommended as it can lead to confusion about what arguments are required.
-new_hcr <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1){
+new_hcr <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1, lrp=0.05){
     nages <- afscOM::get_model_dimensions(naa)$nages
-    ssb <- apply(naa[,cutoff_age:nages,1,,drop=FALSE]*dem_params$waa[,cutoff_age:nages,1,1,drop=FALSE]*dem_params$mat[,cutoff_age:nages,1,1,drop=FALSE], 1, sum)
+    ssb <- apply(naa[,cutoff_age:nages,1,,drop=FALSE]*dem_params$waa[,cutoff_age:nages,1,,drop=FALSE]*dem_params$mat[,cutoff_age:nages,1,,drop=FALSE], 1, sum)
     return(
         threshold_f(
             x = ssb / ref_pts$Bref, 
             f_min = 0, 
             f_max = ref_pts$Fref, 
-            lrp = 0.05, 
+            lrp = lrp, 
             urp = 1
         )
     )
@@ -63,7 +72,8 @@ mp_new$hcr$func <- new_hcr
 # Set the value of the additional HCR function parameter
 # `cutoff_age`.
 mp_new$hcr$extra_pars <- list(
-    cutoff_age = 3 # only calculate SSB for ages 4+
+    cutoff_age = 3, # only calculate SSB for ages 4+,
+    lrp = 0.20   # LRP 0.20 of Bref
 )
 
 # Set additional HCR options like stability constraints and 
@@ -200,7 +210,7 @@ catch_data <- get_landed_catch(
 
 # Aggregate landings data across simulations according to the set interval widths
 # and plot as regional landings and Alaska-wide landings.
-reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = common_trajectory)+
+reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = 20)+
     scale_y_continuous(limits=c(0, 20))+
     scale_color_manual(values=c("red", "blue", "green", "purple"))+
     labs(title="Regional Landed Catch")
