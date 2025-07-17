@@ -13,10 +13,21 @@
 #' @example
 #'
 calculate_joint_selret <- function(sel, ret, prop_fs=c(0.50, 0.50)){
-    joint_self <- apply(sweep(sel[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
-    joint_selm <- apply(sweep(sel[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
-    joint_retf <- apply(sweep(ret[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,1,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
-    joint_retm <- apply(sweep(ret[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,2,,,drop=FALSE], 5, prop_fs, FUN="*"), c(1, 2), sum))
+
+    sweep_dim <- 5
+    if(length(dim(prop_fs))==2){
+        sweep_dim <- c(1, 5)
+    }else if(length(dim(prop_fs))==3){
+        sweep_dim <- c(1, 4, 5)
+    }else{
+        sweep_dim <- 5
+    }
+        
+
+    joint_self <- apply(sweep(sel[,,1,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,1,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_selm <- apply(sweep(sel[,,2,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(sel[,,2,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_retf <- apply(sweep(ret[,,1,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,1,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum))
+    joint_retm <- apply(sweep(ret[,,2,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum)/max(apply(sweep(ret[,,2,,,drop=FALSE], sweep_dim, prop_fs, FUN="*"), c(1, 2), sum))
     
     joint_sel <- array(NA, dim=dim(sel)[1:4])
     joint_sel[,,1,] <- joint_self
