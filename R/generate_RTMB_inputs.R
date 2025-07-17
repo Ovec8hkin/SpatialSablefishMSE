@@ -14,7 +14,7 @@
 generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_survey_obs, model_options, r_ISS){
 
     # Model Dimensions
-    input_list <- SPoCK::Setup_Mod_Dim(
+    input_list <- SPoRC::Setup_Mod_Dim(
         years=1:nyears,
         ages=1:30,
         lens=seq(41,99,2),
@@ -25,7 +25,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     )
 
     # Recruitment
-    input_list <- SPoCK::Setup_Mod_Rec(
+    input_list <- SPoRC::Setup_Mod_Rec(
         input_list = input_list,
         do_rec_bias_ramp = 1,
         bias_year = c(length(1960:1979), length(1960:1989), (length(1960:(1960+nyears-1)) - 5), length(1960:(1960+nyears)) - 2) + 1,
@@ -40,12 +40,12 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     )
 
     # Biologicals
-    WAA <- om_to_spock(dem_params$waa[1:nyears,,,1,drop=FALSE])
-    MatAA <- om_to_spock(dem_params$mat[1:nyears,,,1,drop=FALSE])
-    AgeingError <- as.matrix(SPoCK::sgl_rg_sable_data$age_error)
-    SizeAgeTrans = SPoCK::sgl_rg_sable_data$SizeAgeTrans
+    WAA <- om_to_sporc(dem_params$waa[1:nyears,,,1,drop=FALSE])
+    MatAA <- om_to_sporc(dem_params$mat[1:nyears,,,1,drop=FALSE])
+    AgeingError <- as.matrix(SPoRC::sgl_rg_sable_data$age_error)
+    SizeAgeTrans = SPoRC::sgl_rg_sable_data$SizeAgeTrans
     M <- dem_params$mort[1,1,1,1]
-    input_list <- SPoCK::Setup_Mod_Biologicals(
+    input_list <- SPoRC::Setup_Mod_Biologicals(
         input_list = input_list,
         WAA = WAA,
         MatAA = MatAA,
@@ -60,14 +60,14 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     )
 
     # Movement and Tagging
-    input_list <- SPoCK::Setup_Mod_Movement(
+    input_list <- SPoRC::Setup_Mod_Movement(
         input_list = input_list,
         use_fixed_movement = 1,
         Fixed_Movement = NA,
         do_recruits_move = 0
     )
 
-    input_list <-  SPoCK::Setup_Mod_Tagging(
+    input_list <-  SPoRC::Setup_Mod_Tagging(
         input_list = input_list,
         UseTagging = 0
     )
@@ -82,7 +82,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     UseCatch <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_fish_fleets))
     UseCatch[,1:3,2] <- 0 # Dont fit to 0 catches for trawl fleet in first 3 years
 
-    input_list <- SPoCK::Setup_Mod_Catch_and_F(
+    input_list <- SPoRC::Setup_Mod_Catch_and_F(
         input_list = input_list,
         # Data inputs
         ObsCatch = ObsCatch,
@@ -120,7 +120,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     UseFishLenComps <- array(0, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_fish_fleets))
     ISS_FishLenComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
 
-    input_list <- SPoCK::Setup_Mod_FishIdx_and_Comps(
+    input_list <- SPoRC::Setup_Mod_FishIdx_and_Comps(
         input_list = input_list,
         ObsFishIdx = ObsFishIdx,
         ObsFishIdx_SE = ObsFishIdx_SE,
@@ -143,7 +143,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     # Survey Index (e.g., none)
     ObsSrvIdx <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
     ObsSrvIdx[,,1] <- aggregated_survey_obs$rpns[,1,1,1,1] # Longline survey
-    ObsSrvIdx[,,2] <- aggregated_survey_obs$rpns[,1,1,1,2] # Trawl survey
+    ObsSrvIdx[,,2] <- aggregated_survey_obs$rpws[,1,1,1,2] # Trawl survey
 
     ObsSrvIdx_SE <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
     n=1000
@@ -170,7 +170,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     ISS_SrvLenComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_srv_fleets))
 
 
-    input_list <- SPoCK::Setup_Mod_SrvIdx_and_Comps(
+    input_list <- SPoRC::Setup_Mod_SrvIdx_and_Comps(
         input_list = input_list,
         ObsSrvIdx = ObsSrvIdx,
         ObsSrvIdx_SE = ObsSrvIdx_SE,
@@ -196,7 +196,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     ### Selectivity and Catchability ------------------------
 
-    input_list <- SPoCK::Setup_Mod_Fishsel_and_Q(
+    input_list <- SPoRC::Setup_Mod_Fishsel_and_Q(
         input_list = input_list,                               
         # Model options
         cont_tv_fish_sel = c("none_Fleet_1", "none_Fleet_2"),
@@ -222,7 +222,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         fish_q_spec = c("fix", "fix") 
     )
 
-    input_list <- SPoCK::Setup_Mod_Srvsel_and_Q(
+    input_list <- SPoRC::Setup_Mod_Srvsel_and_Q(
         input_list = input_list,
         # Model options
         # survey selectivity, whether continuous time-varying
@@ -259,7 +259,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     Wt_SrvLenComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_srv_fleets))
 
-    input_list <- SPoCK::Setup_Mod_Weighting(
+    input_list <- SPoRC::Setup_Mod_Weighting(
         input_list = input_list,
         sablefish_ADMB = 0,
         likelihoods = 1,
@@ -287,6 +287,6 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
 }
 
-om_to_spock <- function(x){
+om_to_sporc <- function(x){
     return(aperm(x, perm=c(4, 1, 2, 3)))
 }

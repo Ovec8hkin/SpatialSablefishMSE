@@ -230,7 +230,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 parameters <- input_list$par
                 mapping <- input_list$map
 
-                sabie_rtmb_model <- SPoCK::fit_model(
+                sabie_rtmb_model <- SPoRC::fit_model(
                     data,
                     parameters,
                     mapping,
