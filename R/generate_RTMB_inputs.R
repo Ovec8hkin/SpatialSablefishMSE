@@ -196,17 +196,24 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     ### Selectivity and Catchability ------------------------
 
+    fsh_sel_blocks_base <- c(
+        paste0("Block_1_Year_1-",min(56,nyears),"_Fleet_1"), 
+        "",
+        "none_Fleet_2"
+    )
+    if(nyears >= 57){
+        fsh_sel_blocks_base[2] <- paste0("Block_2_Year_",min(57,nyears),"-",nyears,"_Fleet_1")
+    }else{
+        fsh_sel_blocks_base <- fsh_sel_blocks_base[-c(2)]
+    }
+
     input_list <- SPoRC::Setup_Mod_Fishsel_and_Q(
         input_list = input_list,                               
         # Model options
         cont_tv_fish_sel = c("none_Fleet_1", "none_Fleet_2"),
         # fishery selectivity blocks
-        # Fixed gear block 1 1-57, block2 58-65; Trawl gear no block
-        fish_sel_blocks = c(
-            paste0("Block_1_Year_1-",min(57,nyears),"_Fleet_1"), 
-            paste0("Block_2_Year_",min(58,nyears),"-",nyears,"_Fleet_1"),
-             "none_Fleet_2"
-        ), 
+        # Fixed gear block 1 1-56, block2 57+; Trawl gear no block
+        fish_sel_blocks = fsh_sel_blocks_base, 
         # fishery selectivity form
         # Fixed gear logistic selectivity (k, a50); Trawl gear gamma
         fish_sel_model = c("logist1_Fleet_1", "gamma_Fleet_2"),
@@ -229,9 +236,10 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         cont_tv_srv_sel = c("none_Fleet_1", "none_Fleet_2"),
         # survey selectivity blocks
         srv_sel_blocks = c(
-            paste0("Block_1_Year_1-",min(57,nyears),"_Fleet_1"), 
-            paste0("Block_2_Year_",min(58,nyears),"-",nyears,"_Fleet_1"),
-             "none_Fleet_2"
+            # paste0("Block_1_Year_1-",min(57,nyears),"_Fleet_1"), 
+            # paste0("Block_2_Year_",min(58,nyears),"-",nyears,"_Fleet_1"),
+            "none_Fleet_1",
+            "none_Fleet_2"
         ),
         # survey selectivity form
         srv_sel_model = c("logist1_Fleet_1","exponential_Fleet_2"),
@@ -278,8 +286,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     input_list$par$ln_sigmaC <- array(log(c(0.02, 0.02)), dim=c(1, 2))
 
     ### Mapping -------------------------------------------
-    input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
-    input_list$map$ln_srv_fixed_sel_pars <-  factor(c(1:3, 2, 4:6, 5,rep(7,4), rep(8, 4)))
+    # input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
+    # input_list$map$ln_srv_fixed_sel_pars <-  factor(c(1:3, 2, 4:6, 5,rep(7,4), rep(8, 4)))
     # input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_fish_fixed_sel_pars)))
     # input_list$map$ln_srv_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_srv_fixed_sel_pars)))
 
