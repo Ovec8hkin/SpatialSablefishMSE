@@ -854,7 +854,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
 
     report <- em_model_obj$rep
 
-    dem_params <- model_runs[[as.numeric(object_num)]]$dem_params
+    dem_params <- model_runs[[as.numeric(object_num)]]$om$dem_params
 
     nyears <- spinup_years+simulation_year
     naa <- mse_obj$naa[1:nyears,,,,simulation_number]
@@ -868,6 +868,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     om_ssb <- apply(naa[,,1,,drop=FALSE]*dem_params$mat[1:nyears,,1,,drop=FALSE]*dem_params$waa[1:nyears,,1,,drop=FALSE], 1, sum)
 
     ssb_df <- tibble(year=1:nyears, om=om_ssb, em=em_ssb)
+    
     ssb_plot <- ggplot(ssb_df)+
         geom_line(aes(x=year, y=em))+
         geom_point(aes(x=year, y=om), color="red")+
@@ -879,7 +880,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     em_prop_fs <- apply(aperm(report$FAA, c(2, 3, 4, 1, 5))[1:nyears,,,1,,drop=FALSE], c(1, 5), max)/apply(apply(aperm(report$FAA, c(2, 3, 4, 1, 5))[1:nyears,,,1,,drop=FALSE], c(1, 5), max), 1, sum)
     em_jointselret <- calculate_joint_selret(
         sel = aperm(report$fish_sel, c(2, 3, 4, 1, 5)),
-        ret = om$dem_params$ret[1:nyears,,,1,,drop=FALSE],
+        ret = dem_params$ret[1:nyears,,,1,,drop=FALSE],
         prop_fs = em_prop_fs
     )
     em_exploit_bio <- apply(
@@ -964,12 +965,13 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
 
     em_fish_ac <- aperm(report$CAA, c(2, 3, 4, 1, 5))
     em_fish_ac <- array(aperm(apply(em_fish_ac, c(1, 3, 5), \(x) x/sum(x)), c(2, 1, 3, 4)), dim=c(nyears, 30, 2, 1, 2))
-    dimnames(em_fish_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LLS", "BTS"))
+    dimnames(em_fish_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL"))
 
     em_ac <- array(c(em_fish_ac, em_srv_ac), dim=c(nyears, 30, 2, 1, 4))
     dimnames(em_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
 
-    om_ac <- aggregated_acs
+    om_ac <- afscOM::subset_matrix(survey_obs$agg_acs, simulation_number, 6, drop=TRUE) 
+    om_ac <- afscOM::subset_matrix(om_ac, 1:nyears, 1, drop=FALSE)
     om_ac <- array(aperm(apply(om_ac, c(1, 3, 5), \(x) x/sum(x)), c(2, 1, 3, 4)), dim=c(nyears, 30, 2, 1, 4))
     dimnames(om_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
 
@@ -981,11 +983,46 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
         geom_abline(slope=1)+
         scale_y_continuous("Estimated", limits=c(0, 0.8))+
         scale_x_continuous("True", limits=c(0, 0.8))+
+        scale_color_viridis_c()+
         labs(title="Fits to ACs")+
-        facet_grid(sex~fleet)+
+        facet_grid(fleet~sex)+
         custom_theme
 
-    plot <- (ssb_plot+hr_plot+rec_plot)/(catch_plot+idx_plot)/(ac_plot)
+    # Plot selectivity fits
+    em_fish_sel <- aperm(report$fish_sel, c(2, 3, 4, 1, 5))
+    dimnames(em_fish_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL"))
+
+    em_srv_sel <- aperm(report$srv_sel, c(2, 3, 4, 1, 5))
+    dimnames(em_srv_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LLS", "BTS"))
+
+    em_sel <- array(c(em_fish_sel, em_srv_sel), dim=c(nyears, 30, 2, 1, 4))
+    dimnames(em_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
+
+
+    om_fish_sel <- afscOM::subset_matrix(dem_params$sel[1:nyears,,,,], 1, 4, drop=FALSE)
+    dimnames(om_fish_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL"))
+
+    om_srv_sel <- afscOM::subset_matrix(dem_params$surv_sel[1:nyears,,,,], 1, 4, drop=FALSE)
+    dimnames(om_srv_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LLS", "BTS"))
+
+    om_sel <- array(c(om_fish_sel, om_srv_sel), dim=c(nyears, 30, 2, 1, 4))
+    dimnames(om_sel) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
+
+    sel_df <- reshape2::melt(em_sel, value.name="em") %>% as_tibble() %>%
+        left_join(reshape2::melt(om_sel, value.name="om"), by=c("time", "age", "sex", "region", "fleet"))
+
+    sel_plot <- ggplot(sel_df)+
+        geom_point(aes(x=age, y=om, group=time), color="red", size=0.75)+
+        geom_line(aes(x=age, y=em, group=time))+
+        facet_grid(fleet~sex)+
+        custom_theme
+
+
+    # Combine plots
+
+    #  plot <- (ssb_plot+hr_plot+rec_plot)/(catch_plot+idx_plot)/(ac_plot)
+    plot <- (ssb_plot+rec_plot+(hr_plot/idx_plot))/(ac_plot+sel_plot)
+
 
     return(plot)
 
