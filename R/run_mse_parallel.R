@@ -13,6 +13,7 @@
 #' 
 run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FALSE, ...){
 
+    nyears <- mse_options$n_proj_years+mse_options$n_spinup_years
     outputs <- setup_output_arrays(mse_options$n_proj_years+mse_options$n_spinup_years, nsims, seeds, mse_options$n_spinup_years)
 
     cores <- min(parallel::detectCores()-2, nsims)
@@ -67,13 +68,14 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FAL
             outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
 
             if(mse_options$run_estimation){
-                outputs$model_outs$mods[,s] <- mse$model_outs$mods
-                outputs$model_outs$fits[,s] <- mse$model_outs$fits
-                outputs$model_outs$reps[,s] <- mse$model_outs$reps
+                outputs$model_outs[(1:(nyears-mse_options$n_spinup_years+1))+((s-1)*(nyears-mse_options$n_spinup_years+1))] <- mse$model_outs[(1:(nyears-mse_options$n_spinup_years+1))]
             }
         }
 
     }
+
+    outputs$dem_params <- om$dem_params
+    outputs$mp <- mp
 
     return(outputs)
 
@@ -118,11 +120,12 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
         twfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")])
     )
 
-    model_outs = list(
-        mods = array(list(), dim=c(nyears-spinup_years+1, nsims)),
-        fits = array(list(), dim=c(nyears-spinup_years+1, nsims)),
-        reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
-    )
+    # model_outs = list(
+    #     mods = array(list(), dim=c(nyears-spinup_years+1, nsims)),
+    #     fits = array(list(), dim=c(nyears-spinup_years+1, nsims)),
+    #     reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
+    # )
+    model_outs <- vector("list", length=(nyears-spinup_years)*nsims)
 
     return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, global_rec_devs, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
 

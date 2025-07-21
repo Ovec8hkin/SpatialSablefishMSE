@@ -96,11 +96,12 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         agg_acs = array(NA, dim=c(nyears, nages, nsexes, 1, nsurveys+nfleets))
     )
 
-    model_outs = list(
-        mods = vector("list", length=c(nyears-spinup_years)),
-        fits = vector("list", length=c(nyears-spinup_years)),
-        reps = vector("list", length=c(nyears-spinup_years))
-    )
+    # model_outs = list(
+    #     mods = vector("list", length=c(nyears-spinup_years))
+    #     # fits = vector("list", length=c(nyears-spinup_years)),
+    #     # reps = vector("list", length=c(nyears-spinup_years))
+    # )
+    model_outs = vector("list", length=c(nyears-spinup_years))
 
     naa[1,,,] = init_naa
 
@@ -287,9 +288,10 @@ run_mse <- function(om, mp, mse_options, seed=1120){
 
                 sel <- sel_est
 
-                # model_outs$mods[[(y+1)-spinup_years]] <- mod_out$model
-                # model_outs$fits[[(y+1)-spinup_years]] <- mod_out$opt
-                # model_outs$reps[[(y+1)-spinup_years]] <- mod_out$report
+                model_outs[[(y+1)-spinup_years]] <- sabie_rtmb_model
+                # model_outs$mods[[(y+1)-spinup_years]] <- sabie_rtmb_model
+                # model_outs$fits[[(y+1)-spinup_years]] <- sabie_rtmb_model$par
+                # model_outs$reps[[(y+1)-spinup_years]] <- sabie_rtmb_model$rep
 
             }
 

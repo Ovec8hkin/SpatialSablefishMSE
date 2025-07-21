@@ -834,6 +834,170 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
     return(ps)
 }
 
+#' Plot EM Diagnostics
+#' 
+#' Take model runs and plot set of model dignostics, including:
+#' 1) Model fits to catch and indices
+#' 2) Model fits to age composition data
+#' 3) Model fits to derived quantities (SSB, harvest rate, recruitment)
+#'
+plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years, n_proj_years, simulation_year=1, simulation_number=1){
+
+    # simulation_year <- 10
+    # simulation_number <- 8
+
+    object_num <- extra_columns %>% rownames_to_column() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>% pull(rowname)
+
+    mse_obj <- model_runs[[as.numeric(object_num)]]
+    em_model_obj <- mse_obj$model_outs[[(simulation_year+1)+(simulation_number-1)*(n_proj_years+1)]]
+
+    report <- em_model_obj$rep
+
+    dem_params <- model_runs[[as.numeric(object_num)]]$dem_params
+
+    nyears <- spinup_years+simulation_year
+    naa <- mse_obj$naa[1:nyears,,,,simulation_number]
+    rec <- mse_obj$naa[1:nyears,1,,,simulation_number]
+    faa <- mse_obj$faa[1:nyears,,,,,simulation_number]
+    catch <- mse_obj$land_caa[1:nyears,,,,,simulation_number]
+    survey_obs <- mse_obj$survey_obs
+
+    # Plot SSB Fit
+    em_ssb <- as.vector(report$SSB)
+    om_ssb <- apply(naa[,,1,,drop=FALSE]*dem_params$mat[1:nyears,,1,,drop=FALSE]*dem_params$waa[1:nyears,,1,,drop=FALSE], 1, sum)
+
+    ssb_df <- tibble(year=1:nyears, om=om_ssb, em=em_ssb)
+    ssb_plot <- ggplot(ssb_df)+
+        geom_line(aes(x=year, y=em))+
+        geom_point(aes(x=year, y=om), color="red")+
+        labs(x="Simulation Year", y="SSB", title="Fits to SSB")+
+        custom_theme
+
+    # Plot harvest rate fit
+    em_catch <- apply(report$PredCatch, 2, sum)
+    em_prop_fs <- apply(aperm(report$FAA, c(2, 3, 4, 1, 5))[1:nyears,,,1,,drop=FALSE], c(1, 5), max)/apply(apply(aperm(report$FAA, c(2, 3, 4, 1, 5))[1:nyears,,,1,,drop=FALSE], c(1, 5), max), 1, sum)
+    em_jointselret <- calculate_joint_selret(
+        sel = aperm(report$fish_sel, c(2, 3, 4, 1, 5)),
+        ret = om$dem_params$ret[1:nyears,,,1,,drop=FALSE],
+        prop_fs = em_prop_fs
+    )
+    em_exploit_bio <- apply(
+        aperm(report$NAA, c(2, 3, 4, 1))[1:nyears,,,,drop=FALSE]*em_jointselret$sel*dem_params$waa[1:nyears,,,1,drop=FALSE],
+        1,
+        sum
+    )
+    em_harvest_rate <- em_catch/em_exploit_bio
+
+
+    om_catch <- apply(catch, 1, sum)
+    om_prop_fs <- apply(faa[1:nyears,,,,,drop=FALSE], c(1, 4, 5), max)/apply(apply(faa[1:nyears,,,,,drop=FALSE], c(1, 4, 5), max), 1, sum)
+    om_jointselret <- calculate_joint_selret(
+        sel = dem_params$sel[1:nyears,,,,,drop=FALSE],
+        ret = dem_params$ret[1:nyears,,,,,drop=FALSE],
+        prop_fs = om_prop_fs
+    )
+    om_exploit_bio <- apply(
+        naa[1:nyears,,,,drop=FALSE]*om_jointselret$sel*dem_params$waa[1:nyears,,,,drop=FALSE],
+        1,
+        sum
+    )
+    om_harvest_rate <- om_catch/om_exploit_bio
+
+    harvest_rate_df <- data.frame("time"=1:nyears, om=om_harvest_rate, em=em_harvest_rate)
+    hr_plot <- ggplot(harvest_rate_df)+
+        geom_line(aes(x=time, y=em))+
+        geom_point(aes(x=time, y=om), color="red")+
+        labs(x="Simulation Year", y="Harvest Rate", title="Fits to Harvest Rate")+
+        custom_theme
+
+
+    # Plot recruitment fit
+    em_rec <- as.vector(report$Rec)
+    om_rec <- apply(naa[1:nyears,1,,,drop=FALSE], 1, sum)
+
+    rec_df <- tibble(year=1:nyears, om=om_rec, em=em_rec)
+    rec_plot <- ggplot(rec_df)+
+        geom_line(aes(x=year, y=em))+
+        geom_point(aes(x=year, y=om), color="red")+
+        labs(x="Simulation Year", y="Recruits", title="Fits to Recruitment")+
+        custom_theme
+
+    # Plot survey fits
+    em_survey <- aperm(report$PredSrvIdx, c(2, 1, 3))[1:nyears,,1:2]
+    dimnames(em_survey) <- list("time"=1:nyears, "fleet"=c("LLS", "BTS"))
+
+    om_ll_survey <- apply(survey_obs$rpns[1:nyears,,,,1,simulation_number,drop=FALSE], c(1, 5), sum)
+    om_bts_survey <- apply(survey_obs$rpws[1:nyears,,,,2,simulation_number,drop=FALSE], c(1, 5), sum)
+    om_survey <- array(c(om_ll_survey, om_bts_survey), dim=c(nyears, 2), dimnames=list("time"=1:nyears, "fleet"=c("LLS", "BTS")))
+
+    survey_df <- reshape2::melt(em_survey, value.name="em") %>%
+        left_join(reshape2::melt(om_survey, value.name="om"), by=c("time", "fleet"))
+
+    idx_plot <- ggplot(survey_df)+
+        geom_line(aes(x=time, y=em))+
+        geom_point(aes(x=time, y=om), color="red")+
+        labs(x="Simulation Year", y="Index", title="Fits to Indices")+
+        facet_wrap(~fleet, scales="free_y")+
+        custom_theme
+
+    # Plot catch fits
+    em_catch <- aperm(report$PredCatch, c(2, 1, 3))[1:nyears,,1:2]
+    dimnames(em_catch) <- list("time"=1:nyears, "fleet"=c("Fixed", "Trawl"))
+
+    om_catch <- apply(catch[1:nyears,,,,,drop=FALSE], c(1, 5), sum)
+
+    catch_df <- reshape2::melt(em_catch, value.name="em") %>%
+        left_join(reshape2::melt(om_catch, value.name="om"), by=c("time", "fleet"))
+
+    catch_plot <- ggplot(catch_df)+
+        geom_line(aes(x=time, y=em))+
+        geom_point(aes(x=time, y=om), color="red")+
+        labs(x="Simulation Year", y="Catch", title="Fits to Catch")+
+        facet_wrap(~fleet)+
+        custom_theme
+
+    # Plot age comp fits
+    em_srv_ac <- aperm(report$SrvIAA, c(2, 3, 4, 1, 5))
+    em_srv_ac <- array(aperm(apply(em_srv_ac, c(1, 3, 5), \(x) x/sum(x)), c(2, 1, 3, 4)), dim=c(nyears, 30, 2, 1, 2))
+    dimnames(em_srv_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LLS", "BTS"))
+
+    em_fish_ac <- aperm(report$CAA, c(2, 3, 4, 1, 5))
+    em_fish_ac <- array(aperm(apply(em_fish_ac, c(1, 3, 5), \(x) x/sum(x)), c(2, 1, 3, 4)), dim=c(nyears, 30, 2, 1, 2))
+    dimnames(em_fish_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LLS", "BTS"))
+
+    em_ac <- array(c(em_fish_ac, em_srv_ac), dim=c(nyears, 30, 2, 1, 4))
+    dimnames(em_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
+
+    om_ac <- aggregated_acs
+    om_ac <- array(aperm(apply(om_ac, c(1, 3, 5), \(x) x/sum(x)), c(2, 1, 3, 4)), dim=c(nyears, 30, 2, 1, 4))
+    dimnames(om_ac) <- list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"="Alaska", "fleet"=c("LL", "TWL", "LLS", "BTS"))
+
+    ac_df <- reshape2::melt(em_ac, value.name="em") %>% as_tibble() %>%
+        left_join(reshape2::melt(om_ac, value.name="om"), by=c("time", "age", "sex", "region", "fleet"))
+
+    ac_plot <- ggplot(ac_df)+
+        geom_point(aes(x=om, y=em, color=age, shape=sex))+
+        geom_abline(slope=1)+
+        scale_y_continuous("Estimated", limits=c(0, 0.8))+
+        scale_x_continuous("True", limits=c(0, 0.8))+
+        labs(title="Fits to ACs")+
+        facet_grid(sex~fleet)+
+        custom_theme
+
+    plot <- (ssb_plot+hr_plot+rec_plot)/(catch_plot+idx_plot)/(ac_plot)
+
+    return(plot)
+
+}
+
+
+
+
+
+
+
+
 #' Plot Map of Alaska with NMFS Stat Areas Colored
 #' 
 #' Original code from Matt Cheng
@@ -944,3 +1108,5 @@ annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax
                                           xmin = xmin, xmax = xmax, 
                                           ymin = ymin, ymax = ymax))
 }
+
+
