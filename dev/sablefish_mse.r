@@ -7,15 +7,15 @@ library(reshape2)
 library(SPoCK)
 library(tictoc)
 library(doParallel)
-# library(afscOM)
+library(afscOM)
 # library(afscOM) # may work but not certain
 
 # Change to wherever your local copy of afscOM is
 library(devtools)
-afscOM_dir <- "~/Desktop/Projects/afscOM"
+# afscOM_dir <- "~/Desktop/Projects/afscOM"
 sablefishMSE_dir <- here::here()
 
-devtools::load_all(afscOM_dir)
+# devtools::load_all(afscOM_dir)
 # devtools::load_all(sablefishMSE_dir)
 
 lapply(list.files("R", full.names = TRUE), source)
