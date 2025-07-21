@@ -59,13 +59,17 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FAL
         outputs$global_rec_devs[,,,,s] <- mse$global_rec_devs
 
         if(diagnostics){
-            outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$rpns[,,,,1]
-            outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,1]
-            outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,2]
-            outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$acs[,,,,3]
-            outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$acs[,,,,4]
-            outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,1]
-            outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
+            outputs$survey_obs$rpns[,,,,,s] <- mse$survey_obs$rpns
+            outputs$survey_obs$rpws[,,,,,s] <- mse$survey_obs$rpws
+            outputs$survey_obs$acs[,,,,,s] <- mse$survey_obs$acs
+            outputs$survey_obs$agg_acs[,,,,,s] <- mse$survey_obs$agg_acs
+            # outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$rpns[,,,,1]
+            # outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,1]
+            # outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,2]
+            # outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$acs[,,,,3]
+            # outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$acs[,,,,4]
+            # outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,1]
+            # outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
 
             if(mse_options$run_estimation){
                 outputs$model_outs[(1:(nyears-mse_options$n_spinup_years+1))+((s-1)*(nyears-mse_options$n_spinup_years+1))] <- mse$model_outs[(1:(nyears-mse_options$n_spinup_years+1))]
@@ -74,8 +78,9 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FAL
 
     }
 
-    outputs$dem_params <- om$dem_params
-    outputs$mp <- mp
+    # outputs$dem_params <- om$dem_params
+    outputs$om <- om
+    outputs$mp <- hcr
 
     return(outputs)
 
@@ -95,6 +100,7 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     nsexes <- length(dimension_names[["sex"]])
     nregions <- length(dimension_names[["region"]])
     nfleets <- length(dimension_names[["fleet"]])
+    nsurveys <- 2
 
     land_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
     disc_caa    = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets, nsims), dimnames=dimension_names)
@@ -111,13 +117,10 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     global_rec_devs       = array(NA, dim=c(nyears-spinup_years, 1, 1, nregions, nsims), dimnames=list("time"=1:(nyears-spinup_years), 1, 1,"region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds))
 
     survey_obs <- list(
-        ll_rpn = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds)),
-        ll_rpw = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds)),
-        tw_rpw = array(NA, dim=c(nyears, 1, 1, nregions, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "sim"=seeds)),
-        ll_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
-        tw_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
-        fxfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")]),
-        twfish_acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nsims), dimnames=dimension_names[c("time", "age", "sex", "region", "sim")])
+        rpns = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("LLS", "BTS"), "sim"=seeds)),
+        rpws = array(NA, dim=c(nyears, 1, 1, nregions, nsurveys, nsims), dimnames=list("time"=1:nyears, 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("LLS", "BTS"),"sim"=seeds)),
+        acs = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets+nsurveys, nsims), dimnames=list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl", "LLS", "BTS"), "sim"=seeds)),
+        agg_acs = array(NA, dim=c(nyears, nages, nsexes, 1, nfleets+nsurveys, nsims), dimnames=list("time"=1:nyears, "age"=2:31, "sex"=c("F", "M"), "region"=c("Alaska"), "fleet"=c("Fixed", "Trawl", "LLS", "BTS"), "sim"=seeds))
     )
 
     # model_outs = list(
