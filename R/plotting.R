@@ -1,4 +1,4 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40", depletion=FALSE, scales="fixed"){
+plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", depletion=FALSE, scales="fixed"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
     d <- data
@@ -11,7 +11,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
-        median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
@@ -50,7 +50,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
     return(plot+custom_theme)
 }
 
-plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40", scales="fixed"){
+plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", scales="fixed"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
     d <- data
@@ -66,7 +66,7 @@ plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_
         ungroup() %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
-        median_qi(dep, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(dep, .width=interval_widths, .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
@@ -107,7 +107,7 @@ plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_
     return(plot+custom_theme)
 }
 
-plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_hcr="No Fishing"){
+plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="No Fishing"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     
@@ -136,14 +136,14 @@ plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=64, base_
 
 }
 
-plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64){
+plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80)){
     # Plot fishing mortality rates from OM and EM
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "F")]
 
     f <- data %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(F, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        median_qi(F, .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
 
     hcr1 <- as.character((f %>% pull(hcr) %>% unique)[1])
@@ -178,7 +178,7 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
     return(plot+custom_theme)
 }
 
-plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "rec")]
 
@@ -202,7 +202,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, commo
     r <- r %>%
         # summarise SSB across year and sim 
         group_by(across(all_of(group_columns))) %>%
-        median_qi(rec, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(rec, .width=interval_widths, .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
 
     hcr1 <- as.character((r %>% pull(hcr) %>% unique)[1])
@@ -240,7 +240,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, commo
     return(plot+custom_theme)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=64, base_hcr="F40"){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
@@ -252,7 +252,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
     c <- c %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        median_qi(catch, total_catch, .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((c %>% pull(hcr) %>% unique)[1])
@@ -295,7 +295,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
 }
 
-plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
+plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
 
     group_columns <- colnames(ssb_data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
@@ -304,7 +304,7 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
         select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
-        median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
@@ -321,7 +321,7 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
 
     catch_d <- catch_data %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        median_qi(total_catch, .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((catch_d %>% pull(hcr) %>% unique)[1])
@@ -456,7 +456,7 @@ plot_atage_density_ternary <- function(data, col_names){
 
 # }
 
-plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, base_hcr="F40"){
+plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
@@ -466,7 +466,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, bas
         ) %>%
         # filter(L1 != "Expected Landings") %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(value, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(value, .width=interval_widths, .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((q %>% pull(hcr) %>% unique)[1])
@@ -501,14 +501,14 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=64, bas
     return(plot+custom_theme)
 }
 
-plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
+plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80)){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "total_F")]
 
     d <- data %>%
             group_by(across(all_of(group_columns))) %>%
             filter(time > common_trajectory) %>%
-            median_qi(spbio, total_F, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            median_qi(spbio, total_F, .width=interval_widths, .simple_names=FALSE) %>%
             filter(.width == 0.50)
 
     segments <- d %>% as_tibble() %>% 
@@ -540,14 +540,14 @@ plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory
     return(plot)
 }
 
-plot_catch_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
+plot_catch_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80)){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "total_catch")]
 
     d <- data %>%
             group_by(across(all_of(group_columns))) %>%
             filter(time > common_trajectory) %>%
-            median_qi(spbio, total_catch, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            median_qi(spbio, total_catch, .width=interval_widths, .simple_names=FALSE) %>%
             filter(.width == 0.50)
 
     segments <- d %>% as_tibble() %>% 
@@ -579,7 +579,7 @@ plot_catch_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_traj
     return(plot)
 }
 
-plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=64){
+plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80)){
 
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "value")]
@@ -588,7 +588,7 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
             rename(out_F=value) %>%
             group_by(across(all_of(group_columns))) %>%
             filter(time > common_trajectory) %>%
-            median_qi(spbio, out_F, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+            median_qi(spbio, out_F, .width=interval_widths, .simple_names=FALSE) %>%
             filter(.width == 0.50)
 
     segments <- d %>% as_tibble() %>% 
@@ -621,7 +621,7 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
 
 }
 
-plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, common_trajectory=64){
+plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, common_trajectory=54){
     all_data <- bind_rows(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=spbio),
         get_management_quantities(model_runs, extra_columns, hcr_filter, om_filter, spinup_years = common_trajectory),
@@ -729,14 +729,14 @@ plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_rel
     return(plot+custom_theme)
 }
 
-plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio")]
     # Plot spawning biomass from OM and EM
     d <- data %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
-        median_qi(spbio, .width=c(0.50, 0.80), .simple_names=FALSE) %>%
+        median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
@@ -782,13 +782,13 @@ plot_ssb_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, comm
     return(ps)
 }
 
-plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=64, base_hcr="F40"){
+plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
 
     c2 <- data %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(catch, total_catch, .width=c(0.50, 0.80), .simple_names=TRUE) %>%
+        median_qi(catch, total_catch, .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
     
     hcr1 <- as.character((c2 %>% pull(hcr) %>% unique)[1])
