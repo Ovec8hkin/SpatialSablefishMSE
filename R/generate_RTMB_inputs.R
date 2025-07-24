@@ -196,16 +196,61 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     ### Selectivity and Catchability ------------------------
 
+    # Define sex and parameter combinations
+    sex_par <- expand.grid(sex = 1:2, par = 1:2)
+
     fsh_sel_blocks_base <- c(
-        paste0("Block_1_Year_1-",min(56,nyears),"_Fleet_1"), 
+        "none_Fleet_1", 
         "",
         "none_Fleet_2"
     )
     if(nyears >= 57){
-        fsh_sel_blocks_base[2] <- paste0("Block_2_Year_",min(57,nyears),"-",nyears,"_Fleet_1")
+        fsh_sel_blocks_base[1] <- paste0("Block_1_Year_1-56_Fleet_1")
+        fsh_sel_blocks_base[2] <- paste0("Block_2_Year_57-terminal_Fleet_1")
+        fsh_sel_map <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
+
+        fleet_blocks <- data.frame(
+            fleet = c(1, 1, 2),     # fleets corresponding to time blocks (2 fixed gear time blocks, no trawl gear blocks)
+            block = c(1, 2, 1)      # corresponding time blocks
+        )
+
+        # Merge to get all valid combinations
+        fish_selex_structure <- merge(fleet_blocks, sex_par) %>%
+            dplyr::filter(!(fleet == 1 & block == 1 & sex == 2 & par == 2))               # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
+        #dplyr::filter(!(fleet == 2 & block == 1 & sex == 2 & par == 2))              # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
+
+
     }else{
         fsh_sel_blocks_base <- fsh_sel_blocks_base[-c(2)]
+        fsh_sel_map <- factor(c(1:3, 2, rep(c(4,5),1), rep(c(6,5), 1)))
+
+        fleet_blocks <- data.frame(
+            fleet = c(1, 2),     # fleets corresponding to time blocks (2 fixed gear time blocks, no trawl gear blocks)
+            block = c(1, 1)      # corresponding time blocks
+        )
+
+        # Merge to get all valid combinations
+        fish_selex_structure <- merge(fleet_blocks, sex_par) %>%
+            dplyr::filter(!(fleet == 1 & block == 1 & sex == 2 & par == 2))               # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
+        #dplyr::filter(!(fleet == 2 & block == 1 & sex == 2 & par == 2))              # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
+
+
     }
+
+    # Add the lognormal prior values - creates a dataframe, each row is a unique parameter combination to apply the prior to
+    fish_selex_prior <- cbind(
+        region = 1,
+        fish_selex_structure,
+        mu = 1,                                                                      # All selex means = 1 (means should be defined in normal space)
+        sd = 5                                                                       # All selex sd = 5
+    )
+
+    fish_selex_prior_tf <- fish_selex_prior %>%                                    # set tighter selex prior for TF
+        dplyr::filter((fleet == 2 & par == 1)) %>%
+        dplyr::mutate(mu = 2, sd = 0.5) %>%
+        dplyr::full_join(fish_selex_prior %>%  dplyr::filter(!(fleet == 2 & par == 1)))
+
+
 
     input_list <- SPoRC::Setup_Mod_Fishsel_and_Q(
         input_list = input_list,                               
@@ -226,7 +271,9 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         fish_fixed_sel_pars = c("est_all", "est_all"),
         # whether to estimate all fixed effects 
         # for fishery catchability
-        fish_q_spec = c("fix", "fix") 
+        fish_q_spec = c("fix", "fix") ,
+        Use_fish_selex_prior = 1,                # Using selex priors
+        fish_selex_prior = fish_selex_prior_tf
     )
 
     input_list <- SPoRC::Setup_Mod_Srvsel_and_Q(
@@ -286,7 +333,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     input_list$par$ln_sigmaC <- array(log(c(0.02, 0.02)), dim=c(1, 2))
 
     ### Mapping -------------------------------------------
-    # input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
+    input_list$map$ln_fish_fixed_sel_pars <- fsh_sel_map#factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
     # input_list$map$ln_srv_fixed_sel_pars <-  factor(c(1:3, 2, 4:6, 5,rep(7,4), rep(8, 4)))
     # input_list$map$ln_fish_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_fish_fixed_sel_pars)))
     # input_list$map$ln_srv_fixed_sel_pars <- factor(c(1:length(input_list$map$ln_srv_fixed_sel_pars)))
