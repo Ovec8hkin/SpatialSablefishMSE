@@ -146,11 +146,11 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     ObsSrvIdx[,,2] <- aggregated_survey_obs$rpws[,1,1,1,2] # Trawl survey
 
     ObsSrvIdx_SE <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
-    n=1000
-    rpn1_idx <- apply(sapply(ObsSrvIdx[,,1], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[3], n=n)), 2, sd)/sqrt(n)
-    rpn2_idx <- apply(sapply(ObsSrvIdx[,,2], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[4], n=n)), 2, sd)/sqrt(n)
-    ObsSrvIdx_SE[,,1] <- rpn1_idx #model_options$obs_pars$rpn_cv[3]*ObsSrvIdx[,,1]
-    ObsSrvIdx_SE[,,2] <- rpn2_idx #model_options$obs_pars$rpw_cv[4]*ObsSrvIdx[,,2]
+    #n=10
+    # rpn1_idx <- apply(sapply(ObsSrvIdx[,,1], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[3], n=n)), 2, sd)#/sqrt(n)
+    # rpn2_idx <- apply(sapply(ObsSrvIdx[,,2], \(x) afscOM::simulate_lognormal_obs(x, model_options$obs_pars$rpn_cv[4], n=n)), 2, sd)#/sqrt(n)
+    ObsSrvIdx_SE[,,1] <- sqrt(log(model_options$obs_pars$rpn_cv[3]^2+1))
+    ObsSrvIdx_SE[,,2] <- sqrt(log(model_options$obs_pars$rpn_cv[4]^2+1))
 
     UseSrvIdx <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_srv_fleets))
 
