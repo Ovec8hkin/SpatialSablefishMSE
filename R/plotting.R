@@ -871,8 +871,9 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     
     ssb_plot <- ggplot(ssb_df)+
         geom_line(aes(x=year, y=em))+
+        geom_line(aes(x=year, y=om), color="red", alpha=0.30)+
         geom_point(aes(x=year, y=om), color="red")+
-        labs(x="Simulation Year", y="SSB", title="Fits to SSB")+
+        labs(x="Simulation Year", y="SSB", title="SSB Comparison")+
         custom_theme
 
     # Plot harvest rate fit
@@ -908,8 +909,9 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     harvest_rate_df <- data.frame("time"=1:nyears, om=om_harvest_rate, em=em_harvest_rate)
     hr_plot <- ggplot(harvest_rate_df)+
         geom_line(aes(x=time, y=em))+
+        geom_line(aes(x=time, y=om), color="red", alpha=0.30)+
         geom_point(aes(x=time, y=om), color="red")+
-        labs(x="Simulation Year", y="Harvest Rate", title="Fits to Harvest Rate")+
+        labs(x="Simulation Year", y="Harvest Rate", title="Harvest Rate Comparison")+
         custom_theme
 
 
@@ -920,8 +922,9 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     rec_df <- tibble(year=1:nyears, om=om_rec, em=em_rec)
     rec_plot <- ggplot(rec_df)+
         geom_line(aes(x=year, y=em))+
+        geom_line(aes(x=year, y=om), color="red", alpha=0.30)+
         geom_point(aes(x=year, y=om), color="red")+
-        labs(x="Simulation Year", y="Recruits", title="Fits to Recruitment")+
+        labs(x="Simulation Year", y="Recruits", title="Recruitment Comparison")+
         custom_theme
 
     # Plot survey fits
@@ -936,8 +939,10 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
         left_join(reshape2::melt(om_survey, value.name="om"), by=c("time", "fleet"))
 
     idx_plot <- ggplot(survey_df)+
+        geom_line(aes(x=time, y=om), color="red", alpha=0.30)+
+        # geom_point(aes(x=time, y=om), color="red")+
+        geom_pointrange(aes(x=time, y=om, ymin=om-2.96*om/10, ymax=om+2.96*om/10), alpha=0.30, color="red", size=0.5)+
         geom_line(aes(x=time, y=em))+
-        geom_point(aes(x=time, y=om), color="red")+
         labs(x="Simulation Year", y="Index", title="Fits to Indices")+
         facet_wrap(~fleet, scales="free_y")+
         custom_theme
@@ -953,6 +958,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
 
     catch_plot <- ggplot(catch_df)+
         geom_line(aes(x=time, y=em))+
+        geom_line(aes(x=time, y=om), color="red", alpha=0.30)+
         geom_point(aes(x=time, y=om), color="red")+
         labs(x="Simulation Year", y="Catch", title="Fits to Catch")+
         facet_wrap(~fleet)+
@@ -1013,7 +1019,9 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
 
     sel_plot <- ggplot(sel_df)+
         geom_point(aes(x=age, y=om, group=time), color="red", size=0.75)+
+        geom_line(aes(x=age, y=om, group=time), color="red", alpha=0.30)+
         geom_line(aes(x=age, y=em, group=time))+
+        labs(title="Fits to Selectivity")+
         facet_grid(fleet~sex)+
         custom_theme
 
