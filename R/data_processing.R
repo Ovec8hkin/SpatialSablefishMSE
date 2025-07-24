@@ -558,3 +558,108 @@ get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr
             )
     )
 }
+
+#' Check EM Convergence Diagnostics
+#' 
+#' Checks a returned EM object for convergence based on the following properties:
+#' - No infinite log-likelihood components
+#' - Maximum gradient < 1e-3
+#' - PD hessian
+#' - No inifinte SEs of parameters
+#' - No SEs > 100
+#' - No parameter correlations > 0.999
+#' 
+#' @param model_runs list of completed MSE model runs with `diagnostics=TRUE`
+#' @param extra_columns additional columns to associated model with HCR and OM
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#' @param n_proj_years number of projection years to compute convergence diagnostics over
+#' @param nsims number of simulations over which to calculate convergence diagnostics
+#' 
+#' @return dataframe of whether EM run for projection year y, and simulation s, converged
+#'         according to the above diagnostic checks.
+#' 
+#' @export check_em_convergence_diagnostics
+#' 
+check_em_convergence_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter, n_proj_years, nsims){
+
+    post_optim_sanity_checks <- function(sd_rep, rep, gradient_tol = 1e-3, se_tol = 100, corr_tol = 0.99) {
+        passed_post_sanity_checks <- TRUE
+        
+        # check likelihoods are all finite and not NA
+        if(!all(is.finite(rep$jnLL))) {
+            message("Found Inf in joint log-likelihood, model is not converged!")
+            passed_post_sanity_checks <- F
+        }
+        # check maximum absolute gradients
+        max_abs_grad_ndx <- which.max(abs(sd_rep$gradient.fixed))
+        max_abs_grad <- abs(sd_rep$gradient.fixed)[max_abs_grad_ndx]
+        if(gradient_tol < max_abs_grad) {
+            message("Parameter: ", names(sd_rep$par.fixed)[max_abs_grad_ndx], " had absolute gradient = ", max_abs_grad,
+                    " which was greater than tolerance ", gradient_tol,". This indicates potential non-convergence according to the tolerance.\n")
+            passed_post_sanity_checks <- F
+        }
+        # check hessian
+        if(!sd_rep$pdHess) {
+            message("Hessian is not positive definite, model is not converged!")
+            passed_post_sanity_checks <- F
+        }
+        # check if standard errors are finite
+        if(!all(is.finite(sqrt(diag(sd_rep$cov.fixed))))) {
+            message("Found non finite elements in standard errors of parameters, model is not converged!")
+            passed_post_sanity_checks <- F
+        }
+        # check if standard errors are big
+        if(max(sqrt(diag(sd_rep$cov.fixed))) > se_tol) {
+            message("Parameter: ", names(diag(sd_rep$cov.fixed))[which.max(sqrt(diag(sd_rep$cov.fixed)))], " has a standard error = ",
+                    max(sqrt(diag(sd_rep$cov.fixed))), " which was greated than tolerance ", se_tol, ". This indicates potential non-convergence according to the tolerance. \n")
+            passed_post_sanity_checks <- F
+        }
+        # check if correlations are big
+        corr_mat <- cov2cor(sd_rep$cov.fixed)
+        diag(corr_mat) <- "Same" # set diagonal to "Same" to remove from max calculations
+        # reshape to dataframe
+        corr_df <- reshape2::melt(corr_mat) %>%
+            dplyr::filter(value != 'Same') %>%
+            dplyr::mutate(value = as.numeric(value))
+        if(max(abs(corr_df$value)) > corr_tol) {
+            message("Parameter pairs: ", corr_df$Var1[which.max(abs(corr_df$value))], " and ", corr_df$Var2[which.max(abs(corr_df$value))], " have a correlation of ", max(abs(corr_df$value)), ". This indicates potential non-convergence according to the tolerance.")
+            passed_post_sanity_checks <- F
+        }
+        cat("\n\n");
+        if(passed_post_sanity_checks) {
+            message("Successfully passed post-optim-sanity checks\n")
+        }
+
+        return(passed_post_sanity_checks)
+
+    }
+
+    object_num <- extra_columns %>% rownames_to_column() %>%
+        filter_hcr_om(hcr_filter, om_filter) %>% pull(rowname)
+
+    mse_obj <- model_runs[[as.numeric(object_num)]]
+    
+
+    # nsims <- length(em_model_obj)/length(em_model_obj[[1]])
+
+    output <- expand.grid(year=1:(n_proj_years+1), sim=1:nsims)
+    output$converged <- NA
+    i <- 1
+    for(s in 1:nsims){
+        for(y in 0:n_proj_years){
+            em_model_obj <- mse_obj$model_outs[[(y+1)+(s-1)*(n_proj_years+1)]]
+            rep <- em_model_obj$rep
+            sdrep <- sdreport(em_model_obj)
+            converged <- tryCatch(
+                post_optim_sanity_checks(sdrep, rep, corr_tol=0.999),
+                error = function(e) FALSE
+            )
+            output[i,]$converged <- converged
+            i = i+1
+        }
+    }
+    
+    return(output)
+
+}
