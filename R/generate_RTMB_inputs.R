@@ -30,10 +30,10 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         do_rec_bias_ramp = 1,
         bias_year = c(length(1960:1979), length(1960:1989), (length(1960:(1960+nyears-1)) - 5), length(1960:(1960+nyears)) - 2) + 1,
         sigmaR_switch = as.integer(length(1960:1975)), 
-        dont_est_recdev_last = 1, 
+        dont_est_recdev_last = 0, 
         ln_sigmaR = log(c(0.4, 1.2)),
         rec_model = "mean_rec", # recruitment model
-        sigmaR_spec = "fix_early_est_late", 
+        sigmaR_spec = "fix", 
         sexratio = as.vector(c(0.5, 0.5)), 
         init_age_strc = 1,
         init_F_prop = 0
