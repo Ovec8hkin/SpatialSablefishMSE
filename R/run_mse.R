@@ -190,7 +190,8 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         survey_obs$acs[y,,,,]  <- out_vars$survey_obs$acs
         
         # Aggregate age composition observations to single regions for EM
-        agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=out_vars$naa_tmp, caa=out_vars$caa_tmp, obs_pars=model_options$obs_pars)
+        # agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=out_vars$naa_tmp, caa=out_vars$caa_tmp, obs_pars=model_options$obs_pars)
+        agg_comps <- generate_aggregate_comps(dem_params=dp_y, naa=naa[y,,,,drop=FALSE], caa=out_vars$caa_tmp, obs_pars=model_options$obs_pars)
         survey_obs$agg_acs[y,,,,] <- agg_comps
 
         if((y+1) > spinup_years && do_assessment[y]){
