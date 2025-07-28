@@ -57,7 +57,12 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     landings <- array(0, dim=c(nyears+1, nfleets, nregions), dimnames=list("time"=1:(nyears+1), "fleet"=c("Fixed", "Trawl"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
     hcr_F <- rep(0, nyears)
     out_f <- rep(0, nyears) # vector to store outputted F
-    landings[1:spinup_years,,] <- aperm(spatial_assessment$catch[,1:spinup_years,], c(2, 3, 1))
+    if(is.null(mse_options$catch_tseries)){
+        landings[1:spinup_years,,] <- aperm(spatial_assessment$catch[,1:spinup_years,], c(2, 3, 1))
+    }else{
+        landings[1:spinup_years,,] <- mse_options$catch_tseries
+    }
+    
 
 
     #' 6. Setup empty array to collect derived quantities from the OM
@@ -106,8 +111,12 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     naa[1,,,] = init_naa
 
     set.seed(seed)
-
-    hist_recruitment <- t(spatial_assessment$recruitment)
+    if(is.null(mse_options$recruit_tseries)){
+        hist_recruitment <- t(spatial_assessment$recruitment)
+    }else{
+        hist_recruitment <- mse_options$recruit_tseries
+    }
+    
     hist_recruitment <- hist_recruitment[1:mse_options$recruitment_start,]
     projected_recruitment <- do.call(recruitment$func, c(recruitment$pars, list(seed=seed)))
     if(!is.function(projected_recruitment) && ncol(projected_recruitment)==nregions){

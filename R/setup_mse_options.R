@@ -56,12 +56,14 @@ setup_mse_options <- function(){
             n_proj_years = 75,
             n_spinup_years = 54,
             recruitment_start_year = 54,
+            catch_tseries = NULL,
+            recruit_tseries = NULL,
             run_estimation = TRUE
         )
     )
 }
 
-#' ABC Alloaction Rate to Fleets within Regions
+#' ABC Allocation Rate to Fleets within Regions
 #' 
 #' Values represent the proportion of the regional ABC that is allocated to each fleet.
 #' Values come from the GOA Groudfish FMP and BSAI Groundfish FMP.
