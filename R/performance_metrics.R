@@ -1233,13 +1233,13 @@ performance_metric_summary <- function(
         dfs <- mget(metric_list)
         have_time <- all(unlist(lapply(dfs, \(x) "time" %in% colnames(x))))
         if(all(have_time)){
-            perf_data <- plyr::join_all(dfs, by=c("time", "sim", "om", "hcr"))
+            perf_data <- plyr::join_all(dfs, by=c("time", "sim", summarise_by))
         }else{
             dfs <- lapply(dfs[1:length(dfs)], function(x){
-                x %>% group_by(sim, om, hcr) %>%
-                    summarise(across(ncol(.)-3, \(y) median(y, na.rm=TRUE)))
+                x %>% group_by(across(all_of(c("sim", summarise_by)))) %>%
+                    summarise(across(ncol(.)-length(summarise_by)-1, \(y) median(y, na.rm=TRUE)))
             })
-            perf_data <- plyr::join_all(dfs, by=c("sim", "om", "hcr"))
+            perf_data <- plyr::join_all(dfs, by=c("sim", summarise_by))
         }
     }
 
