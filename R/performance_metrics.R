@@ -1255,18 +1255,15 @@ compute_topsis <- function(perf_data, topsis_splits, topsis_weights, topsis_minm
 
     perf_data %>%
         ungroup() %>%
-        select(c(topsis_splits, hcr, name, value)) %>%#Recruitment, hcr, region, name, value) %>%
+        select(c(topsis_splits, hcr, name, value)) %>%
         group_by(across(all_of(topsis_splits))) %>%
         group_split() %>%
-        map(function(df){
+        purrr::map(function(df){
 
             table <- df %>% select(!topsis_splits) %>% 
                         pivot_wider(names_from="name", values_from="value") %>%
                         ungroup() %>% column_to_rownames("hcr") %>%
                         as.matrix
-
-            # weights <- c(0.25, 0.125, 0.10, 0.15, 0.125, 0.25)
-            # minmax <- c("max", "max", "min", "max", "max", "max")
 
             topsis <- MCDA::TOPSIS(table, topsis_weights, topsis_minmax)
 
@@ -1276,7 +1273,7 @@ compute_topsis <- function(perf_data, topsis_splits, topsis_weights, topsis_minm
         bind_cols(
             perf_data[topsis_splits] %>% distinct()
         ) %>%
-        select(c(topsis_splits, 1:2))
+        select(c(topsis_splits, 1:(ncol(.)-length(topsis_splits))))
         # arrange(region)
 
 }

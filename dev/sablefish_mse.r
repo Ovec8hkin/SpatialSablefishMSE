@@ -385,30 +385,95 @@ perf_data2 %>% select(om, hcr, region, name, scaled) %>%
 ggsave(file.path(here::here(), "figures", "performance_metrics_radar.png"))
 
 
+full_performance_metrics <- performance_metric_summary(
+    model_runs, 
+    extra_columns, 
+    sable_om$dem_params, 
+    ref_naa,
+    hcr_filter=publication_hcrs,
+    om_filter=publication_oms,
+    interval_widths=interval_widths,
+    time_horizon = time_horizon, 
+    extra_filter = NULL,
+    relative=NULL, 
+    summarise_by=c("om", "hcr", "region"),
+    summary_out = FALSE,
+    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "avg_catch_lg", "dynamic_value") 
+)
 
-
-
-
-
-
-
-
-
-
-plot_performance_metric_summary(perf_data2, v2="om", is_relative=FALSE)+
-    custom_theme+guides(color="none", shape="none")+
-    theme(panel.spacing.x = unit(1.25, "cm"))+ 
-    ggh4x::facetted_pos_scales(
-        x = list(
-            scale_x_continuous(limits=c(0, 55)),
-            scale_x_continuous(limits=c(0, 0.06), breaks=c(0, 0.02, 0.04, 0.06)),
-            scale_x_continuous(limits=c(0, 1), breaks=c(0, 0.50, 1.0)),
-            scale_x_continuous(limits=c(0, 550), breaks=c(0, 150, 300, 450)),
-            scale_x_continuous(limits=c(0, 15)),
-            scale_x_continuous(limits=c(0, 0.60), breaks=c(0.0, 0.20, 0.40, 0.60))
+om_aggregated_performance <- full_performance_metrics$perf_data %>%
+    separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    pivot_longer(7:12, names_to="name", values_to="value") %>%
+    mutate(
+        name = factor(
+            name, 
+            levels=c("annual_catch", "aav", "spbio", "avg_age", "catch", "dyn_annual_value"), 
+            labels=publication_metrics
         )
-    )
-ggsave(filename=file.path(here::here(), "figures", "performance2.png"), width=18, height=12, units=c("in"))
+    ) %>%
+    pivot_wider(names_from="name", values_from="value")
+    
+recruitment_aggregated_performance <- om_aggregated_performance %>%   
+    group_by(sim, hcr, Recruitment, region) %>%
+    summarise(
+        across(3:8, \(x) mean(x, na.rm=TRUE))
+    ) %>% 
+    pivot_longer(5:10, names_to="name", values_to="value")
+
+movement_aggregated_performance <- om_aggregated_performance %>%   
+    group_by(sim, hcr, Movement, region) %>%
+    summarise(
+        across(3:8, \(x) mean(x, na.rm=TRUE))
+    ) %>% 
+    pivot_longer(5:10, names_to="name", values_to="value")
+
+
+
+movement_aggregated_performance %>% 
+    group_by(Movement, hcr, region, name) %>%
+    median_qi(value, .width=c(0.50)) %>%
+    group_by(Movement, region, name) %>%
+    mutate(
+        scaled = case_when(
+            name == "Catch\nAAV" ~ (inf_max(value)-value)/(inf_max(value)-min(value)),
+            TRUE ~ value/inf_max(value)
+        )
+    ) %>%
+    select(Movement, hcr, region, name, scaled) %>%
+    # pivot_wider(names_from=name, values_from=scaled) %>%
+
+    ggplot(aes(x=name, y=scaled, color=Movement, fill=Movement, group=Movement))+
+        geom_point(size=3)+
+        geom_line()+
+        geom_polygon(alpha=0)+
+        scale_y_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25))+
+        ggiraphExtra::coord_radar()+
+        facet_grid(hcr ~ region)+
+        custom_theme+
+        theme(
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank()
+        )
+
+topsis_movement <- compute_topsis(
+    # movement_aggregated_performance %>% group_by(Movement, hcr, region, name) %>% median_qi(value, .width=c(0.50)) %>% select(Movement, hcr, region, name, value),
+    # perf_data2 %>% filter(.width==0.50) %>% select(om, hcr, region, name, value=median),
+    recruitment_aggregated_performance,# %>% ungroup() %>% pivot_longer(7:ncol(.), names_to="name", values_to="value") %>% select(sim, Movement, hcr, region, name, value), 
+    topsis_splits = c("sim", "region", "Recruitment"),
+    topsis_weights = c(0.25, 0.125, 0.25, 0.1, 0.125, 0.15),
+    topsis_minmax = c("max", "min", "max", "max", "max", "max")
+) %>% arrange(region) %>%
+    pivot_longer(4:8, names_to="hcr", values_to="value") %>%
+    group_by(region, Recruitment, hcr) %>%
+    median_qi(value, .width=interval_widths) %>%
+print(n=100)
+
+
+ggplot(topsis_movement) + 
+    geom_pointinterval(aes(x=value, xmin=.lower, xmax=.upper, y=hcr, color=hcr))+
+    facet_grid(Recruitment~region)+
+    scale_x_continuous(name="TOPSIS Score", limits=c(0, 1))+
+    custom_theme
 
 
 ##### Resiliency Metrics
