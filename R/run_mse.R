@@ -284,6 +284,9 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 faa_est[y,,1,,2] <- mod_report$FAA[1,y,,1,2]
                 faa_est[y,,2,,2] <- mod_report$FAA[1,y,,2,2]
                 prop_fs <- apply(faa_est[y,,,1,, drop=FALSE], 5, max)/sum(apply(faa_est[y,,,1,, drop=FALSE], 5, max))
+                if(all(is.nan(prop_fs))){
+                    prop_fs <- c(0, 0)
+                }
 
                 sel_est <- array(NA, dim=c(1, 30, 2, 1, 2))
                 sel_est[1,,1,1,1] <- mod_report$fish_sel[1,y,,1,1]
