@@ -77,10 +77,12 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         apply(agg_land_caa, c(1, 5), sum), 
         dim=c(input_list$data$n_regions, nyears, input_list$data$n_fish_fleets)
     )
-    ObsCatch[,1:3,2] <- NA
+    # ObsCatch[,1:3,2] <- NA
+    ObsCatch[which(ObsCatch < 1e-5)] <- NA
     Catch_Type <- array(1, dim=c(length(input_list$data$years), input_list$data$n_fish_fleets))
     UseCatch <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_fish_fleets))
-    UseCatch[,1:3,2] <- 0 # Dont fit to 0 catches for trawl fleet in first 3 years
+    # UseCatch[,1:3,2] <- 0 # Dont fit to 0 catches for trawl fleet in first 3 years
+    UseCatch <- array(as.integer(!is.na(ObsCatch)), dim=dim(ObsCatch))
 
     input_list <- SPoRC::Setup_Mod_Catch_and_F(
         input_list = input_list,
@@ -106,7 +108,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     ObsFishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), length(input_list$data$ages), input_list$data$n_sexes, input_list$data$n_fish_fleets))
     ObsFishAgeComps <- aperm(aggregated_survey_obs$acs[,,,,1:2,drop=FALSE], perm=c(4, 1, 2, 3, 5))
     UseFishAgeComps <- array(1, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_fish_fleets))
-    UseFishAgeComps[1,1:3,2] <- 0
+    # UseFishAgeComps[1,1:3,2] <- 0
+    UseFishAgeComps <- UseCatch
     # Currently assuming equal sample sizes by sex. Fix later.
     ISS_FishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
     ISS_FishAgeComps <- aperm(array(r_ISS[,1:2], dim=c(1, nyears, 2, 2)), c(1, 2, 4, 3)) 
