@@ -261,7 +261,7 @@ mp_5perc$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
-        max_stability = 0.05,
+        max_stability = array(0.05, dim=c(1, 2)),
         harvest_cap = NA
     ),
     units = "F"
@@ -310,7 +310,7 @@ mp_10perc_up$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
-        max_stability = c(1.0, 0.10), # no constraint down, 10% up
+        max_stability = array(c(1.0, 0.10), dim=c(1, 2)), # no constraint down, 10% up
         harvest_cap = NA
     ),
     units = "F"
@@ -322,7 +322,7 @@ mp_15perc$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
-        max_stability = 0.15,
+        max_stability = array(0.15, dim=c(1, 2)),
         harvest_cap = NA
     ),
     units = "F"
@@ -334,7 +334,7 @@ mp_25perc$hcr <- list(
     func = tier3,
     extra_pars = NA,
     extra_options = list(
-        max_stability = 0.25,
+        max_stability = array(0.25, dim=c(1, 2)),
         harvest_cap = NA
     ),
     units = "F"
