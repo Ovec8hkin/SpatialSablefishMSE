@@ -36,7 +36,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         sigmaR_spec = "fix", 
         sexratio = as.vector(c(0.5, 0.5)), 
         init_age_strc = 1,
-        init_F_prop = 0
+        init_F_prop = 0,
+        ln_global_R0 = log(16)
     )
 
     # Biologicals
@@ -207,7 +208,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         "",
         "none_Fleet_2"
     )
-    if(nyears >= 57){
+    #if(nyears >= 57){
+    if(FALSE){
         fsh_sel_blocks_base[1] <- paste0("Block_1_Year_1-56_Fleet_1")
         fsh_sel_blocks_base[2] <- paste0("Block_2_Year_57-terminal_Fleet_1")
         fsh_sel_map <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
@@ -301,9 +303,10 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         srv_fixed_sel_pars_spec = c("est_all", "est_all"),
         # whether to estimate all 
         # fixed effects for survey catchability
-        srv_q_spec = c("est_all", "est_all")
+        srv_q_spec = c("est_all", "est_all"),
+        ln_srv_q = array(log(c(6.1, 0.85)), dim=c(1, 1, 2))
     )
-    input_list$par$ln_srv_fixed_sel_pars[,,,2,2] <- log(0.26)
+    input_list$par$ln_srv_fixed_sel_pars[1,,,,] <- log(2)
 
     ### Model Weighting -----------------------------------
     Wt_FishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
@@ -334,6 +337,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     ### Extra Parameter Setting ---------------------------
     input_list$par$ln_sigmaC <- array(log(c(0.02, 0.02)), dim=c(1, 2))
+    input_list$par$ln_fish_fixed_sel_pars[1,2,,,1] <- log(2)
+    input_list$par$ln_fish_fixed_sel_pars[1,2,,,2] <- log(2)
 
     ### Mapping -------------------------------------------
     input_list$map$ln_fish_fixed_sel_pars <- fsh_sel_map#factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
