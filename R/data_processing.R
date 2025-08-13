@@ -3,7 +3,7 @@
 #' Process MSE simulations for spawning biomass,
 #' and total stock biomass.
 #'
-#' @param model_runs list of completed MSE simualation objects
+#' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
 #' @param dem_params demographic parameter matrix
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
@@ -132,7 +132,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' Get Landed Catches
 #' 
 #' Process MSE simulations for landed catches by fleet.
-#' Total landed catch across fleets is also ccomputed.
+#' Total landed catch across fleets is also computed.
 #'
 #' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
@@ -181,7 +181,7 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @export get_management_quantities
 #'
-get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=64){
+get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=54){
     cols <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
 
     mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
@@ -232,7 +232,6 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
 #' @param summarise whether to summarise across simualtions or not
 #' @param make_segments whether to generate data.frame of segment for use in plotting 
 #'
-#' @export get_atage_groups
 #'
 get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
     data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
@@ -289,23 +288,19 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #' from completed MSE simulations.
 #'
 #' @param model_runs list of completed MSE simulations
-#' @param extra_columns additional columns that should be
-#' appended to the resultant data frame
+#' @param extra_columns additional columns that should be appended to the resultant data frame
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #' @param seed_list simulation seeds used in `model_runs`
-#'
-#' @export get_reference_points
 #'
 get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list){
 
     om_names <- om_filter
     hcr_names <- hcr_filter
 
-    get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
+    get_rps <- function(om_name, hcr_name, recruitment, year, prop_fs){
         om <- om_list[which(om_names == om_name)]
         hcr <- hcr_list[which(hcr_names == hcr_name)]
-        year <- 64
 
         om <- om[[1]]
         hcr <- hcr[[1]]
@@ -348,7 +343,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
     ref_pts_df <- prop_fs_df %>% 
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
-        reframe(rps = get_rps(om, hcr, rec, c(Fixed, Trawl))) %>%
+        reframe(rps = get_rps(om, hcr, rec, time, c(Fixed, Trawl))) %>%
         mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_filter)*length(om_filter)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
@@ -376,8 +371,6 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #' 
 #' @return timeseries of B40 reference point summarised across simulations
-#'
-#' @export get_b40_timeseries
 #'
 get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
@@ -408,17 +401,14 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
 #' 
 #' @return timeseries of reference point value
 #'
-#' @export get_rp_timeseries
-#'
 get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, ref_pt, spr_target="hcr"){
 
-    get_rps <- function(om_name, hcr_name, recruitment, prop_fs){
+    get_rps <- function(om_name, hcr_name, recruitment, year, prop_fs){
         om <- om_list[which(om_filter == om_name)]
         hcr <- hcr_list[which(hcr_filter == hcr_name)]
 
         om <- om[[1]]
 
-        year <- 64
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
             ret=om$dem_params$ret[year,,,,,drop=FALSE],
@@ -458,7 +448,7 @@ get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, 
 
     rps <- prop_fs_df %>% 
         left_join(avg_recruitment %>% select(-c(L1)), by=c("time", "sim", "om", "hcr")) %>%
-        mutate(rp = get_rps(om, hcr, avg_rec, c(Fixed, Trawl))) #%>% 
+        mutate(rp = get_rps(om, hcr, avg_rec, time, c(Fixed, Trawl))) #%>% 
         # group_by(time, om) %>%
         # median_qi(B40, .width=interval_widths)
 
@@ -478,10 +468,6 @@ get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, 
 #' @param dem_params list of demographic parameters values
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
-#'
-#' @export get_phaseplane_data
-#'
-#' @example
 #'
 get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
@@ -507,10 +493,6 @@ get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filte
 #' @param dem_params list of demographic parameters values
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
-#'
-#' @export get_hcrphase_data
-#'
-#' @example
 #'
 get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
@@ -542,10 +524,6 @@ get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter,
 #' @param dem_params list of demographic parameters values
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
-#'
-#' @export get_phaseplane_catch_data
-#'
-#' @example
 #'
 get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(

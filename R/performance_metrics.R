@@ -1247,7 +1247,24 @@ performance_metric_summary <- function(
 
 }
 
-
+#' Compute Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS) Scores
+#' 
+#' Compute TOPSIS scores across a set of a performance metrics, grouped by a set of data
+#' splits. The TOPSIS method is a multi-criteria decision-making (MCDM) method that ranks 
+#' alternatives based on their distance to an ideal solution (Hwang and Yoon 1981; Liu et al. 2025).
+#' 
+#' @param perf_data long-format tibble of performance metrics (e.g., from performance_metric_summary)
+#' @param topsis_splits vector of column names to split data by (e.g., c("om", "region")). TOPSIS scores
+#' will be compute uniquely for each combination of columns,
+#' @param topsis_weights vector of weights for each performance metric (e.g., c(0.5, 0.3, 0.2)).
+#' @param topsis_minmax vector of "min" or "max" for each performance metric, indicating whether to
+#' minimize or maximize the metric.
+#' 
+#' @return tibble of TOPSIS scores, with one row for each combination of `topsis_splits` and a column
+#' for each performance metric.
+#' 
+#' @export compute_topsis
+#' 
 compute_topsis <- function(perf_data, topsis_splits, topsis_weights, topsis_minmax){
 
     new_names <- paste0("Var",1:length(topsis_splits))

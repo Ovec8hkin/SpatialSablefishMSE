@@ -50,6 +50,12 @@ setup_hcr_options <- function(){
     )
 }
 
+#' Setup MSE Options Objects
+#' 
+#' Set default values for MSE options.
+#' 
+#' @export setup_mse_options
+#' 
 setup_mse_options <- function(){
     return(
         list(

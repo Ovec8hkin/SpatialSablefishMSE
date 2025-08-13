@@ -414,53 +414,17 @@ plot_atage_density_ternary <- function(data, col_names){
     )
 }
 
-# plot_atage <- function(data, v1="hcr", v2=NA){
-#     group_columns <- colnames(data)
-#     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
-    
-#     d <- data %>%
-#         group_by(time, class, hcr, om, L1) %>%
-#         median_qi(value, .width=c(0.50))
-
-#     plot <- ggplot()+
-#         geom_bar(aes(x=time, y=value, fill=class), position="fill", stat="identity")+
-#         geom_vline(xintercept = 2022-1960+1, color="white", size=1.25, linetype="dashed")+
-#         scale_fill_viridis(direction=-1, discrete=TRUE, option="magma")+
-#         scale_x_continuous(breaks=seq(1, nyears+1, 20), labels=seq(1960, 1960+nyears+1, 20))+
-#         coord_cartesian(expand=0)+
-#         labs(x="Year", fill="Age Group")+
-#         guides(fill=guide_legend(reverse=TRUE))+
-#         # facet_wrap(~L1, ncol=1, scales="free_x")+
-#         facet_grid(rows=vars(hcr), cols=vars(L1))+
-#         theme_bw()+
-#         theme(
-#             axis.text = element_text(size=12),
-#             axis.title.y=element_blank(), 
-#             strip.background = element_blank(),
-#             strip.text.x = element_text(size=16, hjust=0),
-#             panel.spacing.y = unit(0.4, "in"),
-#             legend.position = "bottom"
-#         )
-
-#     if(!is.na(v2)){
-#         plot <- plot + facet_wrap(~.data[[v2]])
-#     }else{
-    
-#     }
-    
-#     # if(by_fleet){
-#     #     plot <- plot + facet_wrap(~fleet)
-#     # }
-
-#     return(plot)
-
-# }
-
 plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
-    q <- data %>%
+    q <- data
+    if(is.na(v3)){
+        group_columns <- group_columns[group_columns != "region"]
+        q <- q %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(value=sum(value))
+    }
+
+    q <- q %>%
         mutate(
             L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Expected Landings"))
         ) %>%
@@ -477,25 +441,25 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
 
     base_hcr_q <- q %>% filter(hcr == base_hcr)
 
-    plot <- ggplot(q %>% filter(time > common_trajectory-1))+
+    plot <- ggplot(q)+
         # geom_lineribbon(data = base_hcr_q, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(L1, fleet), color=L1, linetype=fleet), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
+        geom_line(aes(x=time, y=median, color=.data[[v1]], linetype=L1), size=0.85)+
+        # geom_line(data = common, aes(x=time, y=median, linetype=L1), size=0.85)+
+        # geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        coord_cartesian(expand=0)
+        coord_cartesian(expand=0)+
+        guides(fill="none")
 
-    # if(!is.na(v2)){
-    #     plot <- plot + facet_grid(rows=vars(L1), cols=vars(.data[[v2]]), scales="free_y")
-    # }else{
-    #     plot <- plot + facet_wrap(~L1, scales="free_y")
-    # }
 
     if(!is.na(v2) && is.na(v3)){
-        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+        plot <- plot + facet_wrap(~.data[[v2]])
     }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + ggh4x::facet_nested(.data[[v2]] + .data[[v1]] ~ .data[[v3]])+guides(fill="none")
+        plot <- plot + ggh4x::facet_nested(
+            rows=vars(.data[[v2]], fleet), 
+            cols=vars(.data[[v3]]), 
+            scales="free_y"
+        )
     }
 
     return(plot+custom_theme)
@@ -841,6 +805,19 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
 #' 2) Model fits to age composition data
 #' 3) Model fits to derived quantities (SSB, harvest rate, recruitment)
 #'
+#' @param model_runs list of completed MSE simulation objects
+#' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (should only be length 1)
+#' @param om_filter vector of OM names to process (should only be length 1)
+#' @param spinup_years Number of years of model outputs prior to start of EM (mse_options$n_spinup_years)
+#' @param n_proj_years Number of years of EM model outputs (mse_options$n_proj_years)
+#' @param simulation_year Year of the simulation to plot diagnostics for
+#' @param simulation_number Simulation number to plot diagnostics for
+#' 
+#' @return ggplot figure showing model diagnostics plots
+#' 
+#' @export plot_em_diagnostics
+#' 
 plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years, n_proj_years, simulation_year=1, simulation_number=1){
 
     # simulation_year <- 10

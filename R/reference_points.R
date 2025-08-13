@@ -33,7 +33,7 @@ compute_sbpr <- function(nages, mort, mat, waa, sel, ret, F){
 #' Compute Spawning Potential Ratio (SPR)
 #' 
 #' Compute SPR, the ratio of spawning biomass under a 
-#' given leve of fishing mortality relative to unfished
+#' given level of fishing mortality relative to unfished
 #' spawning biomass.
 #'
 #' @param nages number of ages in age structure

@@ -157,6 +157,24 @@ beverton_holt <- function(h, R0, S0, sigR, seed){
     }
 }
 
+#' Regime-like Recruitment with Beverton-Holt SRR
+#' 
+#' Generate future recruitment timeseries based on two distincr Beverton-Holt SRRs,
+#' that difer based on R0 or sigR.
+#'
+#' @param h steepness of SRR (0.2 <= h <= 1.0)
+#' @param sbpr spawning biomass per recruit
+#' @param R0s vector of unfished recruitment in each regime
+#' @param sigRs vector of recruitment variability in each regime 
+#' @param nyears total number of years to simulate recruitment
+#' @param regime_length vector inidcating how long each regime lasts (limited to 2 regimes)
+#' @param starting_regime regime to start with (0 = first regime, 1 = second regime)
+#' @param seed random seed for reproducability
+#' 
+#' @export resample_regime_recruits
+#'
+#' @example
+#'
 bevholt_regimes <- function(h, sbpr, R0s, sigRs, nyears, regime_length, starting_regime, seed){
     set.seed(seed)
     function(ssb, y){
@@ -171,9 +189,6 @@ bevholt_regimes <- function(h, sbpr, R0s, sigRs, nyears, regime_length, starting
         }
         R0s <- R0s[regs]
         sigRs <- sigRs[regs]
-        # print(regs)
-        # print(R0s)
-        # print(sigRs)
 
         R0 <- R0s[y]
         sigR <- sigRs[y]

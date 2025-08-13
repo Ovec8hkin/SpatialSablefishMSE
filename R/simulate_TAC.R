@@ -26,13 +26,11 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     proj_faa <- joint_sel*hcr_F
     proj_N_new <- afscOM::simulate_population(naa, proj_faa, recruitment, dem_params, options=list())
     
-    ## 1. Use harvest control rule to determine ABC including
+    ## 1. Use harvest control rule to determine ABC excluding
     ## all stability constraints and harvest caps
     abc <- afscOM::baranov(hcr_F, proj_N_new$naa, dem_params$waa, dem_params$mort, joint_sel)
 
     model_dims <- afscOM::get_model_dimensions(dem_params$sel)
-    # model_dims <- dim(dem_params$movement)
-    # nregions <- if(model_dims$nregions
     nregions <- ifelse(!is.null(dem_params$movement), dim(dem_params$movement)[1], 1)
     nfleets <- model_dims$nfleets
 
@@ -41,9 +39,6 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     if(nrow(hcr_options$max_stability)==1 && !all(is.na(hcr_options$max_stability)) && !all(is.na(hist_abc))){
         # Implements symmetric stability constraints
         if(TRUE){
-            # if(length(hcr_options$max_stability) == 1){
-            #     hcr_options$max_stability <- rep(hcr_options$max_stability, 2)
-            # }
             hist_abc2 <- sum(hist_abc) # sum historical ABCs across all regions and fleets
             max_abc <- hist_abc2*(1+hcr_options$max_stability[2])
             min_abc <- hist_abc2*(1-hcr_options$max_stability[1])
@@ -113,13 +108,12 @@ simulate_TAC <- function(hcr_F, naa, recruitment, joint_sel, dem_params, hist_ab
     tac_regflt <- tac <- abc_regflt * options$abc_tac_regflt_reduction
     
 
-    ## 6. Allow for region-fleet specific TAC utilizations based
+    ## 5. Allow for region-fleet specific TAC utilizations based
     ## on supplied values.
     land_regflt <- tac_regflt * options$regflt_tac_utilization
     
     # abc, tac, land are now all of dimensions [1, nages, nsexes, nregions, nfleets]
 
-    # return(afscOM::listN(abc, tac, land, proj_N_new$naa))
     return(list(
         abc = abc_regflt,
         tac = tac_regflt,

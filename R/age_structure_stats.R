@@ -1,7 +1,7 @@
 #' Compute Shannon Diversity Index (H')
 #' 
 #' Calculate the Shannon diversity index (H')
-#' (Shannon and Weaver, 1949) give a numbers
+#' (Shannon and Weaver, 1949) given a numbers
 #' at age vector.
 #' 
 #' H' = sum(naa*log(naa))
