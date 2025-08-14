@@ -22,17 +22,17 @@ simulate_TAC(
 
 \item{recruitment}{projected recruitment in next year}
 
+\item{joint_sel}{joint fishery selectivity}
+
 \item{dem_params}{demographic parameter matrices subsetted to 1 year}
+
+\item{hist_abc}{ABC from the previous year [1, nregions, nfleets]}
 
 \item{hcr_options}{list of additional management options such as stability
 constraints and harvest caps}
 
 \item{options}{list of additional ABC/TAC simulation options such as ABC-TAC
-reduction levels and attainment functions.}
-
-\item{join_sel}{joint fishery selectivity}
-
-\item{hist_tac}{TAC from the previous year}
+reduction levels, utilization functions, or regional ABC apportionment methods.}
 }
 \description{
 Determine the total allowable catch (TAC) in the next simulation

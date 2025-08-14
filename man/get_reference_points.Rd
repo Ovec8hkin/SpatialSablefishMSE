@@ -15,8 +15,7 @@ get_reference_points(
 \arguments{
 \item{model_runs}{list of completed MSE simulations}
 
-\item{extra_columns}{additional columns that should be
-appended to the resultant data frame}
+\item{extra_columns}{additional columns that should be appended to the resultant data frame}
 
 \item{hcr_filter}{vector of HCR names to process (must match names in `extra_columns`)}
 
@@ -27,8 +26,4 @@ appended to the resultant data frame}
 \description{
 Derive fishing mortality and biomass reference points
 from completed MSE simulations.
-}
-\details{
-Note that this function hasn't been tested when multiple
-MSE simulations are present in the `model_runs` list.
 }

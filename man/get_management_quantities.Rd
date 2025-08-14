@@ -9,7 +9,7 @@ get_management_quantities(
   extra_columns,
   hcr_filter,
   om_filter,
-  spinup_years = 64
+  spinup_years = 54
 )
 }
 \arguments{
@@ -25,7 +25,6 @@ get_management_quantities(
 }
 \description{
 Process MSE simulations for ABC, TAC, and expected 
-landings quantities. Historical ABCs, TACs, and landings
-appendded to begining of output data.frame, and are from
-Goethel et al. 2023.
+landings quantities. Historical ABCs, TACs, and landings (e.g., from the
+conditioning period) are not available.
 }

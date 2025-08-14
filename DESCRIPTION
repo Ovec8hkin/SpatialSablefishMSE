@@ -1,5 +1,6 @@
-Package: SablefishMSE
-Title: Conduct Management Strategy Evaluation for Alaska Sablefish
+Package: SpatialSablefishMSE
+Title: Conduct Management Strategy Evaluation for Alaska Sablefish Using a Spatially
+    Explicit Operating Model
 Version: 0.1.0.0000
 Authors@R: c(
     person(given = "Joshua", 
@@ -24,7 +25,8 @@ Authors@R: c(
             role = "aut")
     )
 Maintainer: Joshua A. Zahner <joshuazahner@gmail.com>
-Description: Conduct a management strategy evaluation (MSE) for Alaska Sablefish.
+Description: Conduct a management strategy evaluation (MSE) for Alaska Sablefish Using a Spatially
+    Explicit Operating Model.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -35,12 +37,13 @@ Imports:
     ggdist,
     ggh4x,
     reshape2,
-    dplyr
+    dplyr,
+    patchwork,
+    MCDA
 Suggests:
     knitr,
     rmarkdown
 DevPackage:
-    Craig44/SpatialSablefishAssessment
     BenWilliams-NOAA/afscOM
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 VignetteBuilder: knitr

@@ -16,6 +16,9 @@ appended to the resultant data frame}
 
 \item{om_filter}{vector of OM names to process (must match names in `extra_columns`)}
 }
+\value{
+timeseries of B40 reference point summarised across simulations
+}
 \description{
 Derive timeseries of B40 from completed MSE
 simulations.

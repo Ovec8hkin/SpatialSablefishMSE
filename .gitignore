@@ -54,3 +54,6 @@ inst/*.*o
 
 # Figures directory
 figures/*
+
+# Active Data Files directory
+data/active/*

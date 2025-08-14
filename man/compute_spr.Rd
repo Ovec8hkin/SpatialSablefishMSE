@@ -23,6 +23,6 @@ compute_spr(nages, mort, mat, waa, sel, ret, F)
 }
 \description{
 Compute SPR, the ratio of spawning biomass under a 
-given leve of fishing mortality relative to unfished
+given level of fishing mortality relative to unfished
 spawning biomass.
 }

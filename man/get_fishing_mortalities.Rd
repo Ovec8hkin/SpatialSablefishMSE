@@ -7,7 +7,7 @@
 get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter)
 }
 \arguments{
-\item{model_runs}{list of completed MSE simualtion objects}
+\item{model_runs}{list of completed MSE simulation objects}
 
 \item{extra_columns}{additional columns to append to output}
 
@@ -17,5 +17,6 @@ get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter)
 }
 \description{
 Process MSE simulations for fishing mortality by fleet.
-Total fishing mortality across fleets is alsoc computed.
+Total fishing mortality across fleets is also computed as the
+sum of fleet-specific fishing mortality.
 }

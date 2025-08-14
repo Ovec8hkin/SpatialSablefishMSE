@@ -9,7 +9,6 @@ run_mse_multiple(
   hcr_list,
   seed_list,
   mse_options_list,
-  nyears,
   diagnostics = FALSE,
   save = FALSE
 )
@@ -21,10 +20,12 @@ run_mse_multiple(
 
 \item{seed_list}{vector of random seeds}
 
-\item{mse_options}{list of mse_options objects to apply to each
+\item{mse_options_list}{list of mse_options objects to apply to each
 OM. Must be either length 1, or length == length(om_list).}
 
-\item{...}{additional parameters to pass to the `run_mse` call}
+\item{diagnostics}{whether to return EM model objects for diagnostic tests}
+
+\item{save}{whether to save MSE outputs to "data/active"}
 }
 \value{
 list of MSE simualtion results

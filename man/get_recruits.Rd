@@ -7,7 +7,7 @@
 get_recruits(model_runs, extra_columns, hcr_filter, om_filter)
 }
 \arguments{
-\item{model_runs}{list of completed MSE simualtion objects}
+\item{model_runs}{list of completed MSE simulation objects}
 
 \item{extra_columns}{additional columns to append to output}
 

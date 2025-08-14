@@ -11,7 +11,8 @@ average_annual_value(
   time_horizon = c(65, NA),
   extra_filter = NULL,
   relative = NULL,
-  summarise_by = c("om", "hcr")
+  summarise_by = c("om", "hcr"),
+  summary_out = TRUE
 )
 }
 \arguments{

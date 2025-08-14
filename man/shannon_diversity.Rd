@@ -11,7 +11,7 @@ shannon_diversity(naa)
 }
 \description{
 Calculate the Shannon diversity index (H')
-(Shannon and Weaver, 1949) give a numbers
+(Shannon and Weaver, 1949) given a numbers
 at age vector.
 }
 \details{
