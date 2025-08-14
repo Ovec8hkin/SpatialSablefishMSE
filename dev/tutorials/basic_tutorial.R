@@ -4,15 +4,15 @@ library(tidyverse)
 library(ggdist)
 library(ggh4x)
 library(reshape2)
-library(SPoCK)
+library(SPoRC)
 library(doParallel)
-
-# Change to wherever your local copy of afscOM is
+library(afscOM)
+library(patchwork)
 library(devtools)
-afscOM_dir <- "~/Desktop/Projects/afscOM"
+
 sablefishMSE_dir <- here::here()
 
-devtools::load_all(afscOM_dir)
+# devtools::load_all(afscOM_dir)
 
 # Load the SpatialSablefishMSE functions
 lapply(list.files("R", full.names = TRUE), source)
@@ -89,7 +89,7 @@ depletion_plots <- plot_depletion(
     scale_color_manual(values=c("red", "blue"))+
     labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")
 
-ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est=TRUE, scales="free_y", base_hcr = "F45")+
+ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, show_est=FALSE, scales="free_y", base_hcr = "F45")+
     # scale_y_continuous(limits=c(0, 350))+
     coord_cartesian(ylim=c(0, 350))+
     scale_color_manual(values=c("red", "blue"))+
@@ -126,7 +126,7 @@ catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE
     scale_color_manual(values=c("red", "blue", "green", "purple"))+
     facet_wrap(~om, ncol=1)+
     guides(color="none", shape="none")+
-    labs(title="Alaska-Wide Landed Catch")+
+    labs(title="Alaska-Wide Landed Catch")
     # theme(
     #     strip.background = element_blank(),
     #     strip.text = element_blank()

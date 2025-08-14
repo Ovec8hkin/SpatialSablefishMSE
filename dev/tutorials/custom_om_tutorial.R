@@ -5,10 +5,9 @@ library(reshape2)
 library(SPoCK)
 library(doParallel)
 library(patchwork)
-
-# Change to wherever your local copy of afscOM is
+library(afscOM)
 library(devtools)
-afscOM_dir <- "~/Desktop/Projects/afscOM"
+
 sablefishMSE_dir <- here::here()
 
 devtools::load_all(afscOM_dir)
@@ -56,7 +55,7 @@ om_nomove$name <- "No Movement"
 
 
 ### Let's define a new OM with spatially varying selectivity for the fixed gear fleet
-om_spatsel <- sable_om
+om_spatsel <- om_base
 
 # Going to make a new array of selectivity-at-age for each region
 # for the fixed gear fleet. These selectivity patterns aren't
@@ -94,7 +93,7 @@ selex_dp <- afscOM::generate_param_matrix(
     include_fleet_dim = TRUE
 )
 
-# Replace the seectivity of th fixed gear fleet with our new
+# Replace the selectivity of th fixed gear fleet with our new
 # parameter matrix
 om_spatsel$dem_params$sel[55:200,,,,1] <- selex_dp[55:200,,,,,drop=FALSE]
 
@@ -105,6 +104,7 @@ om_spatsel$recruitment$pars <- list(
     S0 = 300,
     sigR = 1.20
 )
+
 om_spatsel$recruitment$apportionment <- list(
     func = resample_recruit_apportionment,
     pars = list(
