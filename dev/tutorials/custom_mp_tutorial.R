@@ -5,13 +5,10 @@ library(reshape2)
 library(SPoCK)
 library(doParallel)
 library(patchwork)
-
-# Change to wherever your local copy of afscOM is
+library(afscOM)
 library(devtools)
-afscOM_dir <- "~/Desktop/Projects/afscOM"
-sablefishMSE_dir <- here::here()
 
-devtools::load_all(afscOM_dir)
+sablefishMSE_dir <- here::here()
 
 # Load the SpatialSablefishMSE functions
 lapply(list.files("R", full.names = TRUE), source)
