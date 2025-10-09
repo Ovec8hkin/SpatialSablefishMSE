@@ -125,7 +125,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         full_recruitment <- array(NA, dim=c(nyears+1, nregions))
         full_recruitment[1:nrow(hist_recruitment),] <- hist_recruitment
         set.seed(seed)
-        rec_devs <- rlnorm(mse_options$n_proj_years+1, meanlog = 0, sdlog = 1.20)
+        rec_devs <- rlnorm(mse_options$n_proj_years+1, meanlog = 0, sdlog = om$recruitment$pars$sigR)
         # global_rec_devs[1:(mse_options$n_proj_years+1), 1, 1, 1] <- rec_devs
     }
 
@@ -145,7 +145,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
             global_naa <- apply(naa[y,,,,drop=FALSE], c(1, 2, 3), sum)
             global_ssb <- sum(global_naa[,,1]*dp_y$waa[,,1,1]*dp_y$mat[,,1,1])
             # ssb <- sum(naa[y,,1,,drop=FALSE]*dp_y$waa[,,1,]*dp_y$mat[,,1,])
-            global_recruits <- projected_recruitment(global_ssb, y-spinup_years+1) 
+            global_recruits <- projected_recruitment(global_ssb, y-spinup_years+1)*rec_devs[y-spinup_years+1] 
             recruit_apportionment <- apportion_recruitment_single(
                 recruits = as.vector(global_recruits),
                 apportionment = om$recruitment$apportionment$func, #model_options$recruit_apportionment,
@@ -155,11 +155,11 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 recruitment = global_recruits,
                 apportionment = recruit_apportionment$rec_props,
                 apportion_random = model_options$recruit_apportionment_random,
-                apportionment_pars = om$recruitment$apportionment$pars, #model_options$recruit_apportionment_pars,
+                apportionment_pars = c(recruits=global_recruits, om$recruitment$apportionment$pars), #model_options$recruit_apportionment_pars,
                 nregions = nregions
             )
 
-            full_recruitment[y+1,] <- regional_recruits*rec_devs[y-spinup_years+1] 
+            full_recruitment[y+1,] <- regional_recruits 
             # full_recruitment[y+1,] <- full_recruitment[y+1,]*rec_devs[y-spinup_years+1] 
         }
 
@@ -197,7 +197,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
         if((y+1) > spinup_years && do_assessment[y]){
 
             naa_proj <- array(apply(out_vars$naa_tmp, c(1, 2, 3), sum), dim=c(1, nages, nsexes, 1))
-            rec <- full_recruitment[1:y]
+            rec <- apply(full_recruitment[1:y,], 1, sum)
             sel <- dp_y$sel[,,,1,,drop=FALSE]
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
             bio <- sum(naa_proj*dp_y$waa[,,,1,drop=FALSE], na.rm=TRUE)
@@ -331,6 +331,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                     avg_rec = mean(rec)/2,
                     spr_target = mp$ref_points$spr_target
                 )
+                # print(ref_pts$Bref)
 
                 naa_proj[is.na(naa_proj)] <- 0
                 hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y, avgrec=mean(rec))
