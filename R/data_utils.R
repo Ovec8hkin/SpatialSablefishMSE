@@ -168,7 +168,16 @@ scale_and_rank <- function(data, col_name){
     return(
         data %>%
             mutate(
-                scaled = eval(rlang::parse_expr(col_name))/inf_max(eval(rlang::parse_expr(col_name)))
+                scaled = ifelse(
+                            name %in% c(
+                                "Catch AAV", 
+                                "Proportion of Years with Low SSB", 
+                                "Average Years on HCR Ramp",
+                                "Recovery Time"
+                            ), 
+                            inf_min(eval(rlang::parse_expr(col_name)))/eval(rlang::parse_expr(col_name)), 
+                            eval(rlang::parse_expr(col_name))/inf_max(eval(rlang::parse_expr(col_name)))
+                        ),
             ) %>%
             arrange(desc(scaled), .by_group=TRUE) %>%
             mutate(
@@ -176,6 +185,7 @@ scale_and_rank <- function(data, col_name){
                             name %in% c(
                                 "Catch AAV", 
                                 "Proportion of Years with Low SSB", 
+                                "Average Years on HCR Ramp",
                                 "Recovery Time"
                             ), 
                             factor(desc(row_number())), 

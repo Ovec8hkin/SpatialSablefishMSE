@@ -281,6 +281,18 @@ inf_max <- function(d){
     return(max(d[!is.infinite(d)]))
 }
 
+#' Get minimum value without considering infinite values
+#' 
+#' Wrapper around max that ignores infinite values
+#' 
+#' @param d vector of values to find maximum of
+#' 
+#' @export inf_min
+#' 
+inf_min <- function(d){
+    return(min(d[!is.infinite(d)]))
+}
+
 #' Realized Sample Size
 #' 
 #' Calculate realized sample size from Hulson and Williams, 2024
