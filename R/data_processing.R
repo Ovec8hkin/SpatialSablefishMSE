@@ -54,7 +54,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
     )
 
     return(
-        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, process) %>%
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -83,7 +83,7 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
     }
     group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("faa", "faa_est"), extra_columns, process) %>% 
+        process_big_outputs(model_runs, c("faa", "faa_est"), extra_columns, hcr_filter, om_filter, process) %>% 
             format(hcr_filter, om_filter)
     )
 }
@@ -108,7 +108,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
     }
     group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, process) %>% 
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>% 
             format(hcr_filter, om_filter)
     )
 }
@@ -142,7 +142,7 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     }
     group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns)) 
     return(
-        process_big_outputs(model_runs, c("land_caa"), extra_columns, process) %>%
+        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -170,7 +170,7 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
     }
     group_columns <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, process) %>%
+        process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, hcr_filter, om_filter, process) %>%
                 format(hcr_filter, om_filter)
     )
 }
@@ -192,7 +192,7 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
 
     group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("naa"), extra_columns, process) %>%
+        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
             
     )
@@ -354,7 +354,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 #'
 get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
-    b40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter, om_filter, refpt="Bref", spr_target=0.40)
+    b40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter, om_filter, ref_pt="Bref", spr_target=0.40)
 
     b40s <- b40_tseries %>% 
         group_by(time, om) %>%
