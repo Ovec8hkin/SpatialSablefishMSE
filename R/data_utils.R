@@ -88,7 +88,7 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
 #' @return a tibble of processed MSE output data
 #' @export process_big_outputs
 #'
-process_big_outputs <- function(model_runs, var, extra_columns, process_func, ...){
+process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_filter, process_func, ...){
     get_output <- function(model_runs, var, model_grid, process_func){
             t <- bind_rows(
                 lapply(
@@ -110,18 +110,21 @@ process_big_outputs <- function(model_runs, var, extra_columns, process_func, ..
 
     if(is.null(model_runs)){
         fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
-        if(!is.null(hcr_order))
-            fs <- unlist(sapply(hcr_order, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
+        if(!is.null(hcr_filter))
+            fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
 
         o <- bind_rows(
             parallel::mclapply(seq_along(fs), function(i){
                 x <- fs[i]
-                print(x)
+                # print(x)
                 m <- readRDS(x)
                 mse <- m$mse_objects
                 model_run <- list(mse[[length(mse)]])
+                if(!(model_run[[1]]$om$name %in% om_filter)){
+                    return(NULL)
+                }
                 extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
-                out <- get_output(model_run, var, model_grid=extra_columns, process_func, ...)
+                out <- get_output(model_run, var, model_grid=extra_columns, process_func)
             }, mc.cores=as.integer((parallel::detectCores()-2)))
         ) 
     }else{
