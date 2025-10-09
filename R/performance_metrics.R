@@ -1223,66 +1223,93 @@ performance_metric_summary <- function(
     n <- ifelse(summary_out, length(summarise_by), 0)
 
     # Average Catch Across Projection Period
-    if(any(c("avg_catch", "all") %in% metric_list))
+    if(any(c("avg_catch", "all") %in% metric_list)){
         avg_catch <- average_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Catch")
+    }
 
     # Total Catch Across Projection Period
-    if(any(c("tot_catch", "all") %in% metric_list))
+    if(any(c("tot_catch", "all") %in% metric_list)){
         tot_catch <- total_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, extra_filter=extra_filter, time_horizon=time_horizon, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Total Catch")
+    }
 
     # Prop Years High Catch
-    if(any(c("prop_years_high_catch", "all") %in% metric_list))
+    if(any(c("prop_years_high_catch", "all") %in% metric_list)){
         prop_years_high_catch <- prop_years_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, catch_threshold = 30, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Proportion Years of High Catch")
+    }
 
     # Average SSB Across Projection Period
-    if(any(c("avg_ssb", "all") %in% metric_list))
+    if(any(c("avg_ssb", "all") %in% metric_list)){
         avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average SSB")
+    }
 
     # Average Proportion of Years SSB < B35 Across Projection Period
-    if(any(c("prop_years_lowssb", "all") %in% metric_list))
+    if(any(c("prop_years_lowssb", "all") %in% metric_list)){
         prop_years_lowssb <- prop_low_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Proportion of Years SSB < B35")
+    }
 
     # Average Age Across Projection Period
-    if(any(c("avg_age", "all") %in% metric_list))
+    if(any(c("avg_age", "all") %in% metric_list)){
         avg_age <- average_age(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Age")
+    }
 
     # Average ABI Across Projection Period
-    if(any(c("avg_abi", "all") %in% metric_list))
+    if(any(c("avg_abi", "all") %in% metric_list)){
         avg_abi <- average_abi(model_runs, extra_columns, ref_naa, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average ABI")
+    }
 
     # Average Annual Catch Variation Across Projection Period
-    if(any(c("avg_variation", "all") %in% metric_list))
+    if(any(c("avg_variation", "all") %in% metric_list)){
         avg_variation <- average_annual_catch_variation(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Catch AAV")
+    }
 
     # Average proportion of catch that is "large"
-    if(any(c("avg_catch_lg", "all") %in% metric_list))
+    if(any(c("avg_catch_lg", "all") %in% metric_list)){
         avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Proportion of Catch that is Large")
+    }
 
     # Average proportion of population that is "old"
-    if(any(c("avg_pop_old", "all") %in% metric_list))
+    if(any(c("avg_pop_old", "all") %in% metric_list)){
         avg_pop_old <- average_proportion_biomass_old(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Proportion of SSB that is Old")
+    }
 
     # Average annual value
-    if(any(c("annual_value", "all") %in% metric_list))
+    if(any(c("annual_value", "all") %in% metric_list)){
         annual_value <- average_annual_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Annual Value")
+    }
 
     # Dynamic annual value
-    if(any(c("dynamic_value", "all") %in% metric_list))
+    if(any(c("dynamic_value", "all") %in% metric_list)){
         dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Average Dynamic Annual Value")
+    }
 
-    if(any(c("crash_time", "all") %in% metric_list))
+    if(any(c("crash_time", "all") %in% metric_list)){
         crash_time <- biomass_crash_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        print("Done calculating Crash Time")
+    }
 
-    if(any(c("recovery_time", "all") %in% metric_list))
+    if(any(c("recovery_time", "all") %in% metric_list)){
         recovery_time <- biomass_recovery_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
-
+        print("Done calculating Recovery Time")
+    }
     
     metric_key <- c(
         "Annual Catch"="annual_catch", 
         "Total Catch"="total_catch", 
         "Years of High Catch"="num_years", 
         "SSB"="spbio", 
-        "Proportion of Years with Low SSB"="prop_years", 
+        "Proportion of Years SSB < B35"="prop_years", 
         "Catch AAV"="aav", 
         "Proportion Large Catch"="catch", 
         "Proportion Old Biomass"="bio", 
