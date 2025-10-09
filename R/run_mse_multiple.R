@@ -33,7 +33,7 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
     nsims <- length(seed_list)
 
     max_sims <- 66
-    nsim_iters <- ifelse(nsims < max_sims, 1, round(nsims / max_sims)+1)
+    nsim_iters <- ifelse(nsims < max_sims, 1, floor(nsims / max_sims)+1)
 
     m <- 1
     counter <- 0
