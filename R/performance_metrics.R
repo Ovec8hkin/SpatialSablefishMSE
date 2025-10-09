@@ -31,15 +31,17 @@ average_catch <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
+    process <- function(data){
+        data %>% filter_times(time_horizon) %>%
+            group_by(across(all_of(c("time", group_columns)))) %>%
+            summarise(annual_catch = sum(value))
+    }
 
     group_columns <- c("sim", summarise_by)
     
-    avg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    avg_catch <- process_big_outputs(model_runs, "caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
-        filter_times(time_horizon) %>%
-        group_by(across(all_of(c("time", group_columns)))) %>%
-        summarise(annual_catch = sum(value)) %>%
         round_to_zero("annual_catch") %>%
         relativize_performance(
             rel_column = "hcr",
@@ -526,23 +528,32 @@ average_age <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
-    
-    group_columns <- c("sim", summarise_by)
-
-    avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
-            as_tibble() %>%
-            ungroup() %>%
-            filter_hcr_om(hcr_filter, om_filter) %>%
-            filter_times(time_horizon=time_horizon) %>%
-            # group_by(time, age, sim, om, hcr) %>%
-            # mutate(value = sum(value)) %>%
-            # round_to_zero("value") %>%
+    process <- function(data){
+        data %>% filter_times(time_horizon=time_horizon) %>%
             filter(sex == "F") %>%
             ungroup() %>%
             group_by(time, sim, hcr, om, region) %>%
             summarise(
                 avg_age = compute_average_age(value, 2:31)
-            ) %>%
+            )
+    }
+    
+    group_columns <- c("sim", summarise_by)
+
+    avg_age <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+            as_tibble() %>%
+            ungroup() %>%
+            filter_hcr_om(hcr_filter, om_filter) %>%
+            # filter_times(time_horizon=time_horizon) %>%
+            # # group_by(time, age, sim, om, hcr) %>%
+            # # mutate(value = sum(value)) %>%
+            # # round_to_zero("value") %>%
+            # filter(sex == "F") %>%
+            # ungroup() %>%
+            # group_by(time, sim, hcr, om, region) %>%
+            # summarise(
+            #     avg_age = compute_average_age(value, 2:31)
+            # ) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_age",
@@ -600,14 +611,9 @@ average_abi <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
-    
-    group_columns <- c("sim", summarise_by)
 
-    avg_abi <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
-            as_tibble() %>%
-            ungroup() %>%
-            filter_hcr_om(hcr_filter, om_filter) %>%
-            filter_times(time_horizon=time_horizon) %>%
+    process <- function(data){
+        data %>% filter_times(time_horizon=time_horizon) %>%
             group_by(time, age, sim, om, hcr) %>%
             mutate(value = sum(value)) %>%
             # round_to_zero("value") %>%
@@ -616,7 +622,25 @@ average_abi <- function(
             group_by(time, sim, hcr, om) %>%
             summarise(
                 avg_abi = abi(value, ref_naa)
-            ) %>%
+            ) 
+    }
+    
+    group_columns <- c("sim", summarise_by)
+
+    avg_abi <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+            as_tibble() %>%
+            ungroup() %>%
+            filter_hcr_om(hcr_filter, om_filter) %>%
+            # filter_times(time_horizon=time_horizon) %>%
+            # group_by(time, age, sim, om, hcr) %>%
+            # mutate(value = sum(value)) %>%
+            # # round_to_zero("value") %>%
+            # filter(sex == "F") %>%
+            # ungroup() %>%
+            # group_by(time, sim, hcr, om) %>%
+            # summarise(
+            #     avg_abi = abi(value, ref_naa)
+            # ) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_abi",
@@ -740,32 +764,55 @@ average_proportion_catch_large <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
+    process <- function(data){
+        data %>% filter_times(time_horizon = time_horizon) %>%
+            mutate(
+                size_group = case_when(
+                    age < 5 ~ "Small",
+                    age < 9 ~ "Medium",
+                    TRUE ~ "Large"
+                )
+            ) %>%
+            group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
+            summarise(total_catch = sum(value)) %>%
+            ungroup() %>%
+            pivot_wider(names_from = "size_group", values_from="total_catch") %>%
+            rowwise() %>%
+            mutate(
+                total_catch = sum(Large, Medium, Small)
+            ) %>%
+            round_to_zero("total_catch") %>%
+            mutate(across(Large:Small, ~ ./total_catch)) %>%
+            round_to_zero("Large") %>%
+            round_to_zero("Medium") %>%
+            round_to_zero("Small")
+    }
     
     group_columns <- c("sim", summarise_by)
-    prop_lg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
-        filter_times(time_horizon = time_horizon) %>%
-        mutate(
-            size_group = case_when(
-                age < 5 ~ "Small",
-                age < 9 ~ "Medium",
-                TRUE ~ "Large"
-            )
-        ) %>%
-        group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
-        summarise(total_catch = sum(value)) %>%
-        ungroup() %>%
-        pivot_wider(names_from = "size_group", values_from="total_catch") %>%
-        rowwise() %>%
-        mutate(
-            total_catch = sum(Large, Medium, Small)
-        ) %>%
-        round_to_zero("total_catch") %>%
-        mutate(across(Large:Small, ~ ./total_catch)) %>%
-        round_to_zero("Large") %>%
-        round_to_zero("Medium") %>%
-        round_to_zero("Small") %>%
+        # filter_times(time_horizon = time_horizon) %>%
+        # mutate(
+        #     size_group = case_when(
+        #         age < 5 ~ "Small",
+        #         age < 9 ~ "Medium",
+        #         TRUE ~ "Large"
+        #     )
+        # ) %>%
+        # group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
+        # summarise(total_catch = sum(value)) %>%
+        # ungroup() %>%
+        # pivot_wider(names_from = "size_group", values_from="total_catch") %>%
+        # rowwise() %>%
+        # mutate(
+        #     total_catch = sum(Large, Medium, Small)
+        # ) %>%
+        # round_to_zero("total_catch") %>%
+        # mutate(across(Large:Small, ~ ./total_catch)) %>%
+        # round_to_zero("Large") %>%
+        # round_to_zero("Medium") %>%
+        # round_to_zero("Small") %>%
         select(-total_catch) %>%
         ungroup() %>%
         pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
@@ -910,7 +957,9 @@ average_proportion_biomass_old <- function(
 #'
 average_annual_value <- function(
     model_runs, 
-    extra_columns, 
+    extra_columns,
+    hcr_filter,
+    om_filter,  
     interval_widths=c(0.50, 0.80),
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
@@ -992,6 +1041,8 @@ average_annual_value <- function(
 average_annual_dynamic_value <- function(
     model_runs, 
     extra_columns, 
+    hcr_filter,
+    om_filter,
     interval_widths=c(0.50, 0.80),
     time_horizon = c(65, NA), 
     extra_filter=NULL, 
@@ -1012,6 +1063,29 @@ average_annual_dynamic_value <- function(
         }
     }
 
+    process <- function(data){
+        data %>% filter_times(time_horizon = time_horizon) %>%
+            group_by(across(all_of(c("time", group_columns)))) %>%
+            mutate(tot_catch = sum(value)) %>%
+            filter(fleet == "Fixed") %>%
+            left_join(
+                reshape2::melt(price_data_low) %>% rename(min_price=value),
+                by = c("age", "sex")
+            ) %>%
+            left_join(
+                reshape2::melt(price_data_max) %>% rename(max_price=value),
+                by = c("age", "sex")
+            ) %>%
+            rowwise() %>%
+            mutate(
+                dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
+            ) %>%
+            group_by(across(all_of(c("time", group_columns)))) %>%
+            summarise(total_value = sum(dyn_price*value)) %>%
+            group_by(across(all_of(group_columns))) %>%
+            summarise(dyn_annual_value = mean(total_value))
+    }
+
     price_age_f_low <- c(0.597895623, 1.320303448, 1.320303448, 1.856562267, 2.610111345, 2.610111345, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875)
     price_age_m_low <- c(0.597895623, 0.597895623, 1.320303448, 1.320303448, 1.856562267, 1.856562267, 1.856562267, 1.856562267, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345)
     price_data_low <- matrix(c(price_age_f_low, price_age_m_low), nrow=length(price_age_f_low), ncol=2)
@@ -1029,28 +1103,29 @@ average_annual_dynamic_value <- function(
 
     group_columns <- c("sim", summarise_by)
 
-    dyn_value <- bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
+    dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
         as_tibble() %>%
-        group_by(across(all_of(c("time", group_columns)))) %>%
-        mutate(tot_catch = sum(value)) %>%
-        filter(fleet == "Fixed") %>%
-        filter_times(time_horizon = time_horizon) %>%
-        left_join(
-            reshape2::melt(price_data_low) %>% rename(min_price=value),
-            by = c("age", "sex")
-        ) %>%
-        left_join(
-            reshape2::melt(price_data_max) %>% rename(max_price=value),
-            by = c("age", "sex")
-        ) %>%
-        rowwise() %>%
-        mutate(
-            dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
-        ) %>%
-        group_by(across(all_of(c("time", group_columns)))) %>%
-        summarise(total_value = sum(dyn_price*value)) %>%
-        group_by(across(all_of(group_columns))) %>%
-        summarise(dyn_annual_value = mean(total_value)) %>%
+        filter_hcr_om(hcr_filter, om_filter) %>%
+        # filter_times(time_horizon = time_horizon) %>%
+        # group_by(across(all_of(c("time", group_columns)))) %>%
+        # mutate(tot_catch = sum(value)) %>%
+        # filter(fleet == "Fixed") %>%
+        # left_join(
+        #     reshape2::melt(price_data_low) %>% rename(min_price=value),
+        #     by = c("age", "sex")
+        # ) %>%
+        # left_join(
+        #     reshape2::melt(price_data_max) %>% rename(max_price=value),
+        #     by = c("age", "sex")
+        # ) %>%
+        # rowwise() %>%
+        # mutate(
+        #     dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
+        # ) %>%
+        # group_by(across(all_of(c("time", group_columns)))) %>%
+        # summarise(total_value = sum(dyn_price*value)) %>%
+        # group_by(across(all_of(group_columns))) %>%
+        # summarise(dyn_annual_value = mean(total_value)) %>%
         relativize_performance(
             rel_column = "hcr",
             value_column = "dyn_annual_value",
@@ -1163,15 +1238,15 @@ performance_metric_summary <- function(
     if(any(c("avg_ssb", "all") %in% metric_list))
         avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
-    # Average SSB Across Projection Period
+    # Average Proportion of Years SSB < B35 Across Projection Period
     if(any(c("prop_years_lowssb", "all") %in% metric_list))
         prop_years_lowssb <- prop_low_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
-    # Average SSB Across Projection Period
+    # Average Age Across Projection Period
     if(any(c("avg_age", "all") %in% metric_list))
         avg_age <- average_age(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
-    # Average SSB Across Projection Period
+    # Average ABI Across Projection Period
     if(any(c("avg_abi", "all") %in% metric_list))
         avg_abi <- average_abi(model_runs, extra_columns, ref_naa, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
@@ -1189,11 +1264,11 @@ performance_metric_summary <- function(
 
     # Average annual value
     if(any(c("annual_value", "all") %in% metric_list))
-        annual_value <- average_annual_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        annual_value <- average_annual_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
     # Dynamic annual value
     if(any(c("dynamic_value", "all") %in% metric_list))
-        dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
 
     if(any(c("crash_time", "all") %in% metric_list))
         crash_time <- biomass_crash_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
