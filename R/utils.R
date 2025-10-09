@@ -326,3 +326,95 @@ calculate_realized_samplesize <- function(ac_obs, naa, selex){
     r_ISS <- round(r_sampsize, 0)
     return(r_ISS)
 }
+
+#' Create Time-Varying Movement Matrix for Climate Forced OMs
+#' 
+#' Generate a time-varying movement matrix that linearly
+#' scales between a starting and ending movement matrix
+#' over a given period time. Starting matrix is from 
+#' Cheng et al. 2025, while ending matrix was designed to
+#' increase westward movement of adult/old fish.
+#' 
+#' @param time_trend duration over which to move between matrices
+#' @param nyears total number of years in output movement matrix
+create_tv_movement <- function(time_trend=30, nyears=200){
+
+    start_movement_young <- matrix(
+        c(
+            0.792, 0.033, 0.047, 0.089, 0.039, 
+            0.068, 0.820, 0.030, 0.058, 0.024, 
+            0.047, 0.066, 0.665, 0.160, 0.062, 
+            0.025, 0.025, 0.039, 0.829, 0.082, 
+            0.017, 0.042, 0.057, 0.214, 0.670
+        ),
+        nrow=5, byrow=TRUE
+    )
+
+    end_movement_young <- start_movement_young
+
+    start_movement_adu <- matrix(
+        c(
+            0.548, 0.059, 0.100, 0.167, 0.122, 
+            0.037, 0.705, 0.049, 0.085, 0.122, 
+            0.039, 0.045, 0.514, 0.264, 0.167, 
+            0.012, 0.014, 0.026, 0.807, 0.139, 
+            0.014, 0.023, 0.022, 0.167, 0.772
+        ),
+        nrow=5, byrow=TRUE
+    )
+
+    end_movement_adu <- matrix(
+        c(
+            0.8500, 0.0198, 0.0335, 0.0559, 0.0408, 
+            0.0253, 0.8000, 0.0334, 0.0580, 0.0833, 
+            0.0427, 0.1062, 0.6000, 0.1538, 0.0973, 
+            0.0837, 0.0965, 0.1308, 0.5500, 0.1390, 
+            0.0817, 0.0985, 0.1133, 0.2095, 0.5000
+        ),
+        nrow=5, byrow=TRUE
+    )
+
+    start_movement_old <- matrix(
+        c(
+            0.559, 0.079, 0.120, 0.124, 0.117, 
+            0.041, 0.771, 0.036, 0.063, 0.087, 
+            0.043, 0.049, 0.517, 0.220, 0.169, 
+            0.010, 0.018, 0.023, 0.796, 0.145, 
+            0.018, 0.030, 0.030, 0.143, 0.786
+        ),
+        nrow=5, byrow=TRUE
+    )
+
+    end_movement_old <- matrix(
+        c(
+            0.8500, 0.0469, 0.0409, 0.0323, 0.0299, 
+            0.0361, 0.8000, 0.0317, 0.0555, 0.0767, 
+            0.0468, 0.1106, 0.6000, 0.1372, 0.1054, 
+            0.0798, 0.1139, 0.1177, 0.5500, 0.1386,
+            0.0785, 0.0936, 0.1149, 0.2130, 0.5000
+        ),
+        nrow=5, byrow=TRUE
+    )
+
+    time_trend <- 30
+
+    move_matrix <- array(NA, dim=c(5, 5, nyears, 30, 2))
+    move_matrix[,,1,1:6,] <- start_movement_young
+    move_matrix[,,1,7:15,] <- start_movement_adu
+    move_matrix[,,1,16:30,] <- start_movement_old
+
+    move_matrix[,,(1+time_trend):nyears,1:6,] <- end_movement_young
+    move_matrix[,,(1+time_trend):nyears,6:15,] <- end_movement_adu
+    move_matrix[,,(1+time_trend):nyears,16:30,] <- end_movement_old
+
+    total_start_move <- move_matrix[,,1,,]
+    total_end_move <- move_matrix[,,1+time_trend,,]
+
+    for(i in 1:time_trend){
+        change_matrix <- (total_end_move - total_start_move)/time_trend
+        
+        move_matrix[,,1+i,,] <- move_matrix[,,1+(i-1),,] + change_matrix
+    }
+
+    return(move_matrix)
+}
