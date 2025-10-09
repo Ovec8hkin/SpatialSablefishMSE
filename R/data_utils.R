@@ -67,6 +67,72 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
 
 }
 
+#' Process Large MSE Output Data
+#'
+#' Process large MSE output data stored in multiple RDS files in "data/active"
+#' or in a list of model run objects. Applies a processing function to each
+#' model run's output variable, and combines the results into a single tibble.
+#' 
+#' This is necessary because the total size of spatial MSE output data objects
+#' generally exceeds available memory, so they must be processed in chunks.
+#' 
+#' When reading from RDS files, the files will be processed in parallel using
+#' ncores-2 cores.
+#' 
+#' @param model_runs a list of MSE model run objects (created via `run_mse(...)`)
+#' or NULL to read from RDS files in "data/active"
+#' @param var the output variable from the model run objects
+#' @param extra_columns a data.frame of extra column names and values to add to the tibble (ignored if reading from RDS files)
+#' @param process_func a function to apply to each model runs' output variable
+#' @param ... additional arguments to pass to `process_func`
+#' @return a tibble of processed MSE output data
+#' @export process_big_outputs
+#'
+process_big_outputs <- function(model_runs, var, extra_columns, process_func, ...){
+    get_output <- function(model_runs, var, model_grid, process_func){
+            t <- bind_rows(
+                lapply(
+                    seq_along(model_runs), 
+                    function(x){
+                        y <- melt(model_runs[[x]][var])
+                        for(i in 1:ncol(model_grid)){
+                            col_name <- names(model_grid)[i]
+                            y <- y %>% mutate(!!col_name := model_grid[x,i])
+                        }
+                        y <- y %>% process_func
+                        return(y)
+                    }
+                    # mc.cores = as.integer((parallel::detectCores()-2)/2)
+                )
+            )
+            return(t)
+    }
+
+    if(is.null(model_runs)){
+        fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+        if(!is.null(hcr_order))
+            fs <- unlist(sapply(hcr_order, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
+
+        o <- bind_rows(
+            parallel::mclapply(seq_along(fs), function(i){
+                x <- fs[i]
+                print(x)
+                m <- readRDS(x)
+                mse <- m$mse_objects
+                model_run <- list(mse[[length(mse)]])
+                extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
+                out <- get_output(model_run, var, model_grid=extra_columns, process_func, ...)
+            }, mc.cores=as.integer((parallel::detectCores()-2)))
+        ) 
+    }else{
+        model_grid <- extra_columns
+        o <- get_output(model_runs, var, model_grid, process_func)
+    }
+
+    return(o)
+   
+}
+
 
 relativize_performance <- function(data, rel_column, value_column, rel_value, grouping){
     if(is.null(rel_value)){
@@ -196,3 +262,12 @@ scale_and_rank <- function(data, col_name){
     )
 }
 
+format <- function(data, hcr_filter, om_filter){
+    data %>% as_tibble() %>%
+            filter_hcr_om(hcrs=hcr_filter, oms=om_filter) %>%
+            drop_na() %>%
+            mutate(
+                om = factor(om, levels=om_filter),
+                hcr = factor(hcr, levels=hcr_filter)
+            )
+}

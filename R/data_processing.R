@@ -12,26 +12,8 @@
 #' @export get_ssb_biomass
 #'
 get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
-    group_columns <- c("time", "sim", "L1", names(extra_columns))
-
-    dem_params$waa <- array(
-        dem_params$waa[,,,1], 
-        dim=c(dim(dem_params$waa)[1:3], dim(dem_params$waa)[4]+1),
-        dimnames=c(dimnames(dem_params$waa)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
-    )
-
-    dem_params$mat <- array(
-        dem_params$mat[,,,1], 
-        dim=c(dim(dem_params$mat)[1:3], dim(dem_params$mat)[4]+1),
-        dimnames=c(dimnames(dem_params$mat)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
-    )
-
-    return(
-        bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
-            as_tibble() %>%
-            filter_hcr_om(hcr_filter, om_filter) %>%
-            drop_na() %>%
-            # join WAA and maturity-at-age for computing SSB
+    process <- function(data){
+        data %>%
             left_join(
                 melt(dem_params$waa, value.name="weight"),
                 by=c("time", "age", "sex", "region")
@@ -54,10 +36,26 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
                 spbio=sum(spbio),
                 biomass=sum(biomass)
             ) %>%
-            mutate(
-                om = factor(om, levels=om_filter),
-                hcr = factor(hcr, levels=hcr_filter)
-            )
+            ungroup()
+    }
+
+    group_columns <- c("time", "sim", "L1", names(extra_columns))
+
+    dem_params$waa <- array(
+        dem_params$waa[,,,1], 
+        dim=c(dim(dem_params$waa)[1:3], dim(dem_params$waa)[4]+1),
+        dimnames=c(dimnames(dem_params$waa)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
+    )
+
+    dem_params$mat <- array(
+        dem_params$mat[,,,1], 
+        dim=c(dim(dem_params$mat)[1:3], dim(dem_params$mat)[4]+1),
+        dimnames=c(dimnames(dem_params$mat)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
+    )
+
+    return(
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, process) %>%
+            format(hcr_filter, om_filter)
     )
 }
 
@@ -75,29 +73,18 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
 #' @export get_fishing_mortalities
 #'
 get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
-    
-    return(
-        bind_mse_outputs(model_runs, c("faa", "faa_est"), extra_columns) %>% 
-            as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
-            drop_na() %>%
+    process <- function(data){
+        data %>%
             group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
             summarise(
                 F = max(value)
-            ) %>%
-            # ungroup() %>%
-            # group_by(across(all_of(group_columns[-2]))) %>%
-            # # total F is the sum of fleet-based Fs
-            # mutate(
-            #     total_F = sum(F)
-            # ) %>%
-            # ungroup() %>%
-            mutate(
-                om = factor(om, levels=om_filter),
-                hcr = factor(hcr, levels=hcr_filter)
             )
+    }
+    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
+    return(
+        process_big_outputs(model_runs, c("faa", "faa_est"), extra_columns, process) %>% 
+            format(hcr_filter, om_filter)
     )
 }
 
@@ -113,19 +100,16 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
 #' @export get_recruits
 #'
 get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "sim", "L1", names(extra_columns))
-    return(
-        bind_mse_outputs(model_runs, c("naa", "naa_est"), extra_columns) %>% 
-            as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
-            drop_na() %>%
+    process <- function(data){
+        data %>%
             filter(age == 2) %>%
             group_by(across(all_of(c(group_columns, "region")))) %>%
-            summarise(rec=sum(value)) %>%
-            mutate(
-                om = factor(om, levels=om_filter),
-                hcr = factor(hcr, levels=hcr_filter)
-            )
+            summarise(rec=sum(value))
+    }
+    group_columns <- c("time", "sim", "L1", names(extra_columns))
+    return(
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, process) %>% 
+            format(hcr_filter, om_filter)
     )
 }
 
@@ -142,13 +126,8 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' @export get_landed_catch
 #'
 get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
-    return(
-        bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
-            as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
-            drop_na() %>%
-            group_by(across(all_of(group_columns))) %>%
+    process <- function(data){
+        data %>% group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
             summarise(
                 catch = sum(value)
@@ -159,11 +138,12 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
             mutate(
                 total_catch = sum(catch)
             ) %>%
-            ungroup() %>%
-            mutate(
-                om = factor(om, levels=om_filter),
-                hcr = factor(hcr, levels=hcr_filter)
-            )
+            ungroup()
+    }
+    group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns)) 
+    return(
+        process_big_outputs(model_runs, c("land_caa"), extra_columns, process) %>%
+            format(hcr_filter, om_filter)
     )
 }
 
@@ -182,29 +162,22 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #' @export get_management_quantities
 #'
 get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=54){
-    cols <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
-
-    mgmt <- bind_mse_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns) %>%
-                as_tibble() %>%
-                filter_hcr_om(hcrs=hcr_filter, oms=om_filter) %>%
-                drop_na() %>%
-                select(cols) %>%
-                pivot_wider(names_from=L1, values_from=value) %>%
-                pivot_longer(abc:exp_land, names_to="L1", values_to="value") %>%
-                mutate(
-                    om = factor(om, levels=om_filter),
-                    hcr = factor(hcr, levels=hcr_filter)
-                )
-
-    return(mgmt)
+    process <- function(data){
+        data %>%
+            select(group_columns) %>%
+            pivot_wider(names_from=L1, values_from=value) %>%
+            pivot_longer(abc:exp_land, names_to="L1", values_to="value")
+    }
+    group_columns <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
+    return(
+        process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, process) %>%
+                format(hcr_filter, om_filter)
+    )
 }
 
 get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
-    group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
-    return(
-        bind_mse_outputs(model_runs, c("naa"), extra_columns) %>%
-            as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
+    process <- function(data){
+        data %>%
             mutate(
                 class = factor(
                     case_when(age < 3 ~ "1/2", age < 5 ~ "2/3", age < 7 ~ "3/4", age < 9 ~ "4/5", age < 15 ~ "5/7", age > 14 ~ "7+"), 
@@ -215,6 +188,13 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
             ) %>%
             group_by(across(all_of(group_columns))) %>%
             summarise(value=sum(value))
+    }
+
+    group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
+    return(
+        process_big_outputs(model_runs, c("naa"), extra_columns, process) %>%
+            format(hcr_filter, om_filter)
+            
     )
 }
 
