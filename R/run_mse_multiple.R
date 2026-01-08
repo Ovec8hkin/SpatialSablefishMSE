@@ -32,7 +32,7 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
 
     nsims <- length(seed_list)
 
-    max_sims <- 66
+    max_sims <- 22
     nsim_iters <- ifelse(nsims < max_sims, 1, floor(nsims / max_sims)+1)
 
     m <- 1
@@ -53,6 +53,7 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
             z <- ifelse(!save && nsim_iters==1, i, j)
 
             mse_objects[[z]] <- mse_run
+            rm(mse_run)
 
             print(save)
             if(save || nsim_iters>1){
@@ -61,6 +62,8 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
                 obj <- listN(mse_objects, om, hcr, mse_options_list, seeds)
                 saveRDS(obj, file=filename)
                 # m <- m+1
+                rm(obj)
+                rm(mse_objects)
                 mse_objects <- list()
             }
         }
