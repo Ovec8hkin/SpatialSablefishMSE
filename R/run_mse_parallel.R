@@ -63,16 +63,10 @@ run_mse_parallel <- function(nsims, seeds, om, hcr, mse_options, diagnostics=FAL
             outputs$survey_obs$rpws[,,,,,s] <- mse$survey_obs$rpws
             outputs$survey_obs$acs[,,,,,s] <- mse$survey_obs$acs
             outputs$survey_obs$agg_acs[,,,,,s] <- mse$survey_obs$agg_acs
-            # outputs$survey_obs$ll_rpn[,,,,s] <- mse$survey_obs$rpns[,,,,1]
-            # outputs$survey_obs$ll_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,1]
-            # outputs$survey_obs$tw_rpw[,,,,s] <- mse$survey_obs$rpws[,,,,2]
-            # outputs$survey_obs$ll_acs[,,,,s] <- mse$survey_obs$acs[,,,,3]
-            # outputs$survey_obs$tw_acs[,,,,s] <- mse$survey_obs$acs[,,,,4]
-            # outputs$survey_obs$fxfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,1]
-            # outputs$survey_obs$twfish_acs[,,,,s] <- mse$survey_obs$acs[,,,,2]
 
             if(mse_options$run_estimation){
                 outputs$model_outs[(1:(nyears-mse_options$n_spinup_years+1))+((s-1)*(nyears-mse_options$n_spinup_years+1))] <- mse$model_outs[(1:(nyears-mse_options$n_spinup_years+1))]
+                outputs$converged[,s] <- mse$converged
             }
         }
 
@@ -129,8 +123,9 @@ setup_output_arrays <- function(nyears, nsims, seeds, spinup_years){
     #     reps = array(list(), dim=c(nyears-spinup_years+1, nsims))
     # )
     model_outs <- vector("list", length=(nyears-spinup_years)*nsims)
+    converged <- array(NA, dim=c(nyears-spinup_years+1, nsims))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, global_rec_devs, exp_land, abc, tac, hcr_f, survey_obs, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, global_rec_devs, exp_land, abc, tac, hcr_f, survey_obs, model_outs, converged))
 
 }
 

@@ -107,6 +107,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     #     # reps = vector("list", length=c(nyears-spinup_years))
     # )
     model_outs = vector("list", length=c(nyears-spinup_years))
+    converged = rep(NA, length.out=c(nyears-spinup_years))
 
     naa[1,,,] = init_naa
 
@@ -254,6 +255,13 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 ssb <- mod_report$SSB[,y]
                 rec <- mod_report$Rec[,1:(y-1)]
                 # selex <- SpatialSablefishAssessment::get_selectivities(mod_report)
+                
+                sdrep <- sdreport(sabie_rtmb_model)
+                convergence <- tryCatch(
+                    suppressMessages(post_optim_sanity_checks(sdrep, mod_report, corr_tol=0.999)),
+                    error = function(e) FALSE
+                )
+
 
                 # Store assessment estimates of age composition
                 # for comparing EM and OM
@@ -302,6 +310,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 sel <- sel_est
 
                 model_outs[[(y+1)-spinup_years]] <- sabie_rtmb_model
+                converged[(y+1)-spinup_years] <- convergence
                 # model_outs$mods[[(y+1)-spinup_years]] <- sabie_rtmb_model
                 # model_outs$fits[[(y+1)-spinup_years]] <- sabie_rtmb_model$par
                 # model_outs$reps[[(y+1)-spinup_years]] <- sabie_rtmb_model$rep
@@ -396,7 +405,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     # file.remove(paste0("data/sablefish_em_data_curr_",file_suffix,".RDS"))
     # file.remove(paste0("data/sablefish_em_par_curr_",file_suffix,".RDS"))
 
-    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, global_rec_devs, survey_obs, survey_preds, model_outs))
+    return(afscOM::listN(land_caa, disc_caa, caa, faa, faa_est, naa, naa_est, out_f, exp_land, hcr_f, abc, tac, global_rec_devs, survey_obs, survey_preds, model_outs, converged))
 
 }
 

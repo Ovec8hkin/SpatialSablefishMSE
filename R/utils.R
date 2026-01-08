@@ -430,6 +430,69 @@ create_tv_movement <- function(time_trend=30, nyears=200){
 
     return(move_matrix)
 }
+
+#' Check MLE Convergence via Post-Optimization Sanity Checks
+#' 
+#' @param sd_rep standard deviation report from TMB
+#' @param rep report object from TMB
+#' @param gradient_tol tolerance for maximum absolute gradient
+#' @param se_tol tolerance for maximum standard error
+#' @param corr_tol tolerance for maximum correlation between parameters
+#' @return TRUE if all checks are passed, FALSE otherwise
+#' @export post_optim_sanity_checks
+#'
+post_optim_sanity_checks <- function(sd_rep, rep, gradient_tol = 1e-3, se_tol = 100, corr_tol = 0.99) {
+    passed_post_sanity_checks <- TRUE
+    
+    # check likelihoods are all finite and not NA
+    if(!all(is.finite(rep$jnLL))) {
+        message("Found Inf in joint log-likelihood, model is not converged!")
+        passed_post_sanity_checks <- F
+    }
+    # check maximum absolute gradients
+    max_abs_grad_ndx <- which.max(abs(sd_rep$gradient.fixed))
+    max_abs_grad <- abs(sd_rep$gradient.fixed)[max_abs_grad_ndx]
+    if(gradient_tol < max_abs_grad) {
+        message("Parameter: ", names(sd_rep$par.fixed)[max_abs_grad_ndx], " had absolute gradient = ", max_abs_grad,
+                " which was greater than tolerance ", gradient_tol,". This indicates potential non-convergence according to the tolerance.\n")
+        passed_post_sanity_checks <- F
+    }
+    # check hessian
+    if(!sd_rep$pdHess) {
+        message("Hessian is not positive definite, model is not converged!")
+        passed_post_sanity_checks <- F
+    }
+    # check if standard errors are finite
+    if(!all(is.finite(sqrt(diag(sd_rep$cov.fixed))))) {
+        message("Found non finite elements in standard errors of parameters, model is not converged!")
+        passed_post_sanity_checks <- F
+    }
+    # check if standard errors are big
+    if(max(sqrt(diag(sd_rep$cov.fixed))) > se_tol) {
+        message("Parameter: ", names(diag(sd_rep$cov.fixed))[which.max(sqrt(diag(sd_rep$cov.fixed)))], " has a standard error = ",
+                max(sqrt(diag(sd_rep$cov.fixed))), " which was greated than tolerance ", se_tol, ". This indicates potential non-convergence according to the tolerance. \n")
+        passed_post_sanity_checks <- F
+    }
+    # check if correlations are big
+    corr_mat <- cov2cor(sd_rep$cov.fixed)
+    diag(corr_mat) <- "Same" # set diagonal to "Same" to remove from max calculations
+    # reshape to dataframe
+    corr_df <- reshape2::melt(corr_mat) %>%
+        dplyr::filter(value != 'Same') %>%
+        dplyr::mutate(value = as.numeric(value))
+    if(max(abs(corr_df$value)) > corr_tol) {
+        message("Parameter pairs: ", corr_df$Var1[which.max(abs(corr_df$value))], " and ", corr_df$Var2[which.max(abs(corr_df$value))], " have a correlation of ", max(abs(corr_df$value)), ". This indicates potential non-convergence according to the tolerance.")
+        passed_post_sanity_checks <- F
+    }
+    # cat("\n\n");
+    if(passed_post_sanity_checks) {
+        message("Successfully passed post-optim-sanity checks\n")
+    }
+
+    return(passed_post_sanity_checks)
+
+}
+
 #' Plot Diagnostics for a Given Simulation from Saved MSE Runs
 #' 
 #' @param hcr_filter vector of HCR names to filter on (e.g., c("HCR1", "HCR2"))
