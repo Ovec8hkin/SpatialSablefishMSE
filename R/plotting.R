@@ -816,22 +816,14 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
 #' 
 #' @return ggplot figure showing model diagnostics plots
 #' 
-#' @export plot_em_diagnostics
+#' @export plot_diags
 #' 
-plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years, n_proj_years, simulation_year=1, simulation_number=1){
-
-    # simulation_year <- 10
-    # simulation_number <- 8
-
-    object_num <- extra_columns %>% rownames_to_column() %>%
-        filter_hcr_om(hcr_filter, om_filter) %>% pull(rowname)
-
-    mse_obj <- model_runs[[as.numeric(object_num)]]
+plot_diags <- function(mse_obj, spinup_years, n_proj_years, simulation_year=1, simulation_number=1){
     em_model_obj <- mse_obj$model_outs[[(simulation_year+1)+(simulation_number-1)*(n_proj_years+1)]]
 
     report <- em_model_obj$rep
 
-    dem_params <- model_runs[[as.numeric(object_num)]]$om$dem_params
+    dem_params <- mse_obj$om$dem_params
 
     nyears <- spinup_years+simulation_year
     naa <- mse_obj$naa[1:nyears,,,,simulation_number]
@@ -845,7 +837,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
     om_ssb <- apply(naa[,,1,,drop=FALSE]*dem_params$mat[1:nyears,,1,,drop=FALSE]*dem_params$waa[1:nyears,,1,,drop=FALSE], 1, sum)
 
     ssb_df <- tibble(year=1:nyears, om=om_ssb, em=em_ssb)
-    
+
     ssb_plot <- ggplot(ssb_df)+
         geom_line(aes(x=year, y=em))+
         geom_line(aes(x=year, y=om), color="red", alpha=0.30)+
@@ -1007,10 +999,7 @@ plot_em_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter
 
     #  plot <- (ssb_plot+hr_plot+rec_plot)/(catch_plot+idx_plot)/(ac_plot)
     plot <- (ssb_plot+rec_plot+(hr_plot/idx_plot))/(ac_plot+sel_plot)
-
-
     return(plot)
-
 }
 
 

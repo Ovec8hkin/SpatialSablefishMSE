@@ -430,3 +430,45 @@ create_tv_movement <- function(time_trend=30, nyears=200){
 
     return(move_matrix)
 }
+#' Plot Diagnostics for a Given Simulation from Saved MSE Runs
+#' 
+#' @param hcr_filter vector of HCR names to filter on (e.g., c("HCR1", "HCR2"))
+#' @param om_filter vector of OM names to filter on (e.g., c("OM1", "OM2"))
+#' @param simulation_seed seed of simulation to plot
+#' @param simulation_year year of simulation to plot
+#' @export check_diagnostics
+#'
+check_diagnostics <- function(hcr_filter, om_filter, simulation_seed, simulation_year){
+
+    fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+    if(!is.null(hcr_filter))
+        fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
+
+    for(f in 1:length(fs)){
+        x <- fs[f]
+        # print(x)
+        m <- readRDS(x)
+        mse <- m$mse_objects
+        model_run <- list(mse[[length(mse)]])[[1]]
+        # rm(mse)
+        # print("Loaded model run object")
+        if(!(model_run$om$name %in% om_filter)){
+            print("Wrong OM, skipping")
+            next;
+        }
+        
+        n_proj_years <- m$mse_options_list$mse_options$n_proj_years
+        n_spinup_years <- m$mse_options_list$mse_options$n_spinup_years
+        seeds <- m$seeds
+        nsims <- length(seeds)
+
+        if(!(simulation_seed %in% seeds)){
+            print("Seed not in this file, skipping")
+            next;
+        }
+        simulation_number <- which(seeds == simulation_seed)
+
+        p <- plot_diags(model_run, n_spinup_years, n_proj_years, simulation_year=simulation_year, simulation_number = simulation_number)
+        return(p)
+    }
+}
