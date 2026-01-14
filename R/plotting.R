@@ -805,23 +805,40 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
 #' 2) Model fits to age composition data
 #' 3) Model fits to derived quantities (SSB, harvest rate, recruitment)
 #'
-#' @param model_runs list of completed MSE simulation objects
-#' @param extra_columns additional columns to append to output
-#' @param hcr_filter vector of HCR names to process (should only be length 1)
-#' @param om_filter vector of OM names to process (should only be length 1)
-#' @param spinup_years Number of years of model outputs prior to start of EM (mse_options$n_spinup_years)
-#' @param n_proj_years Number of years of EM model outputs (mse_options$n_proj_years)
+#' @param hcr name of HCR to plot diagnostics for
+#' @param om name of OM to plot diagnostics for
+#' @param simulation_seed simualtion seed to plot diagnostics for
 #' @param simulation_year Year of the simulation to plot diagnostics for
-#' @param simulation_number Simulation number to plot diagnostics for
+#' @param report_convergence whether to calculate and report simulation convergence
 #' 
 #' @return ggplot figure showing model diagnostics plots
 #' 
 #' @export plot_diags
 #' 
-plot_diags <- function(mse_obj, spinup_years, n_proj_years, simulation_year=1, simulation_number=1){
+plot_diags <- function(hcr, om, simulation_seed, simulation_year, report_convergence=TRUE){
+    
+    x <- find_model_run(hcr, om, simulation_seed)
+    m <- x$m
+    mse_obj <- x$model_run
+    
+    n_proj_years <- m$mse_options_list$mse_options$n_proj_years
+    n_spinup_years <- m$mse_options_list$mse_options$n_spinup_years
+    seeds <- m$seeds
+    nsims <- length(seeds)
+    simulation_number <- which(seeds == simulation_seed)
+    
     em_model_obj <- mse_obj$model_outs[[(simulation_year+1)+(simulation_number-1)*(n_proj_years+1)]]
 
     report <- em_model_obj$rep
+
+    if(report_convergence){
+        convergence_message = capture.output(type="message",{
+            sdrep = TMB::sdreport(em_model_obj)
+            SPoRC::post_optim_sanity_checks(sdrep, report)
+        })
+        split <- str_split(convergence_message, "\\. ")[[1]]
+        convergence_message <- split[-length(split)]
+    }
 
     dem_params <- mse_obj$om$dem_params
 
@@ -998,7 +1015,17 @@ plot_diags <- function(mse_obj, spinup_years, n_proj_years, simulation_year=1, s
     # Combine plots
 
     #  plot <- (ssb_plot+hr_plot+rec_plot)/(catch_plot+idx_plot)/(ac_plot)
-    plot <- (ssb_plot+rec_plot+(hr_plot/idx_plot))/(ac_plot+sel_plot)
+    plot <- (ssb_plot+rec_plot+(hr_plot/idx_plot))/(ac_plot+sel_plot) + 
+        plot_annotation(
+            title = paste0(
+                "OM: ", mse_obj$om$name, " | ", "HCR: ", mse_obj$mp$name
+            ),
+            subtitle = paste0(
+                "Simulation Year: ", simulation_year, " | Simulation Number: ", simulation_number
+            ),
+            caption = paste0("Convergence Message:\n", convergence_message)
+        )
+
     return(plot)
 }
 
