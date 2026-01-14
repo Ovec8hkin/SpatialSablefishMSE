@@ -501,8 +501,16 @@ post_optim_sanity_checks <- function(sd_rep, rep, gradient_tol = 1e-3, se_tol = 
 #' @param simulation_year year of simulation to plot
 #' @export check_diagnostics
 #'
-check_diagnostics <- function(hcr_filter, om_filter, simulation_seed, simulation_year){
 
+#' Find Specific MSE EM Model Run from Saved Files
+#' 
+#' @param hcr_filter name of HCR to find
+#' @param om_filter name of OM to find
+#' @param simulation_seed simulation seed to find
+#' 
+#' @return list with mse object for specified model run
+#' 
+find_model_run <- function(hcr_filter, om_filter, simulation_seed){
     fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
     if(!is.null(hcr_filter))
         fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
@@ -520,8 +528,8 @@ check_diagnostics <- function(hcr_filter, om_filter, simulation_seed, simulation
             next;
         }
         
-        n_proj_years <- m$mse_options_list$mse_options$n_proj_years
-        n_spinup_years <- m$mse_options_list$mse_options$n_spinup_years
+        # n_proj_years <- m$mse_options_list$mse_options$n_proj_years
+        # n_spinup_years <- m$mse_options_list$mse_options$n_spinup_years
         seeds <- m$seeds
         nsims <- length(seeds)
 
@@ -529,9 +537,7 @@ check_diagnostics <- function(hcr_filter, om_filter, simulation_seed, simulation
             print("Seed not in this file, skipping")
             next;
         }
-        simulation_number <- which(seeds == simulation_seed)
-
-        p <- plot_diags(model_run, n_spinup_years, n_proj_years, simulation_year=simulation_year, simulation_number = simulation_number)
-        return(p)
+        # simulation_number <- which(seeds == simulation_seed)
+        return(afscOM::listN(m, model_run))
     }
 }
