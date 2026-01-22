@@ -22,6 +22,19 @@ sbpr <- compute_sbpr(
 
 om_base <- sable_om
 
+### Alternative Movement Scenarios
+
+# No movement
+om_nomove <- om_base
+om_nomove$dem_params$movement[,,55:200,,] <- array(diag(1, nrow=5, ncol=5), dim=dim(om_base$dem_params$movement), dimnames=dimnames(om_base$dem_params$movement))[,,55:200,,]
+
+# Fully mixed
+om_panmictic <- om_base
+om_panmictic$dem_params$movement[,,55:200,,] <- array(0.20, dim=dim(om_base$dem_params$movement), dimnames=dimnames(om_base$dem_params$movement))[,,55:200,,]
+
+om_climate_movement <- om_base
+om_climate_movement$dem_params$movement[,,55:200,,] <- create_tv_movement(time_trend=30, nyears=length(55:200))
+
 # Normal recruitment
 om_rand_recruit <- om_base
 om_rand_recruit$name <- "Random Recruitment"
@@ -79,3 +92,16 @@ om_immcrash_recruit$recruitment$apportionment$func <- resample_recruit_apportion
 om_immcrash_recruit$recruitment$apportionment$pars <- list(
     hist_recruits = hist_recruits
 )
+
+
+om_crash2 <- om_bhcyclic_recruit
+om_crash2$recruitment$pars$h <- c(0.85, 0.85)
+om_crash2$recruitment$pars$R0 <- c(15, 3.5)
+om_crash2$recruitment$pars$regime_length <- c(25, 30)
+om_crash2$name <- "Crash Recruitment"
+
+om_cycle_low <- om_bhcyclic_recruit
+om_cycle_low$recruitment$pars$h <- c(0.85,0.85)
+om_cycle_low$recruitment$pars$R0 <- c(50, 5.5)
+om_cycle_low$recruitment$pars$regime_length <- c(5, 20)
+om_cycle_low$name <- "Low Regime Recruitment"
