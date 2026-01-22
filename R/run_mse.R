@@ -77,6 +77,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     faa         = array(NA, dim=c(nyears, nages, nsexes, nregions, nfleets), dimnames=dimension_names)
     faa_est     = array(NA, dim=c(nyears, nages, nsexes, 1, nfleets), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"=c("alaska"), "fleet"=c("Fixed", "Trawl")))
     naa         = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
+    naa0        = array(NA, dim=c(nyears+1, nages, nsexes, nregions), dimnames=list("time"=1:(nyears+1), "age"=2:31, "sex"=c("F", "M"), "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA")))
     naa_est     = array(NA, dim=c(nyears,   nages, nsexes, 1), dimnames=list("time"=1:(nyears),   "age"=2:31, "sex"=c("F", "M"), "region"=c("alaska")))
 
     abc         = array(NA, dim=c(nyears+1, 1, 1, nregions, nfleets), dimnames=list("time"=1:(nyears+1), 1, 1, "region"=c("BS", "AI", "WGOA", "CGOA", "EGOA"), "fleet"=c("Fixed", "Trawl")))
@@ -110,6 +111,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
     converged = rep(NA, length.out=c(nyears-spinup_years))
 
     naa[1,,,] = init_naa
+    naa0[1,,,] = init_naa
 
     set.seed(seed)
     if(is.null(mse_options$recruit_tseries)){
@@ -172,6 +174,20 @@ run_mse <- function(om, mp, mse_options, seed=1120){
             recruitment=full_recruitment[y+1,],
             options=model_options
         )
+
+        # Calculate unfished NAA for use with dynamic B0 HCRs
+        if(!is.null(mp$use_dynb0) && mp$use_dynb0){
+            prev_naa0 <- naa0[y,,,, drop = FALSE]
+            out_vars0 <- afscOM::project_single(
+                removals = array(0, dim=dim(removals_input)),
+                dem_params=dp_y,
+                prev_naa=prev_naa0,
+                recruitment=full_recruitment[y+1,],
+                options=model_options
+            )
+            naa0[y+1,,,] <- out_vars0$naa_tmp
+            dynb0 <- sum(out_vars0$naa_tmp[,,1,,drop=FALSE]*dp_y$mat[,,1,,drop=FALSE]*dp_y$waa[,,1,,drop=FALSE], na.rm=TRUE)
+        }
        
         # update state
         land_caa[y,,,,] <- out_vars$land_caa_tmp
@@ -202,7 +218,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
             sel <- dp_y$sel[,,,1,,drop=FALSE]
             prop_fs <- apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max)/sum(apply(out_vars$faa_tmp[,,,1,, drop=FALSE], 5, max))
             bio <- sum(naa_proj*dp_y$waa[,,,1,drop=FALSE], na.rm=TRUE)
-
+            
             if(mse_options$run_estimation && bio > 1){
                 # Do all of the data formatting and running
                 # of the TMB Sablefish model
@@ -315,6 +331,8 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 # model_outs$fits[[(y+1)-spinup_years]] <- sabie_rtmb_model$par
                 # model_outs$reps[[(y+1)-spinup_years]] <- sabie_rtmb_model$rep
 
+                dynb0 <- mod_report$Dynamic_SSB0[,y]
+
             }
 
             # NOTE: All demographic matrices are substted to the first spatial regions
@@ -341,6 +359,8 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                     spr_target = mp$ref_points$spr_target
                 )
                 # print(ref_pts$Bref)
+                if(!is.null(mp$use_dynb0) && mp$use_dynb0)
+                    ref_pts$dynb0 <- dynb0
 
                 naa_proj[is.na(naa_proj)] <- 0
                 hcr_parameters <- list(ref_pts=ref_pts, naa=naa_proj, dem_params=dp_y, avgrec=mean(rec))
