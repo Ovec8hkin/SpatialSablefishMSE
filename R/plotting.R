@@ -1,11 +1,13 @@
 plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", depletion=FALSE, scales="fixed"){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
-    d <- data
+    d <- data %>% distinct(.keep_all=TRUE)
     if(is.na(v3)){
-        group_columns <- group_columns[group_columns != "region"]
-        d <- d %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass))
+        groups <- group_columns[group_columns != "region"]
+        d <- d %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass)) %>% mutate(region="Alaska")
+        v3 <- "region"
     }
+
     # Plot spawning biomass from OM and EM
     d <- d %>%
         select(-c("biomass")) %>%
@@ -25,14 +27,16 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
     base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
 
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         # geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        coord_cartesian(ylim=c(0, 150))+
+        # scale_y_continuous(limits=c(0, 125))+
+        # scale_x_continuous(limits=c(40, 105))+
+        # coord_cartesian(xlim=c(40, 150))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
         guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
@@ -44,8 +48,9 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
     if(!is.na(v2) && is.na(v3)){
         plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
     }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]), scales=scales)+guides(fill="none")
     }
+    
 
     return(plot+custom_theme)
 }
@@ -80,7 +85,7 @@ plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_
     base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
 
     plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
         geom_line(data = common, aes(x=time, y=median), size=0.85)+
         geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
@@ -88,7 +93,7 @@ plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_
         # geom_hline(yintercept=121.4611, linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
         scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(limits=c(0, 1.5))+
+        scale_y_continuous(limits=c(0, 6))+
         # coord_cartesian(ylim=c(0, 150))+
         labs(x="Year", y="SSB")+
         coord_cartesian(expand=0)+
@@ -246,8 +251,9 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
     c <- data
     if(is.na(v3)){
-        group_columns <- group_columns[group_columns != "region"]
-        c <- c %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(catch=sum(catch), total_catch=sum(total_catch))
+        groups <- group_columns[group_columns != "region"]
+        c <- c %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(catch=sum(catch), total_catch=sum(total_catch)) %>% mutate(region="Alaska")
+        v3 <- "region"
     }
 
     c <- c %>%
@@ -1028,13 +1034,6 @@ plot_diags <- function(hcr, om, simulation_seed, simulation_year, report_converg
 
     return(plot)
 }
-
-
-
-
-
-
-
 
 #' Plot Map of Alaska with NMFS Stat Areas Colored
 #' 
