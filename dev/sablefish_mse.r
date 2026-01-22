@@ -4,11 +4,12 @@ library(tidyverse)
 library(ggdist)
 library(ggh4x)
 library(reshape2)
-library(SPoCK)
+library(SPoRC)
 library(tictoc)
 library(doParallel)
 library(afscOM)
-# library(afscOM) # may work but not certain
+library(patchwork)
+library(afscOM) # may work but not certain
 
 # Change to wherever your local copy of afscOM is
 library(devtools)
@@ -29,13 +30,50 @@ sable_om <- readRDS("data/spatial_sablefish_om.RDS") # Read this saved OM from a
 # sable_om$model_options$fleet_apportionment <- matrix(c(0.80, 0.20), nrow=nrow(sable_om$model_options$fleet_apportionment), ncol=2, byrow=TRUE)
 
 source("dev/oms.R")
-# om_list <- listN(
-#     om_rand_recruit,
-#     om_rand_mv_recruit
-# )
-om_nomove <- om_rand_recruit
-om_nomove$dem_params$movement[,,54:200,,] <- array(diag(1, 5, 5), dim=dim(om_nomove$dem_params$movement[,,54:200,,,drop=FALSE]), dimnames=dimnames(om_nomove$dem_params$movement[,,54:200,,,drop=FALSE]))
-om_nomove$name <- "No Movement"
+
+# Beverton-Holt Recruitment OMs
+om_agemove_bhrec <- om_bh_recruit
+om_agemove_bhrec$recruitment$pars$R0 <- 15
+om_agemove_bhrec$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
+om_agemove_bhrec$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
+)
+om_agemove_bhrec$name <- "BH Recruit | AB Move"
+
+om_climatemove_bhrec <- om_agemove_bhrec
+om_climatemove_bhrec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_bhrec$name <- "BH Recruit | Climate Move"
+
+# Regime-like Recruitment OMs
+om_agemove_regimerec <- om_bhcyclic_recruit
+om_agemove_regimerec$recruitment$pars$h <- 0.85
+om_agemove_regimerec$recruitment$pars$R0 <- c(50, 5.5)
+om_agemove_regimerec$recruitment$pars$regime_length <- c(5, 20)
+om_agemove_regimerec$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
+om_agemove_regimerec$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
+)
+om_agemove_regimerec$name <- "Regime Recruit | AB Move"
+
+om_climatemove_regimerec <- om_agemove_regimerec
+om_climatemove_regimerec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_regimerec$name <- "Regime Recruit | Climate Move"
+
+# Crash Recruitment OMs
+om_agemove_crashrec <- om_bhcyclic_recruit
+om_agemove_crashrec$recruitment$pars$h <- 0.85
+om_agemove_crashrec$recruitment$pars$R0 <- c(15, 3.5)
+om_agemove_crashrec$recruitment$pars$regime_length <- c(10, 25)
+om_agemove_crashrec$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
+om_agemove_crashrec$recruitment$apportionment$pars <- list(
+    hist_recruits = hist_recruits
+)
+om_agemove_crashrec$name <- "Crash Recruit | AB Move"
+
+om_climatemove_crashrec <- om_agemove_crashrec
+om_climatemove_crashrec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_crashrec$name <- "Crash Recruit | Climate Move"
+
 
 #' 2. Define a harvest control rule (HCR) function to use to project TAC
 #' in future years. Such function must take accept the following parameters:
@@ -49,22 +87,34 @@ om_nomove$name <- "No Movement"
 #' Below is an example implementation of the NPFMCs Tier 3a HCR     
 source("dev/hcrs.R")
 
-mp_f40_sq <- mp_f40
-mp_f40_sq$name <- "F40 Status Quo"
+mp_f40_fullutil <- mp_f40
+mp_f40_fullutil$management$regflt_tac_utilization <- full_utilization
+mp_f40_fullutil$name <- "F40 | Full Utilization"
 
-mp_f40_fullattainment <- mp_f40
-mp_f40_fullattainment$management$regflt_tac_utilization <- full_utilization
-mp_f40_fullattainment$name <- "F40 Full Attainment"
+mp_f50_fullutil <- mp_f50
+mp_f50_fullutil$management$regflt_tac_utilization <- full_utilization
+mp_f50_fullutil$name <- "F50 | Full Utilization"
 
-mp_f40_egoa <- mp_f40_sq
-mp_f40_egoa$name <- "F40 Status EGOA Catch"
-mp_f40_egoa$apportionment$func <- fixed_apportionment
-mp_f40_egoa$apportionment$pars <- list(app=c(0, 0, 0, 0, 1))
+mp_b30f50 <- mp_f50
+mp_b30f50$ref_points$spr_target <- c(0.50, 0.30)
+mp_b30f50$name <- "F50/B30"
 
-mp_f40_egoa_bs <- mp_f40_sq
-mp_f40_egoa_bs$name <- "F40 Status EGOA/BS Catch"
-mp_f40_egoa_bs$apportionment$func <- fixed_apportionment
-mp_f40_egoa_bs$apportionment$pars <- list(app=c(0.20, 0, 0, 0, 0.80))
+mp_b30f50_fullutil <- mp_b30f50
+mp_b30f50_fullutil$management$regflt_tac_utilization <- full_utilization
+mp_b30f50_fullutil$name <- "F50/B30 | Full Utilization"
+
+mp_f40hybrid <- mp_f40
+mp_f40hybrid$hcr$extra_options$max_stability <- mp_10perc_up$hcr$extra_options$max_stability
+mp_f40hybrid$hcr$extra_options$harvest_cap <- mp_20cap$hcr$extra_options$harvest_cap
+mp_f40hybrid$name <- "F40 Hybrid"
+
+mp_f40hybrid_fullutil <- mp_f40hybrid
+mp_f40hybrid_fullutil$management$regflt_tac_utilization <- full_utilization
+mp_f40hybrid_fullutil$name <- "F40 Hybrid | Full Utilization"
+
+mp_db0_fullutil <- mp_dynamicB0
+mp_db0_fullutil$management$regflt_tac_utilization <- full_utilization
+mp_db0_fullutil$name <- "Dynamic B0 | Full Utilization"
 
 #' 3. Run the closed-loop MSE simulation
 #' A single MSE simulation can be run using the `run_mse(...)`
@@ -80,7 +130,7 @@ mp_f40_egoa_bs$apportionment$pars <- list(app=c(0.20, 0, 0, 0, 0.80))
 # 857, 1120, 1007, 895
 set.seed(895)
 nsims <- 20
-seed_list <- sample(1:(1000*nsims), nsims)  # Draw 10 random seeds
+seed_list <- sample(1:(10*nsims), nsims)  # Draw 10 random seeds
 # seed_list <- c(3,40,311,417,1105,1259,1581,1819,2078,2330,2512,2563,2719,2861,3190,3452,3709,3899,4233,4716,4723,4852,5160,5938,6264,6533,6754,7149,7207,7284,7329,7557,7579,8003,8388,8904)#ssb_data2 %>% pull(sim) %>% unique
 
 
@@ -88,13 +138,14 @@ mse_options_base <- setup_mse_options()
 mse_options <- mse_options_base
 mse_options$n_spinup_years <- 54
 mse_options$recruitment_start_year <- 54
-mse_options$n_proj_years <- 25
+mse_options$n_proj_years <- 50
+mse_options$run_estimation <- TRUE
 
-mse_options_list <- listN(mse_options)#, mse_options2, mse_options3)
+mse_options_list <- listN(mse_options)
 
 
-om_list <- listN(om_rand_recruit, om_nomove)#, om_bhcyclic_recruit)#, om_mv_recruit)
-hcr_list <- listN(mp_f40_sq, mp_f10chr, mp_f90chr)#, mp_f40_egoa, mp_f40_egoa_bs)
+om_list <- listN(om_agemove_bhrec, om_climatemove_bhrec, om_agemove_regimerec, om_climatemove_regimerec, om_agemove_crashrec, om_climatemove_crashrec)
+hcr_list <- listN(mp_f40, mp_f40_fullutil, mp_f50, mp_f50_fullutil, mp_b30f50, mp_b30f50_fullutil, mp_f40hybrid, mp_f40hybrid_fullutil)
 
 # mp5_modelrun <- run_mse_parallel(nsims, seed_list, om1, mp5, mse_options, nyears)
 tic()
@@ -103,128 +154,238 @@ model_runs <- run_mse_multiple(
     hcr_list, 
     seed_list,
     mse_options_list=mse_options_list,
-    save = FALSE
+    diagnostics = TRUE,
+    save = TRUE
 )
 toc()
-extra_columns <- expand.grid(hcr=lapply(hcr_list, function(x) x$name), om=lapply(om_list, function(x) x$name))
+# extra_columns <- expand.grid(hcr=lapply(hcr_list, function(x) x$name), om=lapply(om_list, function(x) x$name))
 
- # Data Processing
+
+# Data Processing
 filetype <- ".jpeg"
-figures_dir <- file.path(here::here(), "figures", "om_tests", "move_nomove")
+figures_dir <- file.path(here::here(), "figures", "prelim")
 width_small <- 12
 height_small <- 8
 
 # publication_hcrs <- c("F40")#, "F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
-publication_hcrs <- c("F40 Status Quo", "F40 Full Attainment", "F40 +/- 10%")
-publication_oms <- c("Random Recruitment", "Beverton-Holt Cyclic Recruitment")#, "Immediate Crash Recruitment")
+publication_hcrs <- unlist(lapply(hcr_list, function(x) x$name))
+publication_oms <- unlist(lapply(om_list, function(x) x$name))
+
 publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion of Years with Low SSB")
 
-hcrs <- c("F40 Status Quo", "F40 Alaska Stability", "F40 Region Stability", "F40 Fleet Stability")
-names(hcrs) <- NULL
-oms <- unlist(lapply(om_list, function(x) x$name))
-names(oms) <- NULL
+extra_columns = expand.grid(
+    om=publication_oms,
+    hcr=publication_hcrs
+)
 
-mse_runs <- get_saved_model_runs(om_order=oms, hcr_order=unlist(lapply(hcr_list, function(x) x$name)))
-model_runs <- mse_runs$model_runs
-extra_columns <- mse_runs$extra_columns2
+publication_hcrs <- c("F40", "F40 | Full Utilization", "F50", "F50 | Full Utilization", "F50/B30", "F50/B30 | Full Utilization", "F40 Hybrid", "F40 Hybrid | Full Utilization")
+publication_oms <- c("BH Recruit | AB Move", "BH Recruit | Climate Move", "Regime Recruit | AB Move", "Regime Recruit | Climate Move", "Crash Recruit | AB Move", "Crash Recruit | Climate Move")
 
-hcrs <- unlist(lapply(hcr_list, function(x) x$name))
-names(hcrs) <- NULL
-oms <- unlist(lapply(om_list, function(x) x$name))
-names(oms) <- NULL
-extra_columns <- expand.grid(om=oms, hcr=unlist(lapply(hcr_list, function(x) x$name)))
+mse_runs <- get_saved_model_runs(om_order=publication_oms, hcr_order=publication_hcrs)
+# model_runs <- mse_runs$model_runs
+# extra_columns <- mse_runs$extra_columns2 %>% distinct(om, hcr)# %>% mutate(om=case_when(is.na(om) ~ "Random Recruitment | No Movement", TRUE ~ om))
 
-
-# extra_columns <- expand.grid(hcr=publication_hcrs, om=publication_oms)
+publication_hcrs <- c("F40", "F40 | Full Utilization", "Dynamic B0", "Dynamic B0 | Full Utilization")
 
 interval_widths <- c(0.50, 0.80)
 common_trajectory <- 54
-time_horizon <- c(55, 130)
+time_horizon <- c(55, 160)
 
-hcr_colors <- set_hcr_colors2(publication_hcrs)
+hcr_colors <- c("black", "#991c1c", "#001180", "#256c15", "#BB6A00", "#7500B0", "#5CABA3", "#BD4E98")
+names(hcr_colors) <- publication_hcrs
 
-### Spawning Biomass and Catch Plots
-ssb_data <- get_ssb_biomass(model_runs, extra_columns, sable_om$dem_params, hcr_filter=hcrs, om_filter=oms)
-plot_ssb(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="free_y")+scale_y_continuous(limits=c(0, 120))+scale_color_manual(values=c("red", "blue", "green", "purple"))
-ggsave(filename=file.path(figures_dir, paste0("ssb_new", filetype)), width=width_small, height=height_small, units=c("in"))
- 
-plot_relative_ssb(ssb_data, v1="hcr", v2="om", common_trajectory = common_trajectory, base_hcr = "No Fishing")
-ggsave(filename=file.path(figures_dir, paste0("rel_ssb", filetype)), width=width_small, height=height_small, units=c("in"))
-
-depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+scale_y_continuous(limits=c(0, 2))
-ggsave(filename=file.path(figures_dir, paste0("depletion", filetype)), width=16, height=8, units=c("in"))
-
-depletion_plots <- plot_depletion(ssb_data, v1="hcr", v2="om", v3="region", common_trajectory=common_trajectory, show_est = FALSE, scales="fixed")+
-    scale_y_continuous(limits=c(0, 3.5))+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")
-ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", common_trajectory=common_trajectory, scales="free_y")+
-    scale_y_continuous(limits=c(0, 350))+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    facet_wrap(~om, ncol=1)+
-    labs(title="Alaska-Wide Spawning Biomass")+
-    guides(color="none", shape="none")+
-    theme(
-        strip.background = element_blank(),
-        strip.text = element_blank()
+extra_columns <- extra_columns %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
 
-library(patchwork)
+###### Plot Diagnostics
+# plot_em_diagnostics(
+#     model_runs, 
+#     extra_columns,
+#     publication_hcrs,
+#     publication_oms,
+#     spinup_years = 54,
+#     n_proj_years = 50,
+#     simulation_year = 4,
+#     simulation_number = 1
+# )
 
-ssb_agg_plots + depletion_plots + 
-    plot_layout(nrow=1, guides="collect", widths=c(0.5, 1)) & 
+# convergence <- check_em_convergence_diagnostics(
+#     model_runs,
+#     extra_columns,
+#     hcrs, 
+#     oms, 
+#     50,
+#     15
+# )
+
+# convergence_summ <- convergence %>% 
+#     mutate(
+#         sim=rep(seed_list, each=51),
+#         year = rep(54:(54+50), 15)
+#     )
+
+# convergence_summ %>% group_by(year) %>% summarise(c = sum(converged)/n()) %>% print(n=100)
+
+### Spawning Biomass and Catch Plots
+
+ssb_data <- get_ssb_biomass(model_runs=NULL, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
+
+ssb_data <- ssb_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+depletion_plots <- plot_ssb(ssb_data, v1="hcr", v2="region", v3="om", common_trajectory=common_trajectory, show_est = FALSE, scales="free")+
+    labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25)),
+            scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25)),
+            scale_y_continuous(limits=c(0, 50), breaks=seq(0, 50, 15)),
+            scale_y_continuous(limits=c(0, 150), breaks=seq(0, 150, 25)),
+            scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+# ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", show_est=FALSE, common_trajectory=common_trajectory, scales="free_y")+
+#     scale_y_continuous(limits=c(0, 350))+
+#     scale_color_manual(values=hcr_colors)+
+#     facet_wrap(~om, ncol=1)+
+#     labs(title="Alaska-Wide Spawning Biomass")
+
+ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", show_est=FALSE, common_trajectory=common_trajectory, scales="free_y")+
+    scale_y_continuous(limits=c(0, 350))+
+    facet_grid(region~om, scales="free_y")+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+    # labs(title="Alaska-Wide Spawning Biomass")
+
+# ssb_agg_plots + depletion_plots + 
+depletion_plots / ssb_agg_plots +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
     theme(legend.position = "bottom")
-ggsave(filename=file.path(figures_dir, paste0("ssb_depletion_new", filetype)), width=16, height=8, units=c("in"))
 
-catch_data <- get_landed_catch(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
-plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+scale_y_continuous(limits=c(0, 25))
-plot_landed_catch(catch_data, v1="hcr", v2="om", common_trajectory = common_trajectory)
+ggsave(filename=file.path(figures_dir, paste0("ssb_depletion", filetype)), width=16*1.5, height=8*1.5, units=c("in"))
+
+ssb_props <- ssb_data %>% select(-biomass) %>% filter(L1 == "naa") %>%
+    pivot_wider(names_from=region, values_from=spbio) %>%
+    rowwise() %>%
+    mutate(alaska = sum(across(BS:EGOA))) %>%
+    mutate(across(BS:EGOA, ~ .x/alaska)) %>%
+    filter_times(time_horizon) %>%
+    pivot_longer(BS:EGOA, names_to="region", values_to="prop") %>%
+    group_by(om, hcr, region) %>%
+    median_qi(prop)
+
+ssb_props %>% select(om, hcr, region, prop) %>%
+    mutate(
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA")),
+        om = factor(om, levels=rev(publication_oms))
+    ) %>%
+    # pivot_wider(names_from=region, values_from=prop) %>%
+    # arrange(hcr) %>%
+
+    ggplot()+
+        geom_bar(aes(y=om, x=prop, fill=region), stat="identity", position="fill")+
+        scale_color_manual(values=hcr_colors)+
+        coord_cartesian(expand=0)+
+        facet_wrap(~hcr, ncol=2)+
+        custom_theme
+
+ggsave("~/Desktop/ssb_props.jpeg")
+
+
+
+
+
+catch_data <- get_landed_catch(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+catch_data <- catch_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=FALSE, common_trajectory = common_trajectory)+
+    labs(title="Regional Landings", y="Catch (mt)")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 10), breaks=seq(0, 10, 2)),
+            scale_y_continuous(limits=c(0, 10), breaks=seq(0, 10, 2)),
+            scale_y_continuous(limits=c(0, 10), breaks=seq(0, 10, 2)),
+            scale_y_continuous(limits=c(0, 25), breaks=seq(0, 25, 5)),
+            scale_y_continuous(limits=c(0, 15), breaks=seq(0, 15, 5))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=FALSE, common_trajectory = common_trajectory)+
+    scale_y_continuous(limits=c(0, 60))+
+    facet_grid(region~om, scales="free_y")+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_catch_plots / catch_agg_plot +  
+    plot_layout(ncol=1, guides="collect", axes = "collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
 ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
 
 
-reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=TRUE, common_trajectory = common_trajectory)+
-    scale_y_continuous(limits=c(0, 20))+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    labs(title="Regional Landed Catch")
-    # ggh4x::facet_nested(om +fleet~ region)
-catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=TRUE, common_trajectory = common_trajectory)+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    facet_wrap(~om, ncol=1)+
-    guides(color="none", shape="none")+
-    labs(title="Alaska-Wide Landed Catch")+
-    theme(
-        strip.background = element_blank(),
-        strip.text = element_blank()
-    )
+catch_props <- catch_data %>% 
+    filter(fleet == "Fixed") %>%
+    select(-fleet, -catch) %>%
+    pivot_wider(names_from=region, values_from=total_catch) %>%
+    rowwise() %>%
+    mutate(alaska = sum(across(BS:EGOA))) %>%
+    mutate(across(BS:EGOA, ~ .x/alaska)) %>%
+    filter_times(time_horizon) %>%
+    pivot_longer(BS:EGOA, names_to="region", values_to="prop") %>%
+    group_by(om, hcr, region) %>%
+    median_qi(prop)
 
-catch_agg_plot + reg_catch_plots + 
-    plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
-    theme(legend.position = "bottom")
-ggsave(filename=file.path(figures_dir, paste0("catch_new", filetype)), width=16, height=8, units=c("in"))
+catch_props %>% select(om, hcr, region, prop) %>%
+    # pivot_wider(names_from=region, values_from=prop) %>%
+    # arrange(hcr) %>%
 
-
-summ_catch_data <- catch_data %>% filter(time > common_trajectory) %>%
-    group_by(time, fleet, region, om, hcr) %>%
-    median_qi(catch, .width=interval_widths)
-
-summ_catch_data %>% filter(.width == 0.50) %>%
-    filter(om == "Beverton-Holt Cyclic Recruitment", hcr %in% c("F40 Status Quo", "F40 Regional 10% Stability")) %>%
-    select(time, fleet, region, om, hcr, catch) %>%
-    group_by(hcr, region, fleet) %>%
-    mutate(
-        perc_change = catch / lag(catch, 1)
-    ) %>%
-    select(-catch) %>%
-    pivot_wider(names_from="region", values_from="perc_change") %>%
-    print(n=100)
+    ggplot()+
+        geom_bar(aes(y=om, x=prop, fill=region), stat="identity", position="fill")+
+        scale_color_manual(values=hcr_colors)+
+        facet_wrap(~hcr)+
+        custom_theme
 
 # Plot Recruitment
-recruit_data <- get_recruits(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
-reg_rec_plots <- plot_recruitment(recruit_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))
+recruit_data <- get_recruits(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+
+reg_rec_plots <- plot_recruitment(recruit_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)
 
 recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
     scale_y_continuous("Recruits (millions)", limits=c(0, 100))+
     facet_wrap(~om, ncol=1)+
     labs(title="Alaska-Wide Recruitment")+
@@ -236,26 +397,15 @@ recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", common_tra
 recruit_agg_plot + reg_rec_plots + 
     plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
     theme(legend.position = "bottom")
+
 ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=16, height=8, units=c("in"))
 
 # Plot ABC, TAC, and Landed Catch
-abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms)
+abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
 
-abc_tac_land_reg <- abc_tac_land %>%
-    filter(L1 != "attainment") %>%
-    mutate(
-        L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Landed Catch")),
-    ) %>%
-    group_by(time, region, om, hcr, fleet, L1) %>%
-    median_qi(value, .width=interval_widths) %>%
-    filter(.width == 0.50)
-
-regional_abctac_plots <- ggplot(abc_tac_land_reg, aes(x=time, y=value, color=hcr, linetype=L1))+
-    geom_line()+
-    ggh4x::facet_nested(om + fleet ~ region, scales="free_y")+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    custom_theme+
-    labs(title="Regional ABC, TAC, and Landed Catch")+
+regional_abctac_plots <- plot_abc_tac(abc_tac_land, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
+    scale_color_manual(values=hcr_colors)+
+    labs(title="Regional ABC and TAC")+
     ggh4x::facetted_pos_scales(
         y = list(
             scale_y_continuous(limits=c(0, 15)),
@@ -265,23 +415,11 @@ regional_abctac_plots <- ggplot(abc_tac_land_reg, aes(x=time, y=value, color=hcr
         )
     )
 
-abc_tac_land_agg <- abc_tac_land %>%
-    filter(L1 != "attainment") %>%
-    mutate(
-        L1 = factor(L1, levels=c("abc", "tac", "exp_land"), labels=c("ABC", "TAC", "Landed Catch")),
-    ) %>%
-    group_by(time, om, hcr, fleet, L1, sim) %>%
-    summarise(value=sum(value)) %>%
-    group_by(time, om, hcr, fleet, L1) %>%
-    median_qi(value, .width=interval_widths) %>%
-    filter(.width == 0.50)
-
-agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=hcr, linetype=L1))+
-    geom_line()+
-    facet_wrap(om ~ fleet, scales="free_y", ncol=1)+
-    labs(title="Alaska-Wide ABC, TAC, and Landed Catch")+
-    scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    custom_theme+
+agg_abctac_plot <- plot_abc_tac(abc_tac_land, v1="hcr", v2="om", v3=NA, common_trajectory = common_trajectory)+
+    # scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    facet_wrap(~om+fleet, ncol=1)+
+    guides(color="none", shape="none")+
+    labs(y="ABC, TAC, Catch", title="Alaska-Wide Landed Catch")+
     theme(
         strip.background = element_blank(),
         strip.text = element_blank()
@@ -295,98 +433,64 @@ agg_abctac_plot <- ggplot(abc_tac_land_agg, aes(x=time, y=value, color=hcr, line
         )
     )
 
+
 agg_abctac_plot + regional_abctac_plots + 
     plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
     theme(legend.position = "bottom")
 ggsave(file.path(here::here(), "figures", "abc_tac_land.jpeg"), width=16, height=8, units="in")
 
-# Reference Points
-f40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms, ref_pt="Fref", spr_target=0.40)
-
-# Plot phase-plane diagrams (F vs SSB, HCR v SSB, Catch v SSB)
-ref_pts <- get_reference_points(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names, seed_list)
-
-phaseplane_data <- get_phaseplane_data(model_runs, extra_columns2, sable_om$dem_params)
-phaseplane_data2 <- phaseplane_data
-plot_phase_diagram(phaseplane_data2, ref_pts, common_trajectory = common_trajectory)+custom_theme
-
-hcrphase_data <- get_hcrphase_data(model_runs, extra_columns2, sable_om$dem_params, hcr_filter=hcr_names, om_filter=om_names)
-hcrphase_data2 <- hcrphase_data
-plot_hcr_phase_diagram(hcrphase_data, ref_pts, common_trajectory = common_trajectory)+custom_theme
-
-catchphase_data <- get_phaseplane_catch_data(model_runs, extra_columns2, sable_om$dem_params)
-plot_catch_phase_diagram(catchphase_data, ref_pts, common_trajectory = common_trajectory)+custom_theme
-
-b40s <- get_b40_timeseries(model_runs, extra_columns2, hcr_names, om_names)
-ggplot(b40s)+
-    geom_lineribbon(aes(x=time, y=B40, ymin=.lower, ymax=.upper))+
-    scale_fill_brewer(palette="Blues")+
-    scale_y_continuous(limits=c(0, 200))+
-    facet_wrap(~om)+
-    custom_theme
-
-# Plot recruitment
-rec_data <- get_recruits(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names)
-plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)+custom_theme
-
 ###### Performance Metrics
-time_horizon <- c(55, 75)
-
+time_horizon <- c(55, 105)
+tic()
 performance_metrics <- performance_metric_summary(
-    model_runs, 
+    model_runs=NULL, 
     extra_columns, 
-    sable_om$dem_params, 
-    ref_naa,
+    dem_params = sable_om$dem_params, 
+    ref_naa = ref_naa,
     interval_widths=c(0.50, 0.80),
     time_horizon = time_horizon, 
     extra_filter = NULL,
     relative=NULL, 
     summarise_by=c("om", "hcr", "region"),
-    hcr_filter=hcrs,
-    om_filter=oms,
-    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "avg_catch_lg", "annual_value", "dynamic_value")
+    hcr_filter=publication_hcrs,
+    om_filter=publication_oms,
+    metric_list = c("avg_catch", "avg_variation", "avg_ssb", "avg_age", "avg_catch_lg", "dynamic_value")
 )
-
+toc()
 # perf_data <- performance_metrics$perf_data %>% filter(hcr %in% publication_hcrs)
-publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion Large Catch", "Annual Value", "Dynamic Annual Value")
-publication_metrics2 = c("Annual\nCatch", "Catch\nAAV", "SSB", "Average\nAge", "Average Catch\nLarge", "Annual\nValue", "Dynamic\nValue")
+publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Proportion Large Catch", "Dynamic Annual Value")
+publication_metrics2 = c("Annual\nCatch", "Catch\nAAV", "SSB", "Average\nAge", "Average Catch\nLarge", "Dynamic\nValue")
 perf_data2 <- performance_metrics$perf_data %>% 
     # filter(hcr %in% hcrs, name %in% oms) %>%
-    filter_hcr_om(hcrs, oms) %>%
+    filter_hcr_om(publication_hcrs, publication_oms) %>%
     mutate(
-            hcr = factor(hcr, levels=hcrs),
-            om = factor(om, labels=oms),
+            hcr = factor(hcr, levels=publication_hcrs),
+            om = factor(om, labels=publication_oms),
             name = factor(name, levels=publication_metrics, labels=publication_metrics2)
     ) %>%
     filter(.width == 0.5) %>%
-    group_by(om, region, name) %>%
-    mutate(
-        scaled = case_when(
-            name == "Catch\nAAV" ~ (inf_max(median)-median)/(inf_max(median)-min(median)),
-            TRUE ~ median/inf_max(median)
-        )
-    )
+    group_by(region, om, name) %>%
+    scale_and_rank("median")
 
-perf_data2 %>% select(om, hcr, region, name, scaled) %>%
-    # pivot_wider(names_from=name, values_from=scaled) %>%
-
+perf_data2 %>% select(om, hcr, region, name, scaled) %>% arrange(om, region, name) %>%
     ggplot(aes(x=name, y=scaled, color=hcr, fill=hcr, group=hcr))+
         geom_point(size=3)+
         geom_line()+
         geom_polygon(alpha=0)+
         scale_y_continuous(limits=c(0, 1), breaks=seq(0, 1, 0.25))+
+        scale_color_manual(values=hcr_colors)+
         ggiraphExtra::coord_radar()+
-        facet_grid(om~region)+
+        facet_grid(region~om)+
         custom_theme+
         theme(
             axis.text.y = element_blank(),
             axis.ticks.y = element_blank()
         )
-ggsave(file.path(here::here(), "figures", "performance_metrics_radar.png"))
+ggsave(file.path(here::here(), "figures", "performance_metrics_radar.png"), width=25, height=25, units="in")
 
 
 full_performance_metrics <- performance_metric_summary(
-    model_runs, 
+    model_runs_saved, 
     extra_columns, 
     sable_om$dem_params, 
     ref_naa,
@@ -458,20 +562,20 @@ movement_aggregated_performance %>%
 topsis_movement <- compute_topsis(
     # movement_aggregated_performance %>% group_by(Movement, hcr, region, name) %>% median_qi(value, .width=c(0.50)) %>% select(Movement, hcr, region, name, value),
     # perf_data2 %>% filter(.width==0.50) %>% select(om, hcr, region, name, value=median),
-    recruitment_aggregated_performance,# %>% ungroup() %>% pivot_longer(7:ncol(.), names_to="name", values_to="value") %>% select(sim, Movement, hcr, region, name, value), 
-    topsis_splits = c("sim", "region", "Recruitment"),
+    movement_aggregated_performance,# %>% ungroup() %>% pivot_longer(7:ncol(.), names_to="name", values_to="value") %>% select(sim, Movement, hcr, region, name, value), 
+    topsis_splits = c("sim", "region", "Movement"),
     topsis_weights = c(0.25, 0.125, 0.25, 0.1, 0.125, 0.15),
     topsis_minmax = c("max", "min", "max", "max", "max", "max")
 ) %>% arrange(region) %>%
     pivot_longer(4:8, names_to="hcr", values_to="value") %>%
-    group_by(region, Recruitment, hcr) %>%
+    group_by(region, Movement, hcr) %>%
     median_qi(value, .width=interval_widths) %>%
 print(n=100)
 
 
 ggplot(topsis_movement) + 
     geom_pointinterval(aes(x=value, xmin=.lower, xmax=.upper, y=hcr, color=hcr))+
-    facet_grid(Recruitment~region)+
+    facet_grid(Movement~region)+
     scale_x_continuous(name="TOPSIS Score", limits=c(0, 1))+
     custom_theme
 
@@ -531,223 +635,36 @@ ggplot(crash_recovery_time)+
     )
 ggsave(file.path(here::here(), "figures", "resilience_metrics.jpeg"), width=12, height=8, units="in")
 
+####################################
+#### THESE DONT WORK YET!!!!!!! ####
+####################################
+# Reference Points
+f40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter=hcrs, om_filter=oms, ref_pt="Fref", spr_target=0.40)
 
-#### F vs SSB Relationship
-f_ssb_data <- ssb_data %>% filter(L1 == "naa") %>% 
-    left_join(f_data %>% filter(L1 == "faa", fleet=="Fixed") %>% select(-c(F)), by=c("time", "sim", 'om', "hcr")) %>% 
-    filter(time >= 54) %>%
-    group_by(om, hcr) %>%
-    median_qi(total_F, spbio, .width=interval_widths, na.rm=TRUE)
 
-model_preds <- ssb_data %>% filter(L1 == "naa") %>% 
-    left_join(f_data %>% filter(L1 == "faa", fleet=="Fixed") %>% select(-c(F)), by=c("time", "sim", 'om', "hcr")) %>% 
-    filter(time >= 54, !is.na(total_F)) %>%
-    group_by(om, hcr, sim) %>%
-    summarise(
-        spbio=median(spbio),
-        total_F=median(total_F, na.rm=TRUE)
-    ) %>%
-    nest(data = -c("om")) %>%
-    mutate(
-        model = map(data, ~lm(spbio ~ total_F, data=.))
-    ) %>%
-    mutate(
-        glanced = map(model, glance),
-        preds = map(model, ~predict(., newdata=data.frame(total_F=seq(0, 0.15, 0.001))))
-    ) %>%
-    unnest(c(glanced, preds)) %>%
-    select(c(om, r.squared, preds)) %>%
-    ungroup() %>%
-    mutate(
-        total_F=rep(seq(0, 0.15, 0.001), 4)
-    )
-
-ggplot(model_preds)+
-    geom_pointrange(data=f_ssb_data, aes(x=total_F, xmin=total_F.lower, xmax=total_F.upper, y=spbio, ymin=spbio.lower, ymax=spbio.upper, color=hcr, label=hcr), size=1)+
-    geom_line(aes(x=total_F, y=preds), linetype="dashed")+
-    geom_label(aes(x=0.016, y=25, label=paste0("R^2=",round(r.squared, 3))), size=6)+
-    scale_x_continuous("FIshing Mortality Rate", limits = c(-0.005, 0.1), breaks=seq(0, 0.1, 0.025), labels=c("0", "0.025", "0.050", "0.075", "0.1"))+
-    scale_y_continuous("Spawning Biomass (1000s mt)", limits = c(0,350))+
-    coord_cartesian(expand=0)+
-    labs(color="HCR")+
+b40s <- get_b40_timeseries(model_runs, extra_columns, publication_hcrs, publication_oms)
+ggplot(b40s)+
+    geom_lineribbon(aes(x=time, y=B40, ymin=.lower, ymax=.upper))+
+    scale_fill_brewer(palette="Blues")+
+    scale_y_continuous(limits=c(0, 200))+
     facet_wrap(~om)+
-    custom_theme+
-    theme(
-        panel.spacing.x = unit(1, "cm"),
-        plot.margin = margin(0.5, 1, 0.5, 0.5, "cm")
-    )
-ggsave(filename=file.path(here::here(), "figures", "ssb_v_f.jpeg"))
-
-
-
-#### Example recruitment functions
-examp_rec <- get_recruits(model_runs, extra_columns2, hcr_filter=c("F40"), om_filter=om_names) %>%
-    as_tibble() %>%
-    filter(time > 54, sim %in% sample(seed_list, 5), hcr == "F40") %>%
-    mutate(
-        sim = factor(sim)
-    )
-
-mean_rec <- examp_rec %>%
-    group_by(om) %>%
-    summarise(r=median(rec))
-
-summ_rec <- get_recruits(model_runs, extra_columns2, hcr_filter=c("F40"), om_filter=om_names) %>%
-    as_tibble() %>%
-    filter(time > 54, hcr == "F40") %>%
-    group_by(time, om) %>%
-    median_qi(rec, .width=interval_widths)
-
-ggplot(examp_rec) +
-    geom_line(aes(x=time, y=rec, color=om, group=sim), size=0.5, alpha=0.6)+
-    geom_line(data=summ_rec, aes(x=time, y=rec), color="black", size=1)+
-    geom_hline(data=mean_rec, aes(yintercept=r), linetype="dashed")+
-    geom_text(data=mean_rec, aes(x=123, y=110, label=round(r, 2)), size=6)+
-    scale_y_continuous(limits=c(0, 120))+
-    scale_x_continuous(breaks=c(seq(55, 130, 20), 134), labels=c(seq(0, 75, 20), 75))+
-    guides(color="none")+
-    labs(x="Time", y="Recruitment")+
-    coord_cartesian(expand=0)+
-    facet_wrap(~om, ncol=2)+
-    theme_bw()+
-    custom_theme
-ggsave(filename=file.path(here::here(), "figures", "example_recruitment.png"), width=13, height=10, units = "in")
-
-
-#### Pairs Plot for Catch, SSB, Large Catch, Population Age
-extra_columns=extra_columns2 
-dem_params=sable_om$dem_params
-relative=NULL
-summarise_by=c("om", "hcr")
-group_columns <- c("sim", summarise_by)
-
-avg_F <- f_data %>% ungroup() %>% filter(L1 == "faa") %>%
-    filter_times(time_horizon) %>%
-    relativize_performance(
-        rel_column = "hcr",
-        value_column = "annual_catch",
-        rel_value = relative,
-        grouping=group_columns
-    ) %>%
-    select(time, sim, om, hcr, total_F)
-
-avg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
-    as_tibble() %>%
-    filter_times(time_horizon) %>%
-    group_by(across(all_of(c("time", group_columns)))) %>%
-    summarise(annual_catch = sum(value)) %>%
-    relativize_performance(
-        rel_column = "hcr",
-        value_column = "annual_catch",
-        rel_value = relative,
-        grouping=group_columns
-    )
-    
-avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter = hcr_names, om_filter=om_names) %>%
-    ungroup() %>%
-    filter(L1 != "naa_est") %>%
-    select(-L1) %>%
-    filter_times(time_horizon=time_horizon) %>%
-    relativize_performance(
-        rel_column = "hcr",
-        value_column = "spbio",
-        rel_value = relative,
-        grouping = group_columns
-    )
-
-avg_age <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
-    as_tibble() %>%
-    ungroup() %>%
-    group_by(time, age, sim, om, hcr) %>%
-    mutate(value = sum(value)) %>%
-    filter(sex == "F") %>%
-    ungroup() %>%
-    group_by(time, sim, hcr, om) %>%
-    summarise(
-        avg_age = compute_average_age(value, 2:31)
-    ) %>%
-    filter_times(time_horizon=time_horizon) %>%
-    relativize_performance(
-        rel_column = "hcr",
-        value_column = "avg_age",
-        rel_value = relative,
-        grouping = group_columns
-    )
-
-prop_lg_catch <- bind_mse_outputs(model_runs, "caa", extra_columns) %>%
-    as_tibble() %>%
-    filter_times(time_horizon = time_horizon) %>%
-    mutate(
-        size_group = case_when(
-            age < 5 ~ "Small",
-            age < 9 ~ "Medium",
-            TRUE ~ "Large"
-        )
-    ) %>%
-    group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
-    summarise(total_catch = sum(value)) %>%
-    ungroup() %>%
-    pivot_wider(names_from = "size_group", values_from="total_catch") %>%
-    rowwise() %>%
-    mutate(
-        total_catch = sum(Large, Medium, Small)
-    ) %>%
-    mutate(across(Large:Small, ~ ./total_catch)) %>%
-    select(-total_catch) %>%
-    ungroup() %>%
-    pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
-    relativize_performance(
-        rel_column = "hcr",
-        value_column = "catch",
-        rel_value = relative,
-        grouping = c("size_group", group_columns)
-    )
-
-my_fn2 <- function(data, mapping, ...){
-    print(data)
-    p <- ggplot(data = data, mapping = mapping) + 
-        geom_point(aes(color=hcr), size=2) + 
-        geom_smooth(method=lm, aes(color=hcr), se=FALSE, ...) +
-        ggpmisc::stat_poly_line(data=data, mapping=aes(), color="black", linetype="dashed")+
-        ggpmisc::stat_poly_eq(data=data, mapping=aes(x=data$x, y=data$y), use_label("eq"))
-        # geom_smooth(method=lm, color="black", linetype="dashed", ...)
-    p
-}
-
-gpairs_lower <- function(g){
-    g$plots <- g$plots[-(1:g$nrow)]
-    g$yAxisLabels <- g$yAxisLabels[-1]
-    g$nrow <- g$nrow -1
-
-    g$plots <- g$plots[-(seq(g$ncol, length(g$plots), by = g$ncol))]
-    g$xAxisLabels <- g$xAxisLabels[-g$ncol]
-    g$ncol <- g$ncol - 1
-
-    g
-}
-
-gp <- avg_F %>%
-    left_join(avg_catch, by=c("time", "sim", "om", "hcr")) %>% 
-    left_join(avg_ssb, by=c("time", "sim", "om", "hcr")) %>%
-    left_join(avg_age, by=c("time", "sim", "om", "hcr")) %>%
-    left_join(prop_lg_catch %>% filter(size_group == "Large") %>% select(time, sim, om, hcr, catch), by=c("time", "sim", "om", "hcr")) %>%
-    filter(hcr %in% publication_hcrs, !(hcr %in% c("No Fishing"))) %>%
-    group_by(sim, hcr) %>%
-    median_qi(total_F, annual_catch, spbio, catch, avg_age, .width=c(0.50)) %>%
-    select(hcr, total_F, annual_catch, spbio, catch, avg_age) %>%
-    rename("Annual Catch"="annual_catch", "SSB"="spbio", "Large Catch"="catch", "Population Age"="avg_age") %>%
-
-    ggpairs(
-        columns=c(3:6),
-        aes(color=hcr),
-        lower=list(continuous=my_fn2),
-        # upper=list(continuous = wrap(ggally_cor, method = "pearson")),
-        legend=c(1, 1)
-    )+
     custom_theme
 
-g1 <- gp[1, 1]
-g1 <- g1 + coord_cartesian(ylim=c(0, 1))
-gp[1, 1] <- g1
+# Plot recruitment
+rec_data <- get_recruits(model_runs, extra_columns2, hcr_filter=hcr_names, om_filter=om_names)
+plot_recruitment(rec_data, v1="hcr", v2="om", show_est = FALSE)+custom_theme
 
-ggsave(gp, filename=file.path(here::here(), "figures", "performance_pairs2.jpeg"), width=10, height=10, units="in")
+
+
+hcr_fs <- bind_mse_outputs(model_runs, "hcr_f", extra_columns)
+
+hcr_fs_tseries <- hcr_fs %>% filter_times(time_horizon) %>% filter_hcr_om(publication_hcrs, publication_oms) %>%
+    as_tibble() %>%
+    select(-Var2, -Var3, -region, -L1) %>%
+    group_by(time, om, hcr) %>%
+    median_qi(value, .width=interval_widths) 
+
+ggplot(hcr_fs_tseries, aes(x=time, y=value, color=hcr))+
+    geom_line()+
+    facet_wrap(~om)+
+    custom_theme
