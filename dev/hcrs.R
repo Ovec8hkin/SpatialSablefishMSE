@@ -122,6 +122,17 @@ chr <- function(ref_pts, naa, dem_params, avgrec){
     return(constant_F(ref_pts$Fref))
 }
 
+dynamic_b0 <- function(ref_pts, naa, dem_params, avgrec, cutoff_age=1){
+    nages <- afscOM::get_model_dimensions(dem_params$sel)$nages
+    a <- cutoff_age-1
+    ssb <- apply(naa[,a:nages,1,,drop=FALSE]*dem_params$waa[,a:nages,1,1,drop=FALSE]*dem_params$mat[,a:nages,1,1,drop=FALSE], 1, sum)
+    
+    dep <- ssb/ref_pts$dynb0
+    return(
+       threshold_f(dep, f_min=0, f_max=ref_pts$Fref, lrp=0.05, urp=0.40)
+    )
+}
+
 
 
 regionfleet_tac_utilization <- array(
@@ -607,6 +618,20 @@ mp_bcsable$name <- "British Columbia"
 mp_bcsable$ref_points$spr_target <- c(0.45, 0.45)
 mp_bcsable$hcr <- list(
     func = bc_sable,
+    extra_pars = NA,
+    extra_options = list(
+        max_stability = NA,
+        harvest_cap = NA
+    ),
+    units = "F"
+)
+
+mp_dynamicB0 <- mp_base
+mp_dynamicB0$name <- "Dynamic B0"
+mp_dynamicB0$use_dynb0 <- TRUE
+mp_dynamicB0$ref_points$spr_target <- c(0.40, 0.40)
+mp_dynamicB0$hcr <- list(
+    func = dynamic_b0,
     extra_pars = NA,
     extra_options = list(
         max_stability = NA,
