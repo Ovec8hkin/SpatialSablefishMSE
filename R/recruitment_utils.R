@@ -239,11 +239,31 @@ recruits_crash <- function(crash_start_year, crash_length, crash_value, hist_rec
 #'
 #' @export resample_recruit_apportionment
 #'
-resample_recruit_apportionment <- function(hist_recruits, seed){
+resample_recruit_apportionment <- function(recruits, hist_recruits, seed){
     set.seed(seed)
     idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
     props <- t(apply(hist_recruits, 1, function(x) x/sum(x)))
     return(props[idx,])
+}
+
+
+#' Resample from Historical Spatial Recruit Apportionment
+#' 
+#' Resample, with replacement, from the timeseries of historical
+#' regional recruit apportionment.
+#'
+#' @param hist_recruits historical timeseries of recruitment (or deviates)
+#' @param seed random seed for reproducability
+#'
+#' @export resample_recruit_apportionment
+#'
+proximity_resample_recruit_apportionment <- function(recruits, hist_recruits, seed){
+    set.seed(seed)
+    total_recruits <- apply(hist_recruits, 1, sum)
+    prop <- hist_recruits[order(abs(total_recruits-recruits))[1],]
+    # idx = sample(1:nrow(hist_recruits), size=1, replace=TRUE)
+    prop <- prop/sum(prop)
+    return(prop)
 }
 
 #' Generate Random Spatial Recruitment Apportionment matrix
@@ -257,7 +277,7 @@ resample_recruit_apportionment <- function(hist_recruits, seed){
 #'
 #' @export multivariate_recruit_apportionment
 #'
-multivariate_recruit_apportionment <- function(seed){
+multivariate_recruit_apportionment <- function(recruits, seed){
     set.seed(seed)
     sdrep <- readRDS(file.path(here::here(), "data", "sabietmb_rep.RDS"))
     recdevs <- array(sdrep$par.fixed[names(sdrep$par.fixed) == 'ln_RecDevs'], dim = c(5,62))
