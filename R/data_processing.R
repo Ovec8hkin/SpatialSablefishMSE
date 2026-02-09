@@ -280,6 +280,38 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
     )
 }
 
+#' Get Average Population Age Timeseries
+#' 
+#' Process MSE simulations for average age of an individual fish
+#' in the population. This is distinct from the performance metric
+#' of the same name in that include both male and female fish in the
+#' calculation of average age.
+#' 
+#' @param model_runs list of completed MSE simulation objects
+#' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_average_age
+#'
+get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
+    process <- function(data){
+        data %>% filter_times(time_horizon=time_horizon) %>%
+            ungroup() %>%
+            group_by(time, sim, age, hcr, om, region) %>%
+            summarise(value = sum(value)) %>%
+            group_by(time, sim, hcr, om, region) %>%
+            summarise(
+                avg_age = compute_average_age(value, 2:31)
+            )
+    }
+
+    return(
+        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
+            format(hcr_filter, om_filter)
+    )
+}
+
 #' Get Catch or Numbers-at-Age by Age Groups
 #' 
 #' Process MSE simulation results for -at-age by
