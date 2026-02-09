@@ -226,8 +226,15 @@ names(hcr_colors) <- publication_hcrs
 
 # convergence_summ %>% group_by(year) %>% summarise(c = sum(converged)/n()) %>% print(n=100)
 
-### Spawning Biomass and Catch Plots
 
+
+#############################################
+#############################################
+#############################################
+#### Spawning Biomass + Depletion ###########
+#############################################
+#############################################
+#############################################
 ssb_data <- get_ssb_biomass(model_runs=NULL, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
 
 ssb_data <- ssb_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
@@ -236,8 +243,18 @@ ssb_data <- ssb_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|
         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
 
-depletion_plots <- plot_ssb(ssb_data, v1="hcr", v2="region", v3="om", common_trajectory=common_trajectory, show_est = FALSE, scales="free")+
-    labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")+
+ssb_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_SSB_biomass.csv")) %>% mutate(
+    Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+    Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+    region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+)
+
+reg_ssb_plots <- plot_ssb(
+        ssb_data, 
+        v1="hcr", v2="region", v3="om", show_est = FALSE,
+        common_trajectory=common_trajectory 
+    )+
+    labs(title="Regional Spawning Biomass", y="SSB (1000s mt)")+
     ggh4x::facet_nested(
         rows=vars(region), 
         cols=vars(Recruitment, Movement), 
@@ -258,27 +275,118 @@ depletion_plots <- plot_ssb(ssb_data, v1="hcr", v2="region", v3="om", common_tra
         axis.text.x = element_blank()
     )
 
-# ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", show_est=FALSE, common_trajectory=common_trajectory, scales="free_y")+
-#     scale_y_continuous(limits=c(0, 350))+
-#     scale_color_manual(values=hcr_colors)+
-#     facet_wrap(~om, ncol=1)+
-#     labs(title="Alaska-Wide Spawning Biomass")
-
-ssb_agg_plots <- plot_ssb(ssb_data, v1="hcr", v2="om", show_est=FALSE, common_trajectory=common_trajectory, scales="free_y")+
+ssb_agg_plots <- plot_ssb(
+        ssb_data, 
+        v1="hcr", v2="om", v3=NA, show_est = FALSE,
+        common_trajectory=common_trajectory
+    )+
     scale_y_continuous(limits=c(0, 350))+
-    facet_grid(region~om, scales="free_y")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
     theme(
         strip.background.x = element_blank(),
         strip.text.x = element_blank()
     )
-    # labs(title="Alaska-Wide Spawning Biomass")
 
 # ssb_agg_plots + depletion_plots + 
 depletion_plots / ssb_agg_plots +
     plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
     theme(legend.position = "bottom")
 
-ggsave(filename=file.path(figures_dir, paste0("ssb_depletion", filetype)), width=16*1.5, height=8*1.5, units=c("in"))
+ggsave(filename=file.path(figures_dir, paste0("ssb_depletion", filetype)), width=width_large, height=height_large, units=c("in"))
+
+##### SSB Timeseries Relative to the F40 Harvest Control Rule
+reg_ssb_f40rel_plots <- plot_ssb(
+        ssb_data, 
+        v1="hcr", v2="region", v3="om", show_est = FALSE,
+        common_trajectory=common_trajectory, time_horizon = time_horizon,
+        relative="F40"
+    )+
+    labs(title="Regional Spawning Biomass Relative to F40", y="Relative SSB")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0.5, 2))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_ssb_f40rel_plots <- plot_ssb(
+        ssb_data, 
+        v1="hcr", v2="om", v3=NA, show_est = FALSE,
+        common_trajectory=common_trajectory, time_horizon = time_horizon,
+        relative="F40"
+    )+
+    scale_y_continuous("Relative SSB", limits=c(0.5, 2))+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_ssb_f40rel_plots / agg_ssb_f40rel_plots +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+ggsave(filename=file.path(figures_dir, paste0("ssb_f40rel", filetype)), width=width_large, height=height_large, units="in")
+
+##### SSB Timeseries as difference between climate and age-based movement
+#########################################################################
+
+ab_ssb <- ssb_data %>% filter(Movement == "AB Move")
+cl_ssb <- ssb_data %>% filter(Movement == "Climate Move")
+
+ssb_diff <- ab_ssb %>% 
+    left_join(cl_ssb, by=c("time", "sim", "Recruitment", "hcr", "region")) %>%
+    mutate(
+        spbio = spbio.y - spbio.x,
+        biomass = biomass.y - biomass.x
+    ) %>%
+    select(time, sim, L1=L1.x, Recruitment, hcr, region, spbio, biomass)
+
+
+depletion_diff_plots <- plot_ssb(ssb_diff, v1="hcr", v2="region", v3="Recruitment", common_trajectory=common_trajectory, show_est = FALSE, scales="free")+
+    labs(title="Regional Depletion (SSB/SSB0)", y="Depletion")+
+    facet_grid(region~Recruitment, scales="free_y")+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 25)),
+            scale_y_continuous(limits=c(0, 75), breaks=seq(0, 75, 25)),
+            scale_y_continuous(limits=c(0, 25), breaks=seq(0, 25, 5)),
+            scale_y_continuous(limits=c(-75, 0), breaks=seq(-75, 0, 25)),
+            scale_y_continuous(limits=c(-75, 0), breaks=seq(-75, 0, 25))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+ssb_diff_agg_plots <- plot_ssb(ssb_diff, v1="hcr", v2="Recruitment", show_est=FALSE, common_trajectory=common_trajectory, scales="free_y")+
+    scale_y_continuous(limits=c(-5, 25))+
+    facet_grid(region~Recruitment, scales="free_y")+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+# ssb_agg_plots + depletion_plots + 
+depletion_diff_plots / ssb_diff_agg_plots +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
 
 ssb_props <- ssb_data %>% select(-biomass) %>% filter(L1 == "naa") %>%
     pivot_wider(names_from=region, values_from=spbio) %>%
@@ -305,12 +413,28 @@ ssb_props %>% select(om, hcr, region, prop) %>%
         facet_wrap(~hcr, ncol=2)+
         custom_theme
 
-ggsave("~/Desktop/ssb_props.jpeg")
+ssb_data %>% filter_times(time_horizon) %>%
+    mutate(Movement = factor(Movement, levels=c("AB Move", "Climate Move"), labels=c("Base", "Climate"))) %>%
+    group_by(Recruitment, Movement, hcr, region) %>%
+    median_qi(spbio) %>%
+    select(Recruitment, Movement, hcr, region, spbio) %>%
+
+    ggplot()+
+        geom_col(aes(y=spbio, x=Movement, fill=region))+
+        scale_color_manual(values=hcr_colors)+
+        facet_grid(Recruitment~hcr)+
+        labs(title="Spawning Biomass by Movement Scenario", y="SSB (1000s mt)")+
+        custom_theme
 
 
 
-
-
+#############################################
+#############################################
+#############################################
+#### Landed Catch ###########################
+#############################################
+#############################################
+#############################################
 catch_data <- get_landed_catch(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
 catch_data <- catch_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
@@ -318,8 +442,14 @@ catch_data <- catch_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\
         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
 
+catch_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_catch.csv")) %>% mutate(
+    Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+    Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+    region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+)
+
 reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=FALSE, common_trajectory = common_trajectory)+
-    labs(title="Regional Landings", y="Catch (mt)")+
+    labs(title="Regional Landings", y="Catch (1000s mt)")+
     ggh4x::facet_nested(
         rows=vars(region), 
         cols=vars(Recruitment, Movement), 
@@ -341,18 +471,106 @@ reg_catch_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region",
     )
 
 catch_agg_plot <- plot_landed_catch(catch_data, v1="hcr", v2="om", by_fleet=FALSE, common_trajectory = common_trajectory)+
-    scale_y_continuous(limits=c(0, 60))+
-    facet_grid(region~om, scales="free_y")+
+    scale_y_continuous(limits=c(0, 60), name="Catch (1000s mt)")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
     theme(
         strip.background.x = element_blank(),
         strip.text.x = element_blank()
     )
 
 reg_catch_plots / catch_agg_plot +  
-    plot_layout(ncol=1, guides="collect", axes = "collect", heights=c(1, 0.5)) & 
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
     theme(legend.position = "bottom")
 
-ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=16, height=8, units=c("in"))
+ggsave(filename=file.path(figures_dir, paste0("catch", filetype)), width=width_large, height=height_large, units=c("in"))
+
+### Landings Timeseries Relative to the F40 Harvest Control Rule
+reg_catch_f40rel_plots <- plot_landed_catch(catch_data, v1="hcr", v2="om", v3="region", by_fleet=FALSE, common_trajectory = common_trajectory, time_horizon=time_horizon, relative="F40")+
+    labs(title="Regional Landings Relative to F40", y="Relative Catch")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0, 2.5))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_catch_f40rel_plot <- plot_landed_catch(
+        catch_data, 
+        v1="hcr", v2="om", by_fleet=FALSE, 
+        common_trajectory = common_trajectory, time_horizon=time_horizon,
+        relative="F40"
+    )+
+    scale_y_continuous(limits=c(0.25, 1.5), name="Relative Catch")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_catch_f40rel_plots / agg_catch_f40rel_plot +  
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+ggsave(filename=file.path(figures_dir, paste0("catch_f40rel", filetype)), width=width_large, height=height_large, units="in")
+
+
+ab_catch <- catch_data %>% filter(Movement == "AB Move")
+cl_catch <- catch_data %>% filter(Movement == "Climate Move")
+
+catch_diff <- ab_catch %>% 
+    left_join(cl_catch, by=c("time", "sim", "fleet", "Recruitment", "hcr", "region")) %>%
+    mutate(
+        total_catch = total_catch.y - total_catch.x,
+        catch = catch.y - catch.x
+    ) %>%
+    select(time, sim, L1=L1.x, fleet, Recruitment, hcr, region, catch, total_catch)
+
+
+reg_catch_diff_plots <- plot_landed_catch(catch_diff, v1="hcr", v2="region", v3="Recruitment", common_trajectory=common_trajectory)+
+    labs(title="Regional Landings", y="Catch (mt)")+
+    facet_grid(region~Recruitment, scales="free_y")+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 5), breaks=seq(0, 5, 1)),
+            scale_y_continuous(limits=c(0, 5), breaks=seq(0, 5, 1)),
+            scale_y_continuous(limits=c(0, 5), breaks=seq(0, 5, 1)),
+            scale_y_continuous(limits=c(-5, 0), breaks=seq(-5, 0, 1)),
+            scale_y_continuous(limits=c(-5, 0), breaks=seq(-5, 0, 1))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+catch_diff_agg_plots <- plot_landed_catch(catch_diff, v1="hcr", v2="Recruitment", common_trajectory=common_trajectory)+
+    scale_y_continuous(limits=c(-5, 2))+
+    facet_grid(region~Recruitment, scales="free_y")+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_catch_diff_plots / catch_diff_agg_plots +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+
+
 
 
 catch_props <- catch_data %>% 
@@ -368,14 +586,218 @@ catch_props <- catch_data %>%
     median_qi(prop)
 
 catch_props %>% select(om, hcr, region, prop) %>%
-    # pivot_wider(names_from=region, values_from=prop) %>%
-    # arrange(hcr) %>%
+    mutate(
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA")),
+        om = factor(om, levels=rev(publication_oms))
+    ) %>%
 
     ggplot()+
         geom_bar(aes(y=om, x=prop, fill=region), stat="identity", position="fill")+
         scale_color_manual(values=hcr_colors)+
         facet_wrap(~hcr)+
         custom_theme
+
+catch_data %>% filter_times(time_horizon) %>%
+    mutate(Movement = factor(Movement, levels=c("AB Move", "Climate Move"), labels=c("Base", "Climate"))) %>%
+    group_by(Recruitment, Movement, hcr, region) %>%
+    median_qi(total_catch) %>%
+    select(Recruitment, Movement, hcr, region, total_catch) %>%
+
+    ggplot()+
+        geom_col(aes(y=total_catch, x=Movement, fill=region))+
+        scale_color_manual(values=hcr_colors)+
+        facet_grid(Recruitment~hcr)+
+        labs(title="Total Catch by Movement Scenario", y="Total Catch (mt)")+
+        custom_theme
+
+
+
+#############################################
+#############################################
+#############################################
+#### Dynamic Economic Value #################
+#############################################
+#############################################
+#############################################
+econ_data <- get_dynamic_economic_value(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+econ_data <- econ_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+econ_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_econvalue.csv")) %>% 
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+    )
+
+reg_econ_plots <- plot_econ_value(econ_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
+    labs(title="Regional Economic Value", y="Economic Value")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(0, 3), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(0, 6), breaks=seq(0, 6, 2)),
+            scale_y_continuous(limits=c(0, 6), breaks=seq(0, 6, 2))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+econ_agg_plot <- plot_econ_value(econ_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
+    scale_y_continuous(limits=c(0, 15))+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_econ_plots / econ_agg_plot +  
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5))+
+    plot_annotation(caption="Economic value currently calculated for Fixed gear fleet only") & 
+    theme(legend.position = "bottom")
+
+ggsave(filename=file.path(figures_dir, paste0("economic_value", filetype)), width=width_large, height=height_large, units="in")
+
+##### Economic Value Timeseries Relative to F40 Harvest Control Rule
+
+reg_econ_f40rel_plots <- plot_econ_value(
+        econ_data, 
+        v1="hcr", v2="om", v3="region", 
+        common_trajectory = common_trajectory, time_horizon=time_horizon,
+        relative="F40"
+    )+
+    labs(title="Regional Economic Value Relative to F40", y="Relative Economic Value")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0.5, 2))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_econ_f40rel_plot <- plot_econ_value(
+        econ_data, 
+        v1="hcr", v2="om", 
+        common_trajectory = common_trajectory, time_horizon = time_horizon,
+        relative="F40"
+    )+
+    scale_y_continuous(limits=c(0.5, 1.25))+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_econ_f40rel_plots / agg_econ_f40rel_plot +  
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5))+
+    plot_annotation(caption="Economic value currently calculated for Fixed gear fleet only") & 
+    theme(legend.position = "bottom")
+
+ggsave(filename=file.path(figures_dir, paste0("economic_value_f40rel", filetype)), width=width_large, height=height_large, units="in")
+
+
+
+
+ab_econ <- econ_data %>% filter(Movement == "AB Move")
+cl_econ <- econ_data %>% filter(Movement == "Climate Move")
+
+econ_diff <- ab_econ %>% 
+    left_join(cl_econ, by=c("time", "sim", "Recruitment", "hcr", "region")) %>%
+    mutate(
+        total_value = total_value.y - total_value.x,
+    ) %>%
+    select(time, sim, Recruitment, hcr, region, total_value)
+
+
+reg_econ_diff_plots <- plot_econ_value(econ_diff, v1="hcr", v2="region", v3="Recruitment", common_trajectory=common_trajectory)+
+    labs(title="Regional Economic Value", y="Value")+
+    facet_grid(region~Recruitment, scales="free_y")+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
+            scale_y_continuous(limits=c(-3, 0), breaks=seq(-3, 0, 1)),
+            scale_y_continuous(limits=c(-3, 0), breaks=seq(-3, 0, 1))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+econ_diff_agg_plots <- plot_econ_value(econ_diff, v1="hcr", v2="Recruitment", common_trajectory=common_trajectory)+
+    scale_y_continuous(limits=c(-3, 1))+
+    facet_grid(region~Recruitment, scales="free_y")+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_econ_diff_plots / econ_diff_agg_plots +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+econ_props <- econ_data %>% 
+    pivot_wider(names_from=region, values_from=total_value) %>%
+    rowwise() %>%
+    mutate(alaska = sum(across(BS:EGOA))) %>%
+    mutate(across(BS:EGOA, ~ .x/alaska)) %>%
+    filter_times(time_horizon) %>%
+    pivot_longer(BS:EGOA, names_to="region", values_to="prop") %>%
+    group_by(om, hcr, region) %>%
+    median_qi(prop)
+
+econ_props %>% select(om, hcr, region, prop) %>%
+    mutate(
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA")),
+        om = factor(om, levels=rev(publication_oms))
+    ) %>%
+
+    ggplot()+
+        geom_bar(aes(y=om, x=prop, fill=region), stat="identity", position="fill")+
+        scale_color_manual(values=hcr_colors)+
+        facet_wrap(~hcr)+
+        custom_theme
+
+econ_data %>% filter_times(time_horizon) %>%
+    mutate(Movement = factor(Movement, levels=c("AB Move", "Climate Move"), labels=c("Base", "Climate"))) %>%
+    group_by(Recruitment, Movement, hcr, region) %>%
+    median_qi(total_value) %>%
+    select(Recruitment, Movement, hcr, region, total_value) %>%
+
+    ggplot()+
+        geom_col(aes(y=total_value, x=Movement, fill=region))+
+        scale_color_manual(values=hcr_colors)+
+        facet_grid(Recruitment~hcr)+
+        labs(title="Total Economic Value by Movement Scenario", y="Total Value")+
+        custom_theme
+
 
 # Plot Recruitment
 recruit_data <- get_recruits(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
@@ -397,44 +819,309 @@ recruit_agg_plot + reg_rec_plots +
 
 ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=16, height=8, units=c("in"))
 
-# Plot ABC, TAC, and Landed Catch
-abc_tac_land <- get_management_quantities(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+
+
+#############################################
+#############################################
+#############################################
+#### ABC, TAC, Expected Landings ############
+#############################################
+#############################################
+#############################################
+abc_tac_land <- get_management_quantities(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+abc_tac_land <- abc_tac_land %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+
+abc_tac_land <- read_csv(file.path("data", "zahneretal_2026_spatialmse_abctac.csv")) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+    )
+
+abc_tac_land <- abc_tac_land %>% filter(fleet == "Trawl", L1 != "tac")
 
 regional_abctac_plots <- plot_abc_tac(abc_tac_land, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
     scale_color_manual(values=hcr_colors)+
-    labs(title="Regional ABC and TAC")+
+    labs(title="Regional ABC and Expected Landings: Trawl Gear Fleet", y="ABC/Landings (1000s mt)")+
+    ggh4x::facet_nested(
+        rows=vars(region, L1), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
     ggh4x::facetted_pos_scales(
         y = list(
-            scale_y_continuous(limits=c(0, 15)),
-            scale_y_continuous(limits=c(0, 5)),
-            scale_y_continuous(limits=c(0, 15)),
-            scale_y_continuous(limits=c(0, 8))
+            scale_y_continuous(limits=c(0, 7)), scale_y_continuous(limits=c(0, 7)),
+            scale_y_continuous(limits=c(0, 3)), scale_y_continuous(limits=c(0, 3)),
+            scale_y_continuous(limits=c(0, 1)), scale_y_continuous(limits=c(0, 1)),
+            scale_y_continuous(limits=c(0, 4)), scale_y_continuous(limits=c(0, 4)),
+            scale_y_continuous(limits=c(0, 1)), scale_y_continuous(limits=c(0, 1))
         )
     )
 
 agg_abctac_plot <- plot_abc_tac(abc_tac_land, v1="hcr", v2="om", v3=NA, common_trajectory = common_trajectory)+
     # scale_color_manual(values=c("red", "blue", "green", "purple"))+
-    facet_wrap(~om+fleet, ncol=1)+
-    guides(color="none", shape="none")+
-    labs(y="ABC, TAC, Catch", title="Alaska-Wide Landed Catch")+
-    theme(
-        strip.background = element_blank(),
-        strip.text = element_blank()
+    ggh4x::facet_nested(
+        rows=vars(region, L1), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
     )+
+    guides(color="none", shape="none")+
+    labs(y="ABC/Landings (1000s mt)")+
     ggh4x::facetted_pos_scales(
         y = list(
-            scale_y_continuous(limits=c(0, 35)),
-            scale_y_continuous(limits=c(0, 10)),
-            scale_y_continuous(limits=c(0, 40)),
-            scale_y_continuous(limits=c(0, 15))
+            scale_y_continuous(limits=c(0, 12)),
+            scale_y_continuous(limits=c(0, 12))
         )
+    ) +
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
     )
 
 
-agg_abctac_plot + regional_abctac_plots + 
-    plot_layout(nrow=1, guides="collect", axes = "collect", widths=c(0.5, 1)) & 
+regional_abctac_plots / agg_abctac_plot +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5))+
+    plot_annotation(caption="Expected landings accounts for ABC allocated to each region via apportionment and regional TAC utilization. Note: ABC = TAC != Expected Landings.") & 
     theme(legend.position = "bottom")
-ggsave(file.path(here::here(), "figures", "abc_tac_land.jpeg"), width=16, height=8, units="in")
+ggsave(file.path(here::here(), "figures", "abc_tac_land_trawl.jpeg"), width=width_large, height=height_large, units="in")
+
+
+
+#############################################
+#############################################
+#############################################
+#### Average Population Age #################
+#############################################
+#############################################
+#############################################
+average_age_data <- get_average_age(model_runs = NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+average_age_data <- average_age_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+
+average_age_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_avgage.csv")) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+    )
+
+reg_avgage_plots <- plot_average_age(average_age_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)+
+    labs(title="Average Population Age", y="Age (Years)")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0, 15))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_avgage_plot <- plot_average_age(average_age_data, v1="hcr", v2="om", v3=NA, common_trajectory = common_trajectory)+
+    # scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    guides(color="none", shape="none")+
+    labs(y="Age (Years)")+
+    scale_y_continuous(limits=c(0, 15))+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_avgage_plots / agg_avgage_plot +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+ggsave(file.path(here::here(), "figures", "average_age.jpeg"), width=width_large, height=height_large, units="in")
+
+###### Average Age Tiemseris Relative to F40 Harvest Control Rule
+
+reg_avgage_f40rel_plots <- plot_average_age(
+        average_age_data, 
+        v1="hcr", v2="om", v3="region", 
+        common_trajectory = common_trajectory, time_horizon=time_horizon,
+        relative="F40"
+    )+
+    labs(title="Average Population Age Relative to F40", y="Relative Age")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0.9, 1.2))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_avgage_f40rel_plot <- plot_average_age(
+        average_age_data, 
+        v1="hcr", v2="om", v3=NA, 
+        common_trajectory = common_trajectory, time_horizon = time_horizon,
+        relative="F40"
+    )+
+    # scale_color_manual(values=c("red", "blue", "green", "purple"))+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    guides(color="none", shape="none")+
+    labs(y="Relative Age")+
+    scale_y_continuous(limits=c(0.9, 1.2), breaks=seq(0.9, 1.2, 0.1))+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_avgage_f40rel_plots / agg_avgage_f40rel_plot +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+ggsave(file.path(here::here(), "figures", "average_age_f40rel.jpeg"), width=width_large, height=height_large, units="in")
+
+
+
+#############################################
+#############################################
+#############################################
+#### Numbers at Price Grade #################
+#############################################
+#############################################
+#############################################
+napg_data <- get_numbers_at_age(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+napg_data <- napg_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+napg_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_napg.csv")) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+    )
+
+reg_highpg_plots <- plot_numbers_at_pricegrade(napg_data, v1="hcr", v2="om", v3="region", price_grade="Grade 7+ (15+yo)", common_trajectory = common_trajectory)+
+    labs(title="Average Number Grade 7+ Individuals", y="Individuals")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    # scale_y_continuous(limits=c(0, 25))+
+    ggh4x::facetted_pos_scales(
+        y = list(
+            scale_y_continuous(limits=c(0, 15)),
+            scale_y_continuous(limits=c(0, 15)),
+            scale_y_continuous(limits=c(0, 10)),
+            scale_y_continuous(limits=c(0, 25)),
+            scale_y_continuous(limits=c(0, 25))
+        )
+    )+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_highpg_plot <- plot_numbers_at_pricegrade(napg_data, v1="hcr", v2="om", v3=NA, price_grade="Grade 7+ (15+yo)", common_trajectory = common_trajectory)+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    guides(color="none", shape="none")+
+    labs(y="Number Grade 7+ Individuals")+
+    scale_y_continuous(limits=c(0, 45))+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_highpg_plots / agg_highpg_plot +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+ggsave(file.path(here::here(), "figures", "napg.jpeg"), width=width_large, height=height_large, units="in")
+
+### Numbers at High Price Grade Timeseries Relative to F40 Harvest Control Rule
+
+reg_highpg_f40rel_plots <- plot_numbers_at_pricegrade(
+        napg_data, 
+        v1="hcr", v2="om", v3="region", price_grade="Grade 7+ (15+yo)", 
+        common_trajectory = common_trajectory, time_horizon=time_horizon,
+        relative="F40"
+    )+
+    labs(title="Average Number Grade 7+ Individuals Relative to F40", y="Relative Individuals")+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    scale_y_continuous(limits=c(0.5, 2.5))+
+    theme(
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()
+    )
+
+agg_highpg_f40rel_plot <- plot_numbers_at_pricegrade(
+        napg_data, 
+        v1="hcr", v2="om", v3=NA, price_grade="Grade 7+ (15+yo)", 
+        common_trajectory = common_trajectory, time_horizon=time_horizon,
+        relative="F40"
+    )+
+    ggh4x::facet_nested(
+        rows=vars(region), 
+        cols=vars(Recruitment, Movement), 
+        scales="free_y"
+    )+
+    guides(color="none", shape="none")+
+    labs(y="Relative Individuals")+
+    scale_y_continuous(limits=c(0.5, 2.25))+
+    theme(
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank()
+    )
+
+reg_highpg_f40rel_plots / agg_highpg_f40rel_plot +
+    plot_layout(ncol=1, guides="collect", heights=c(1, 0.5)) & 
+    theme(legend.position = "bottom")
+
+ggsave(file.path(here::here(), "figures", "napg_f40rel.jpeg"), width=width_large, height=height_large, units="in")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###### Performance Metrics
 time_horizon <- c(55, 105)
