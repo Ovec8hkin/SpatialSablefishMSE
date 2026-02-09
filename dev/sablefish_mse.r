@@ -128,8 +128,8 @@ mp_db0_fullutil$name <- "Dynamic B0 | Full Utilization"
 # hcr_list <- listN(mp1)
 
 # 857, 1120, 1007, 895
-set.seed(895)
-nsims <- 20
+set.seed(917)
+nsims <- 200
 seed_list <- sample(1:(10*nsims), nsims)  # Draw 10 random seeds
 # seed_list <- c(3,40,311,417,1105,1259,1581,1819,2078,2330,2512,2563,2719,2861,3190,3452,3709,3899,4233,4716,4723,4852,5160,5938,6264,6533,6754,7149,7207,7284,7329,7557,7579,8003,8388,8904)#ssb_data2 %>% pull(sim) %>% unique
 
