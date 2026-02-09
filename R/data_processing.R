@@ -54,7 +54,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
     )
 
     return(
-        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -165,13 +165,14 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
     process <- function(data){
         data %>%
             select(group_columns) %>%
+            # filter_times(time_horizon = time_horizon) %>%
             pivot_wider(names_from=L1, values_from=value) %>%
             pivot_longer(abc:exp_land, names_to="L1", values_to="value")
     }
     group_columns <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
     return(
         process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, hcr_filter, om_filter, process) %>%
-                format(hcr_filter, om_filter)
+            format(hcr_filter, om_filter)
     )
 }
 
@@ -266,13 +267,13 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
                     levels=c("1/2", "2/3", "3/4", "4/5", "5/7", "7+"), 
                     labels=c("Grade 1/2 (1-2yo)", "Grade 2/3 (3-4yo)", "Grade 3/4 (5-6yo)", "Grade 4/5 (7-8yo)", "Grade 5/7 (9-14yo)", "Grade 7+ (15+yo)")
                 ),
-                L1 = factor(L1, levels=c("caa", "naa"), labels=c("Catch-at-Age", "Numbers-at-Age"))
+                L1 = factor(L1, levels=c("caa", "naa"))
             ) %>%
             group_by(across(all_of(group_columns))) %>%
             summarise(value=sum(value))
     }
 
-    group_columns <- c("time", "class", "sim", "L1", names(extra_columns))
+    group_columns <- c("time", "class", "region", "sim", "L1", names(extra_columns))
     return(
         process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
