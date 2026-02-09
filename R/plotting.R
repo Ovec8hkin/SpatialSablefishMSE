@@ -1,6 +1,57 @@
-plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", depletion=FALSE, scales="fixed"){
+plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
+    d <- data %>% distinct(.keep_all=TRUE) %>% select(-biomass)
+
+    if(!is.null(time_horizon)){
+        d <- d %>% filter_times(time_horizon)
+    }
+
+    if(is.na(v3)){
+        groups <- group_columns[group_columns != "region"]
+        d <- d %>% 
+            group_by(across(all_of(c(groups, "sim")))) %>% 
+            summarise(
+                spbio=sum(spbio)
+            ) %>% 
+            mutate(region="Alaska")
+        v3 <- "region"
+    }
+
+    # Relativize to specific HCR
+    hcrs <- d %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        d <- d %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="spbio", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
+    }
+
+    # Plot spawning biomass from OM and EM
+    d <- d %>%
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
+        reformat_ggdist_long(n=length(group_columns))
+
+    plot <- plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="SSB (1000s mt)")
+    
+    if(show_est){
+        plot <- plot + geom_pointrange(
+                            data = d %>% filter(L1 == "naa_est"), 
+                            aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), 
+                            alpha=0.35
+                        )
+    }
+    
+    if(!is.na(relative)){
+        plot <- plot+geom_hline(yintercept=1, linetype="dashed")
+    }
+
+    return(plot)
+}
     d <- data %>% distinct(.keep_all=TRUE)
     if(is.na(v3)){
         groups <- group_columns[group_columns != "region"]
@@ -245,57 +296,56 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, commo
     return(plot+custom_theme)
 }
 
-plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
+plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "catch", "total_catch")]
-
     c <- data
+
+    if(!is.null(time_horizon)){
+        c <- c %>% filter_times(time_horizon)
+    }
+
     if(is.na(v3)){
         groups <- group_columns[group_columns != "region"]
-        c <- c %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(catch=sum(catch), total_catch=sum(total_catch)) %>% mutate(region="Alaska")
+        c <- c %>% 
+            group_by(across(all_of(c(groups, "sim")))) %>% 
+            summarise(
+                catch=sum(catch), 
+                total_catch=sum(total_catch)
+            ) %>% 
+            mutate(region="Alaska")
         v3 <- "region"
+    }
+
+    val <- ifelse(by_fleet, "catch", "total_catch")
+    c <- c %>% select(all_of(c(group_columns, "sim", val)))
+
+    # Relativize to specific HCR
+    hcrs <- c %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        c <- c %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column=val, 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
     }
 
     c <- c %>%
         group_by(across(all_of(group_columns))) %>%
-        median_qi(catch, total_catch, .width=interval_widths, .simple_names=TRUE) %>%
+        median_qi(eval(rlang::parse_expr(val)), .width=interval_widths, .simple_names=TRUE) %>%
         reformat_ggdist_long(n=length(group_columns))
-    
-    hcr1 <- as.character((c %>% pull(hcr) %>% unique)[1])
-    traj_column <- ifelse(is.na(v3), v2, v3)
-    traj <- c %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
-    if(by_fleet){
-        c <- c %>% filter(name == "catch")
-    }else{
-        c <- c %>% filter(name == "total_catch")
-    }
 
-    common <- c %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
-
-    base_hcr_c <- c %>% filter(hcr == base_hcr)
-
-    plot <- ggplot(c %>% left_join(traj, by=traj_column) %>% filter(time > common-1))+
-        geom_lineribbon(data = base_hcr_c, aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]],fleet), color=.data[[v1]], linetype=fleet), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=interaction(.data[[v1]], fleet), color=.data[[v1]], linetype=fleet), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median, linetype=fleet), size=0.85)+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+ 
-        scale_fill_brewer(palette="Blues")+
-        scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(limits=c(0, 60))+
-        labs(x="Year", y="Catch (mt)", color="Management \n Strategy")+
-        # coord_cartesian(expand=0, ylim=c(0, 30))+
-        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
-
-    if(!is.na(v2) && is.na(v3)){
-        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
-    }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
-    }
-    
-    # if(by_fleet){
-    #     plot <- plot + facet_wrap(~fleet)
+    plot <- plot_timeseries(c, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Catch (1000s mt)")
+    # if(!is.na(relative)){
+    #     plot <- plot+geom_hline(yintercept=1, linetype="dashed")
     # }
+
+    return(plot)
+
+}
 
     return(plot+custom_theme)
 
