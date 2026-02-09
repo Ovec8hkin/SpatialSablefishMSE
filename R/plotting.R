@@ -1146,4 +1146,35 @@ annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax
                                           ymin = ymin, ymax = ymax))
 }
 
+plot_timeseries <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", ylab=""){
+
+    hcr1 <- as.character((data %>% pull(hcr) %>% unique)[1])
+
+    traj_column <- ifelse(is.na(v3), v2, v3)
+    traj <- data %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
+
+    common <- data %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(eval(rlang::parse_expr(v2))) %>% filter(time <= common)
+
+    base_hcr_d <- data %>% filter(hcr == base_hcr)
+
+    plot <- ggplot(data) + 
+        geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
+        geom_line(data = common, aes(x=time, y=median), size=0.85)+
+        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
+        scale_fill_brewer(palette="Greys")+
+        scale_color_manual(values=hcr_colors)+
+        labs(x="Year", y=ylab)+
+        coord_cartesian(expand=0)+
+        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
+
+    if(!is.na(v2) && is.na(v3)){
+        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
+    }else if(!is.na(v2) && !is.na(v3)){
+        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
+    }
+    
+    return(plot+custom_theme)
+}
+
 
