@@ -352,8 +352,46 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
 }
 
-    return(plot+custom_theme)
+plot_econ_value <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "total_value")]
+    d <- data %>% distinct(.keep_all=TRUE)
 
+    if(!is.null(time_horizon)){
+        d <- d %>% filter_times(time_horizon)
+    }
+
+    if(is.na(v3)){
+        groups <- group_columns[group_columns != "region"]
+        d <- d %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(total_value=sum(total_value)) %>% mutate(region="Alaska")
+        v3 <- "region"
+    }
+
+    # Relativize to specific HCR
+    hcrs <- d %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        d <- d %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="total_value", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
+    }
+
+    # Plot spawning biomass from OM and EM
+    d <- d %>%
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(total_value, .width=interval_widths, .simple_names=FALSE) %>%
+        # Reformat ggdist tibble into long format
+        reformat_ggdist_long(n=length(group_columns))
+
+    plot <- plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Economic Value")
+    if(!is.na(relative)){
+        plot <- plot+geom_hline(yintercept=1, linetype="dashed")
+    }
+
+    return(plot)
 }
 
 plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
