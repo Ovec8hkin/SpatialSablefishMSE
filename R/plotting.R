@@ -163,41 +163,9 @@ plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
-    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
-
-    traj_column <- ifelse(is.na(v3), v2, v3)
-    traj <- d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
-
-    common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
-
-    base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
-
-    plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
-        geom_hline(yintercept=0.40, linetype="dashed")+
-        # geom_hline(yintercept=121.4611, linetype="dashed")+
-        scale_fill_brewer(palette="Blues")+
-        scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(limits=c(0, 6))+
-        # coord_cartesian(ylim=c(0, 150))+
-        labs(x="Year", y="SSB")+
-        coord_cartesian(expand=0)+
-        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
-
-    if(show_est){
-        plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
-    }
-
-    if(!is.na(v2) && is.na(v3)){
-        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
-    }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
-    }
-
-    return(plot+custom_theme)
+    return(
+        plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Average Age (Years)")
+    )
 }
 
 plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="No Fishing"){
