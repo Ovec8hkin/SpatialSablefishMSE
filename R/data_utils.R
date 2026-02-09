@@ -89,7 +89,7 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
 #' @export process_big_outputs
 #'
 process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_filter, process_func, ...){
-    get_output <- function(model_runs, var, model_grid, process_func){
+    get_output <- function(model_runs, var, model_grid, process_func, ...){
             t <- bind_rows(
                 lapply(
                     seq_along(model_runs), 
@@ -99,7 +99,7 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
                             col_name <- names(model_grid)[i]
                             y <- y %>% mutate(!!col_name := model_grid[x,i])
                         }
-                        y <- y %>% process_func
+                        y <- y %>% process_func(...)
                         return(y)
                     }
                     # mc.cores = as.integer((parallel::detectCores()-2)/2)
@@ -125,7 +125,7 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
                 }
                 extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
                 out <- get_output(model_run, var, model_grid=extra_columns, process_func)
-            }, mc.cores=as.integer((parallel::detectCores()-2)))
+            }, mc.cores=as.integer(min(15, parallel::detectCores()-2)))
         ) 
     }else{
         model_grid <- extra_columns
