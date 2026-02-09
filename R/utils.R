@@ -599,3 +599,16 @@ find_model_run <- function(hcr_filter, om_filter, simulation_seed){
         return(afscOM::listN(m, model_run))
     }
 }
+
+
+compute_dynamic_value <- function(landings, min_price_age, max_price_age, breakpoints=c(15, 30)){
+    if(landings < breakpoints[1]){
+        return(max_price_age)
+    }else if(landings >= breakpoints[1] & landings <= breakpoints[2]){
+        return(
+            min_price_age + (breakpoints[2]-landings)/(breakpoints[2]-breakpoints[1])*(max_price_age-min_price_age)
+        )
+    }else{
+        return(min_price_age)
+    }
+}
