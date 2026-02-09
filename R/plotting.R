@@ -52,58 +52,95 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
 
     return(plot)
 }
+
+plot_average_age <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "avg_age")]
     d <- data %>% distinct(.keep_all=TRUE)
+
+    if(!is.null(time_horizon)){
+        d <- d %>% filter_times(time_horizon)
+    }
+
     if(is.na(v3)){
         groups <- group_columns[group_columns != "region"]
-        d <- d %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass)) %>% mutate(region="Alaska")
+        d <- d %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(avg_age = mean(avg_age)) %>% mutate(region="Alaska")
         v3 <- "region"
+    }
+
+    # Relativize to specific HCR
+    hcrs <- d %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        d <- d %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="avg_age", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
     }
 
     # Plot spawning biomass from OM and EM
     d <- d %>%
-        select(-c("biomass")) %>%
         # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
-        median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
+        median_qi(avg_age, .width=interval_widths, .simple_names=FALSE) %>%
         # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
-    hcr1 <- as.character((d %>% pull(hcr) %>% unique)[1])
-
-    traj_column <- ifelse(is.na(v3), v2, v3)
-    traj <- d %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
-
-    common <- d %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
-
-    base_hcr_d <- d %>% filter(L1 == "naa", hcr == base_hcr)
-
-    plot <- ggplot(d %>% filter(L1 == "naa")) + 
-        geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
-        # geom_hline(yintercept=121.4611, linetype="dashed")+
-        scale_fill_brewer(palette="Blues")+
-        scale_color_manual(values=hcr_colors)+
-        # scale_y_continuous(limits=c(0, 125))+
-        # scale_x_continuous(limits=c(40, 105))+
-        # coord_cartesian(xlim=c(40, 150))+
-        labs(x="Year", y="SSB")+
-        coord_cartesian(expand=0)+
-        guides(color=guide_legend(title="Management \n Strategy", nrow=2), fill="none")
-
-    if(show_est){
-        plot <- plot + geom_pointrange(data = d %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+    plot <- plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Average Age (Years)")
+    if(!is.na(relative)){
+        plot <- plot+geom_hline(yintercept=1, linetype="dashed")
     }
 
-    if(!is.na(v2) && is.na(v3)){
-        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
-    }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]), scales=scales)+guides(fill="none")
-    }
-    
+    return(plot)
+}
 
-    return(plot+custom_theme)
+plot_numbers_at_pricegrade <- function(data, v1="hcr", v2=NA, v3=NA, price_grade="Grade 1/2 (1-2yo)", common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("sim", "value")]
+    d <- data %>% distinct(.keep_all=TRUE)
+
+    if(!is.null(time_horizon)){
+        d <- d %>% filter_times(time_horizon)
+    }
+
+    if(is.na(v3)){
+        groups <- group_columns[group_columns != "region"]
+        d <- d %>% filter(class == price_grade) %>% 
+            group_by(across(all_of(c(groups, "sim")))) %>% 
+            summarise(value = sum(value)) %>% 
+            mutate(region="Alaska")
+        v3 <- "region"
+    }
+
+    # Relativize to specific HCR
+    hcrs <- d %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        d <- d %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="value", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
+    }
+
+    # Plot spawning biomass from OM and EM
+    d <- d %>%
+        filter(class == price_grade) %>%
+        # Compute quantiles of SSB distribution
+        group_by(across(all_of(group_columns))) %>%
+        median_qi(value, .width=interval_widths, .simple_names=FALSE) %>%
+        # Reformat ggdist tibble into long format
+        reformat_ggdist_long(n=length(group_columns))
+
+    plot <- plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Average Age (Years)")
+    if(!is.na(relative)){
+        plot <- plot+geom_hline(yintercept=1, linetype="dashed")
+    }
+
+    return(plot)
 }
 
 plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", scales="fixed"){
