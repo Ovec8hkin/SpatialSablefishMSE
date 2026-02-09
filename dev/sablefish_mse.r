@@ -163,9 +163,12 @@ toc()
 
 # Data Processing
 filetype <- ".jpeg"
-figures_dir <- file.path(here::here(), "figures", "prelim")
+figures_dir <- file.path(here::here(), "figures")
 width_small <- 12
 height_small <- 8
+
+width_large <- 16
+height_large <- 16
 
 # publication_hcrs <- c("F40")#, "F50", "F40 +/- 5%", "F40 +/- 10%", "15k Harvest Cap", "25k Harvest Cap", "Constant F50", "PFMC 40-10", "British Columbia", "No Fishing")
 publication_hcrs <- unlist(lapply(hcr_list, function(x) x$name))
@@ -181,24 +184,18 @@ extra_columns = expand.grid(
 publication_hcrs <- c("F40", "F40 | Full Utilization", "F50", "F50 | Full Utilization", "F50/B30", "F50/B30 | Full Utilization", "F40 Hybrid", "F40 Hybrid | Full Utilization")
 publication_oms <- c("BH Recruit | AB Move", "BH Recruit | Climate Move", "Regime Recruit | AB Move", "Regime Recruit | Climate Move", "Crash Recruit | AB Move", "Crash Recruit | Climate Move")
 
-mse_runs <- get_saved_model_runs(om_order=publication_oms, hcr_order=publication_hcrs)
+# mse_runs <- get_saved_model_runs(om_order=publication_oms, hcr_order=publication_hcrs)
 # model_runs <- mse_runs$model_runs
 # extra_columns <- mse_runs$extra_columns2 %>% distinct(om, hcr)# %>% mutate(om=case_when(is.na(om) ~ "Random Recruitment | No Movement", TRUE ~ om))
 
-publication_hcrs <- c("F40", "F40 | Full Utilization", "Dynamic B0", "Dynamic B0 | Full Utilization")
+# publication_hcrs <- c("F40", "F40 | Full Utilization", "Dynamic B0", "Dynamic B0 | Full Utilization")
 
 interval_widths <- c(0.50, 0.80)
 common_trajectory <- 54
-time_horizon <- c(55, 160)
+time_horizon <- c(55, 105)
 
 hcr_colors <- c("black", "#991c1c", "#001180", "#256c15", "#BB6A00", "#7500B0", "#5CABA3", "#BD4E98")
 names(hcr_colors) <- publication_hcrs
-
-extra_columns <- extra_columns %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
-    mutate(
-        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
-        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
-    )
 
 ###### Plot Diagnostics
 # plot_em_diagnostics(
