@@ -246,15 +246,19 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     fish_selex_prior <- cbind(
         region = 1,
         fish_selex_structure,
-        mu = 1,                                                                      # All selex means = 1 (means should be defined in normal space)
-        sd = 5                                                                       # All selex sd = 5
+        mu = 3,                                                                      # All selex means = 1 (means should be defined in normal space)
+        sd = 2                                                                       # All selex sd = 5
     )
 
     fish_selex_prior_tf <- fish_selex_prior %>%                                    # set tighter selex prior for TF
         dplyr::filter((fleet == 2 & par == 1)) %>%
-        dplyr::mutate(mu = 2, sd = 0.5) %>%
+        dplyr::mutate(mu = 3, sd = 1) %>%
         dplyr::full_join(fish_selex_prior %>%  dplyr::filter(!(fleet == 2 & par == 1)))
 
+    fish_selex_prior_tf <- fish_selex_prior_tf %>%                                    # set tighter selex prior for TF
+        dplyr::filter((fleet == 2 & par == 2)) %>%
+        dplyr::mutate(mu = 3, sd = 1) %>%
+        dplyr::full_join(fish_selex_prior_tf %>% dplyr::filter(!(fleet == 2 & par == 2)))
 
 
     input_list <- SPoRC::Setup_Mod_Fishsel_and_Q(
@@ -307,6 +311,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         ln_srv_q = array(log(c(6.1, 0.85)), dim=c(1, 1, 2))
     )
     input_list$par$ln_srv_fixed_sel_pars[1,,,,] <- log(2)
+    input_list$par$ln_fish_fixed_sel_pars[1,,,,] <- log(3)
 
     ### Model Weighting -----------------------------------
     Wt_FishAgeComps <- array(NA, dim=c(input_list$data$n_regions, length(input_list$data$years), input_list$data$n_sexes, input_list$data$n_fish_fleets))
