@@ -654,14 +654,14 @@ get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr
 #' 
 #' @export check_em_convergence_diagnostics
 #' 
-check_em_convergence_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter, n_proj_years, nsims){
+check_em_convergence_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
-    process2 <- function(data){
+    process <- function(data){
         data %>%
             rename(sim_year="Var1", sim="Var2", converged="value") %>%
-            mutate(
-                sim = factor(sim, labels = sims)
-            ) %>%
+            # mutate(
+            #     sim = factor(sim, labels = sims)
+            # ) %>%
             group_by(om, hcr, sim) %>%
             mutate(
                 n_converged=sum(converged),
@@ -677,7 +677,7 @@ check_em_convergence_diagnostics <- function(model_runs, extra_columns, hcr_filt
             ungroup()
     }
 
-    sims <- seed_list
+    # sims <- seed_list
     output <- process_big_outputs(model_runs, var=c("converged"), extra_columns=extra_columns, hcr_filter=hcr_filter, om_filter=om_filter, process_func=process)
 
     return(output)
