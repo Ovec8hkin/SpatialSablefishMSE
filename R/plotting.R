@@ -914,9 +914,11 @@ plot_catch_paginate <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, co
 #' 
 #' @export plot_diags
 #' 
-plot_diags <- function(hcr, om, simulation_seed, simulation_year, report_convergence=TRUE){
+plot_diags <- function(hcr, om, simulation_seed, simulation_year, om_list, seed_list, report_convergence=TRUE){
     
-    x <- find_model_run(hcr, om, simulation_seed)
+    simulation_year <- simulation_year-1 # simulation years offset by 1
+
+    x <- find_model_run(hcr, om, simulation_seed, om_list, seed_list)
     m <- x$m
     mse_obj <- x$model_run
     
@@ -931,17 +933,22 @@ plot_diags <- function(hcr, om, simulation_seed, simulation_year, report_converg
     report <- em_model_obj$rep
 
     if(report_convergence){
-        convergence_message = capture.output(type="message",{
-            sdrep = TMB::sdreport(em_model_obj)
-            SPoRC::post_optim_sanity_checks(sdrep, report)
-        })
+        convergence_message <- capture.output(
+            tryCatch({
+                sdrep = TMB::sdreport(em_model_obj)
+                SPoRC::post_optim_sanity_checks(sdrep, report)
+            }, error = function(e){
+                # cat(e$message)
+            }),
+            type="message"
+        )
         split <- str_split(convergence_message, "\\. ")[[1]]
         convergence_message <- split[-length(split)]
     }
 
     dem_params <- mse_obj$om$dem_params
 
-    nyears <- spinup_years+simulation_year
+    nyears <- n_spinup_years+simulation_year
     naa <- mse_obj$naa[1:nyears,,,,simulation_number]
     rec <- mse_obj$naa[1:nyears,1,,,simulation_number]
     faa <- mse_obj$faa[1:nyears,,,,,simulation_number]
@@ -1120,7 +1127,7 @@ plot_diags <- function(hcr, om, simulation_seed, simulation_year, report_converg
                 "OM: ", mse_obj$om$name, " | ", "HCR: ", mse_obj$mp$name
             ),
             subtitle = paste0(
-                "Simulation Year: ", simulation_year, " | Simulation Number: ", simulation_number
+                "Simulation Year: ", simulation_year, " | Simulation Seed: ", simulation_seed
             ),
             caption = paste0("Convergence Message:\n", convergence_message)
         )
