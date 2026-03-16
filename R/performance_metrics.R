@@ -69,7 +69,9 @@ average_catch <- function(
 #' Compute Total Catch over projection period
 #' 
 #' Compute total catch (median and CIs) over all years and simulation seeds, 
-#' for each combination of operating models and management procedures. 
+#' for each combination of operating models and management procedures.
+#' 
+#' DO NOT RENAME FUNCTION 
 #'
 #' @param model_runs list of completed MSE simulations runs
 #' @param extra_columns data.frame specifying names for OM and HCR to attach
@@ -87,7 +89,7 @@ average_catch <- function(
 #'
 #' @example
 #'
-total_catch <- function(
+tot_catch <- function(
     model_runs, 
     extra_columns, 
     hcr_filter,
@@ -1230,7 +1232,7 @@ performance_metric_summary <- function(
 
     # Total Catch Across Projection Period
     if(any(c("tot_catch", "all") %in% metric_list)){
-        tot_catch <- total_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, extra_filter=extra_filter, time_horizon=time_horizon, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        tot_catch <- tot_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, extra_filter=extra_filter, time_horizon=time_horizon, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
         print("Done calculating Total Catch")
     }
 
