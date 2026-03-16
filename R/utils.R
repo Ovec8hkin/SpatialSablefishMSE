@@ -523,39 +523,89 @@ post_optim_sanity_checks <- function(sd_rep, rep, gradient_tol = 1e-3, se_tol = 
 #' @return data frame with parameter and problem columns added
 #' @export get_unconverged_model_diags
 #'
-get_unconverged_model_diags <- function(convergence_table){
-    convergence_table <- convergence_table %>% rename(sim_year="failed") %>% select(-n_converged) %>% mutate(parameter=NA, problem=NA)
+get_unconverged_model_diags <- function(convergence_table, om_list, seed_list){
+    convergence_table <- convergence_table %>% mutate(parameter=NA, problem=NA)
     for(i in 1:nrow(convergence_table)){
+        print(paste0(i,"/", nrow(convergence_table)))
         r <- convergence_table[i, ]
         hcr_filter <- r$hcr
         om_filter <- r$om
         simulation_seed <- r$sim
         simulation_year <- r$sim_year
 
-        x <- find_model_run(hcr_filter, om_filter, simulation_seed)
+        x <- find_model_run(hcr_filter, om_filter, simulation_seed, om_list, seed_list)
         model_run <- x$model_run
 
-        seeds <- m$seeds
+        seeds <- x$m$seeds
         nsims <- length(seeds)
-        simulation_number <- which(seeds == simulation_seed)
+        simulation_number <- which(simulation_seed==seeds)
         n_proj_years <- x$m$mse_options_list$mse_options$n_proj_years
 
         em_model_obj <- model_run$model_outs[[(simulation_year)+(simulation_number-1)*(n_proj_years+1)]]
 
         report <- em_model_obj$rep
 
-        convergence_message = capture.output(type="message",{
-            sdrep = TMB::sdreport(em_model_obj)
-            SPoRC::post_optim_sanity_checks(sdrep, report)
-        })
-        split1 <- str_split(convergence_message, "\\. ")[[1]]
-        split1 <- split1[-length(split1)]
+        # convergence_message = capture.output(type=c("message"),{
+        #     sdrep = TMB::sdreport(em_model_obj)
+        #     SPoRC::post_optim_sanity_checks(sdrep, report)
+        # })
+        convergence_message <- capture.output(
+            tryCatch({
+                sdrep = TMB::sdreport(em_model_obj)
+                SPoRC::post_optim_sanity_checks(sdrep, report)
+            }, error = function(e){
+                # cat(e$message)
+            }),
+            type="message"
+        )
 
-        parameter_name <- str_split(str_split(split1, "Parameter: ")[[1]][2], " ")[[1]][1]
-        problem <- paste(str_split(str_split(split1, "Parameter: ")[[1]][2], " ")[[1]][3:6], collapse=" ")
+        convergence_message <- ifelse(length(convergence_message > 1), convergence_message[1], convergence_message)
 
+        # possible error types: Inf in LL, gradient, hessian, non-finite SEs, SEs big, correlations
+        if(grepl("Found Inf in joint log-likelihood", convergence_message)){
+            parameter_name <- "Unknown"
+            problem <- "Inf in JLL"
+        }else if(grepl("absolute gradient", convergence_message)){
+            split1 <- str_split(convergence_message, "\\. ")[[1]]
+            split1 <- split1[-length(split1)]
+
+            s <- str_split(split1, "Parameter: ")[[1]][2]
+            s2 <- str_split(s, " ")[[1]]
+
+            parameter_name <- s2[1]
+            problem <- paste(s2[3:6], collapse=" ")
+
+        }else if(grepl("Hessian", convergence_message)){
+            parameter_name <- "Unknown"
+            problem <- "Hessian not positive definite"
+        }else if(grepl("non finite elements", convergence_message)){
+            parameter_name <- "Unknown"
+            problem <- "Non finite SE"
+        }else if(grepl("which was greated than tolerance", convergence_message)){
+
+            split1 <- str_split(convergence_message, "\\. ")[[1]]
+            split1 <- split1[-length(split1)]
+
+            s <- str_split(split1, "Parameter: ")[[1]][2]
+            s2 <- str_split(s, " ")[[1]]
+
+            parameter_name <- s2[1]
+            problem <- paste(s2[4:7], collapse = " ")
+        }else if(grepl("Parameter pairs:", convergence_message)){
+
+            split1 <- str_split(convergence_message, "\\. ")[[1]]
+            split1 <- split1[-length(split1)]
+
+            s <- str_split(split1, "Parameter pairs: ")[[1]][2]
+            s2 <- str_split(s, " ")[[1]]
+
+            parameter_name <- paste(s2[1:3], collapse=" ")
+            problem <- paste(s2[(length(s2)-2):length(s2)], collapse=" ")
+        }
+
+        
         convergence_table$parameter[i] <- parameter_name
-        convergence_table$problem[i] <- problem
+        convergence_table$problem[i] <- problem #problem
     }
     return(convergence_table)
 }
