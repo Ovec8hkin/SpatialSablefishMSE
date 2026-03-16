@@ -618,10 +618,22 @@ get_unconverged_model_diags <- function(convergence_table, om_list, seed_list){
 #' 
 #' @return list with mse object for specified model run
 #' 
-find_model_run <- function(hcr_filter, om_filter, simulation_seed){
-    fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
-    if(!is.null(hcr_filter))
-        fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
+find_model_run <- function(hcr_filter, om_filter, simulation_seed, om_list, seed_list){
+
+    # Identify correct file for OM and seed
+    oms <- lapply(om_list, function(x) x$name)
+    om_num <- which(om_filter == oms)-1
+
+    max_seed_num <- ceiling(length(seed_list)/22)
+    seed_num <- which(simulation_seed == seed_list)
+    seed_file <- ceiling(seed_num/22) # 22 seeds per file by default
+
+    file_suffix <- om_num*max_seed_num+seed_file
+
+    # fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+    # if(!is.null(hcr_filter))
+    #     fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), file_suffix), fs)]))#"_\\d+"), fs)]))
+    fs <- c(file.path(here::here(), "data", "active", paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr_filter))), "_",file_suffix,".RDS")))
 
     for(f in 1:length(fs)){
         x <- fs[f]
