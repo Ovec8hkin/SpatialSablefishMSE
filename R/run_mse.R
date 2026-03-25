@@ -370,15 +370,23 @@ run_mse <- function(om, mp, mse_options, seed=1120){
 
                 hcr_out <- do.call(mp$hcr$func, hcr_parameters)
                 if(mp$hcr$units != "F"){
-                    hcr_out <- afscOM::find_F(
-                        f_guess=0.10,
+                    # hcr_out <- afscOM::find_F(
+                    #     f_guess=0.10,
+                    #     naa = naa_proj,
+                    #     waa = afscOM::subset_matrix(dp_y$waa, 1, d=4, drop=FALSE),
+                    #     mort = afscOM::subset_matrix(dp_y$mort, 1, d=4, drop=FALSE),
+                    #     selex = joint_selret$sel,
+                    #     ret = joint_selret$ret[,,,1, drop=FALSE],
+                    #     dmr = afscOM::subset_matrix(afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE), 1, d=4, drop=FALSE),
+                    #     prov_catch = hcr_out
+                    # )
+                    hcr_out <- afscOM::findF_multifleet(
+                        target_catch = hcr_out,
                         naa = naa_proj,
-                        waa = afscOM::subset_matrix(dp_y$waa, 1, d=4, drop=FALSE),
-                        mort = afscOM::subset_matrix(dp_y$mort, 1, d=4, drop=FALSE),
+                        waa = dp_y$waa,
+                        mort = dp_y$mort,
                         selex = joint_selret$sel,
-                        ret = joint_selret$ret[,,,1, drop=FALSE],
-                        dmr = afscOM::subset_matrix(afscOM::subset_matrix(dp_y$dmr[,,,,1,drop=FALSE], 1, d=5, drop=TRUE), 1, d=4, drop=FALSE),
-                        prov_catch = hcr_out
+                        f_guess=0.01
                     )
                 }
 
@@ -397,7 +405,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                     hcr_F = hcr_out, 
                     naa = naa_proj, 
                     recruitment = mean(rec)/2, 
-                    joint_sel = joint_selret$sel, 
+                    joint_sel = array(joint_selret$sel, dim=dim(dem_params$sel[y,,,1,1,drop=FALSE])), #joint_selret$sel, 
                     dem_params = afscOM::subset_dem_params(dp_y, 1, d=4, drop=FALSE),
                     hist_abc = abc[y2,1,1,,],
                     hcr_options = mp$hcr$extra_options,
