@@ -54,7 +54,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
     )
 
     return(
-        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
     )
 }

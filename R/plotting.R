@@ -36,7 +36,7 @@ plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajec
         median_qi(spbio, .width=interval_widths, .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
 
-    plot <- plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="SSB (1000s mt)")
+    plot <- plot_timeseries(d %>% filter(L1 == "naa"), v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="SSB (1000s mt)")
     
     if(show_est){
         plot <- plot + geom_pointrange(
