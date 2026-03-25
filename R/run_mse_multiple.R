@@ -14,7 +14,7 @@
 #' @param diagnostics whether to return EM model objects for diagnostic tests
 #' @param save whether to save MSE outputs to "data/active"
 #'
-#' @return list of MSE simualtion results
+#' @return list of MSE simulation results
 #' @export run_mse_multiple
 #'
 run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, diagnostics=FALSE, save=FALSE){

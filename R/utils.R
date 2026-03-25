@@ -658,6 +658,7 @@ find_model_run <- function(hcr_filter, om_filter, simulation_seed, om_list, seed
             next;
         }
         # simulation_number <- which(seeds == simulation_seed)
+        print(paste("Found model run in file:", x))
         return(afscOM::listN(m, model_run))
     }
 }
