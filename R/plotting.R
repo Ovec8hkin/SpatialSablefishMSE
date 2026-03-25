@@ -519,8 +519,9 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
 
     q <- data
     if(is.na(v3)){
-        group_columns <- group_columns[group_columns != "region"]
-        q <- q %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(value=sum(value))
+        groups <- group_columns[group_columns != "region"]
+        q <- q %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(value=sum(value)) %>% mutate(region="Alaska")
+        v3 <- "region"
     }
 
     q <- q %>%
@@ -1140,11 +1141,11 @@ plot_diags <- function(hcr, om, simulation_seed, simulation_year, om_list, seed_
 #' Original code from Matt Cheng
 plot_alaska_map <- function(regions = c("BS", "AI", "WGOA", "CGOA", "EGOA")){
     # Read in maps here
-    west = ne_states(c("United States of America", "Russia", "Canada"), returnclass = "sf")
-    west = st_shift_longitude(west) # shift ongitude for plotting
+    west = rnaturalearth::ne_states(c("United States of America", "Russia", "Canada"), returnclass = "sf")
+    west = sf::st_shift_longitude(west) # shift ongitude for plotting
 
     # Read in stat areas
-    nmfs_areas = read_sf(dsn = here::here("data", "NMFS_Stat_Areas", "Sablefish_Longline_Area"), layer = "Sablefish_Longline_Area")
+    nmfs_areas = sf::read_sf(dsn = here::here("data", "NMFS_Stat_Areas"), layer = "Sablefish_Longline_Area")
     nmfs_areas = nmfs_areas %>% mutate(GEN_NAME = ifelse(NAME %in% c("East Yakutat / Southeast Alaska", "West Yakutat"), "Eastern Gulf of Alaska", "A")) %>% 
     mutate(         NAME = case_when(
         NAME == "Aleutian Islands" ~ "AI",
@@ -1168,10 +1169,16 @@ plot_alaska_map <- function(regions = c("BS", "AI", "WGOA", "CGOA", "EGOA")){
     names(alphas) = names(true_colors)
     alphas[names(alphas) %in% regions] = 0.55
 
+    labels = data.frame(
+        x = c(190, 180, 195, 206, 218),
+        y = c(58, 50, 52, 55, 57.5),
+        name = c("BS", "AI", "WGOA", "CGOA", "EGOA")
+    )
 
     map <- ggplot() +
         geom_sf(data = nmfs_areas, aes(fill = NAME, alpha=NAME)) +
         geom_sf(data = west, lwd = 0.25, alpha = 1) +
+        geom_text(data=labels, aes(x=x, y=y, label=name), size=6)+
         coord_sf(ylim = c(45.2, 70.5), xlim = c(165, 230)) + # Restrict Map Area
         scale_alpha_manual(values = alphas) +
         #   scale_fill_manual(values = colors) +
