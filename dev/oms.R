@@ -1,5 +1,7 @@
 # Define recruitment to occur via historical resampling
 sable_om <- readRDS("data/spatial_sablefish_om.RDS")
+sable_om$model_options$obs_pars$catch_cv <- c(0.02, 0.02, 0, 0)
+
 assessment <- dget(file.path(here::here(), "data/spatial_sablefsh_inputs.rdat"))
 hist_recruits <- t(assessment$recruitment)
 
