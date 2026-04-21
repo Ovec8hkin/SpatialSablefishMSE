@@ -513,7 +513,7 @@ plot_atage_density_ternary <- function(data, col_names){
     )
 }
 
-plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
+plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", by_fleet=FALSE){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
 
@@ -522,6 +522,13 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
         groups <- group_columns[group_columns != "region"]
         q <- q %>% group_by(across(all_of(c(groups, "sim")))) %>% summarise(value=sum(value)) %>% mutate(region="Alaska")
         v3 <- "region"
+    }
+
+    if(!by_fleet){
+        q <- q %>%
+            group_by(across(all_of(c(group_columns[group_columns != "fleet"], "sim")))) %>% 
+            summarise(value=sum(value))
+        group_columns <- group_columns[! group_columns %in% c("fleet")]
     }
 
     q <- q %>%
@@ -543,7 +550,7 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
 
     plot <- ggplot(q)+
         # geom_lineribbon(data = base_hcr_q, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, color=.data[[v1]], linetype=L1), size=0.85)+
+        geom_line(aes(x=time, y=median, color=.data[[v1]], linetype=L1, group=.data[[v1]]), size=0.85)+
         # geom_line(data = common, aes(x=time, y=median, linetype=L1), size=0.85)+
         # geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
         scale_fill_brewer(palette="Blues")+
