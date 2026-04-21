@@ -646,40 +646,49 @@ get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr
 #' @param extra_columns additional columns to associated model with HCR and OM
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
-#' @param n_proj_years number of projection years to compute convergence diagnostics over
-#' @param nsims number of simulations over which to calculate convergence diagnostics
 #' 
 #' @return dataframe of whether EM run for projection year y, and simulation s, converged
 #'         according to the above diagnostic checks.
 #' 
-#' @export check_em_convergence_diagnostics
+#' @export get_convergence_data
 #' 
-check_em_convergence_diagnostics <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_convergence_data <- function(model_runs, extra_columns, hcr_filter, om_filter){
 
-    process <- function(data){
-        data %>%
-            rename(sim_year="Var1", sim="Var2", converged="value") %>%
-            # mutate(
-            #     sim = factor(sim, labels = sims)
-            # ) %>%
-            group_by(om, hcr, sim) %>%
+    fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+    if(!is.null(hcr_filter))
+        fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
+
+    o <- tibble::tibble()
+
+    k <- 1
+    for(i in seq_along(fs)){
+        x <- fs[i]
+        print(x)
+        m <- readRDS(x)
+        mse <- m$mse_objects
+        model_run <- list(mse[[length(mse)]])[[1]]
+        extra_columns <- expand.grid(om=model_run$om$name, hcr=model_run$mp$name)
+
+        if(!(model_run$om$name %in% om_filter)){
+            next;
+        }
+
+        seeds <- m$seeds
+
+        convergence <- model_run$converged
+
+        fullconvergence <- reshape2::melt(convergence, value.name="converged") %>% 
+            as_tibble() %>%
+            rename(sim_year="Var1", sim="Var2") %>%
             mutate(
-                n_converged=sum(converged),
-                failed = ifelse(!converged, sim_year, NA)
-            ) %>%
-            select(-sim_year) %>%
-            distinct() %>%
-            mutate(
-                i = row_number()
-            ) %>%
-            filter(i == max(i)) %>%
-            select(sim, om, hcr, n_converged, failed) %>%
-            ungroup()
+                om=extra_columns$om, 
+                hcr=extra_columns$hcr,
+                sim = factor(sim, labels=seeds)
+            )
+        
+        o <- bind_rows(o, fullconvergence)
+        print(o %>% nrow())
+
     }
-
-    # sims <- seed_list
-    output <- process_big_outputs(model_runs, var=c("converged"), extra_columns=extra_columns, hcr_filter=hcr_filter, om_filter=om_filter, process_func=process)
-
-    return(output)
-
+    return(o)
 }
