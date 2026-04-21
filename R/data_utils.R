@@ -121,7 +121,7 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
                 mse <- m$mse_objects
                 model_run <- list(mse[[length(mse)]])
                 if(!(model_run[[1]]$om$name %in% om_filter)){
-                    return(NULL)
+                    return(data.frame())
                 }
                 extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
                 out <- get_output(model_run, var, model_grid=extra_columns, process_func)
