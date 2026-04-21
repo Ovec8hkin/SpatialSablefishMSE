@@ -102,42 +102,24 @@ hcr_filter <- c("F40", "F40 Hybrid")
 om_filter <- c("BH Recruit | AB Move", "Regime Recruit | AB Move", "Crash Recruit | AB Move")
 
 ###### Plot Diagnostics
-# plot_em_diagnostics(
-#     model_runs, 
-#     extra_columns,
-#     publication_hcrs,
-#     publication_oms,
-#     spinup_years = 54,
-#     n_proj_years = 50,
-#     simulation_year = 4,
-#     simulation_number = 1
-# )
-
-convergence <- check_em_convergence_diagnostics(
+convergence <- get_convergence_data(
     model_runs=NULL,
     extra_columns,
-    publication_hcrs,
-    publication_oms
+    hcr_filter,
+    om_filter
 )
 
-unconverged <- convergence %>% filter(!is.na(failed))
+unconverged <- convergence %>% filter(!converged)
+converged_sims <- convergence %>% filter(converged) %>% pull(sim) %>% unique()
 
-# convergence_summ <- convergence %>% 
-#     mutate(
-#         sim=rep(seed_list, each=51),
-#         year = rep(54:(54+50), 15)
-#     )
-
-# convergence_summ %>% group_by(year) %>% summarise(c = sum(converged)/n()) %>% print(n=100)
-
-plot_diags(
-    hcr = "F40Test",
-    om = "Regime Recruit | AB Move",
-    simulation_seed = 1602,
-    simulation_year = 1,
-    om_list, 
-    seed_list
-)
+# plot_diags(
+#     hcr = "F40Test",
+#     om = "Regime Recruit | AB Move",
+#     simulation_seed = 1602,
+#     simulation_year = 1,
+#     om_list, 
+#     seed_list
+# )
 
 #############################################
 #############################################
