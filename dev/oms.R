@@ -23,6 +23,8 @@ sbpr <- compute_sbpr(
 )
 
 om_base <- sable_om
+om_base$dem_params$sel[1:56,,,,1] <- om_base$dem_params$sel[57:112,,,,1] # Remove selectivity block
+
 
 ### Alternative Movement Scenarios
 
