@@ -28,25 +28,9 @@ om_base$dem_params$sel[1:56,,,,1] <- om_base$dem_params$sel[57:112,,,,1] # Remov
 
 ### Alternative Movement Scenarios
 
-# No movement
-om_nomove <- om_base
-om_nomove$dem_params$movement[,,55:200,,] <- array(diag(1, nrow=5, ncol=5), dim=dim(om_base$dem_params$movement), dimnames=dimnames(om_base$dem_params$movement))[,,55:200,,]
-
-# Fully mixed
-om_panmictic <- om_base
-om_panmictic$dem_params$movement[,,55:200,,] <- array(0.20, dim=dim(om_base$dem_params$movement), dimnames=dimnames(om_base$dem_params$movement))[,,55:200,,]
-
 om_climate_movement <- om_base
 om_climate_movement$dem_params$movement[,,55:200,,] <- create_tv_movement(time_trend=30, nyears=length(55:200))
 
-# Normal recruitment
-om_rand_recruit <- om_base
-om_rand_recruit$name <- "Random Recruitment"
-om_rand_recruit$recruitment$func <- resample_recruits_spatial
-om_rand_recruit$recruitment$pars <- list(
-    hist_recruits = hist_recruits,
-    nyears = 500
-)
 
 # Beverton-Holt recruitment
 om_bh_recruit <- om_base
@@ -54,11 +38,11 @@ om_bh_recruit$name <- "Beverton-Holt Recruitment"
 om_bh_recruit$recruitment$func <- beverton_holt
 om_bh_recruit$recruitment$pars <- list(
     h = 0.85, # could do 0.80
-    R0 = 15,
-    S0 = sbpr*15,
-    sigR = 1.20
+    R0 = 18,
+    S0 = sbpr*18,
+    sigR = 0.70
 )
-om_bh_recruit$recruitment$apportionment$func <- resample_recruit_apportionment
+om_bh_recruit$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
 om_bh_recruit$recruitment$apportionment$pars <- list(
     hist_recruits = hist_recruits
 )
@@ -70,42 +54,52 @@ om_bhcyclic_recruit$recruitment$func <- bevholt_regimes
 om_bhcyclic_recruit$recruitment$pars <- list(
     h = 0.85,
     sbpr = sbpr,
-    R0 = c(12.5, 50),
-    sigR = c(1.20, 1.20),
+    R0 = c(70, 10),
+    sigR = c(0.70, 0.70),
     nyears = 500,
-    regime_length = c(20, 5),
+    regime_length = c(5, 20),
     starting_regime = 0
 )
-om_bhcyclic_recruit$recruitment$apportionment$func <- resample_recruit_apportionment
+om_bhcyclic_recruit$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
 om_bhcyclic_recruit$recruitment$apportionment$pars <- list(
     hist_recruits = hist_recruits
 )
 
-# Immediate Recruitment Crash
-om_immcrash_recruit <- om_base
-om_immcrash_recruit$name <- "Immediate Crash Recruitment"
-om_immcrash_recruit$recruitment$func <- recruits_crash
-om_immcrash_recruit$recruitment$pars <- list(
-    crash_start_year = 1,
-    crash_length = 20,
-    crash_value = min(hist_recruits),
-    hist_recruits = hist_recruits,
-    nyears = 500
+om_crash <- om_base
+om_crash$name <- "Crash Recruitment"
+om_crash$recruitment$func <- bevholt_regimes
+om_crash$recruitment$pars <- list(
+    h = 0.85,
+    sbpr = sbpr,
+    R0 = c(18, 3.5),
+    sigR = c(0.70, 0.70),
+    nyears = 500,
+    regime_length = c(12, 25),
+    starting_regime = 0
 )
-om_immcrash_recruit$recruitment$apportionment$func <- resample_recruit_apportionment
-om_immcrash_recruit$recruitment$apportionment$pars <- list(
+om_crash$recruitment$apportionment$func <- proximity_resample_recruit_apportionment
+om_crash$recruitment$apportionment$pars <- list(
     hist_recruits = hist_recruits
 )
 
 
-om_crash2 <- om_bhcyclic_recruit
-om_crash2$recruitment$pars$h <- c(0.85, 0.85)
-om_crash2$recruitment$pars$R0 <- c(15, 3.5)
-om_crash2$recruitment$pars$regime_length <- c(25, 30)
-om_crash2$name <- "Crash Recruitment"
+om_agemove_bhrec <- om_bh_recruit
+om_agemove_bhrec$name <- "BH Recruit | AB Move"
 
-om_cycle_low <- om_bhcyclic_recruit
-om_cycle_low$recruitment$pars$h <- c(0.85,0.85)
-om_cycle_low$recruitment$pars$R0 <- c(50, 5.5)
-om_cycle_low$recruitment$pars$regime_length <- c(5, 20)
-om_cycle_low$name <- "Low Regime Recruitment"
+om_agemove_regimerec <- om_bhcyclic_recruit
+om_agemove_regimerec$name <- "Regime Recruit | AB Move"
+
+om_agemove_crashrec <- om_crash
+om_agemove_crashrec$name <- "Crash Recruit | AB Move"
+
+om_climatemove_bhrec <- om_bh_recruit
+om_climatemove_bhrec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_bhrec$name <- "BH Recruit | Climate Move"
+
+om_climatemove_regimerec <- om_bhcyclic_recruit
+om_climatemove_regimerec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_regimerec$name <- "Regime Recruit | Climate Move"
+
+om_climatemove_crashrec <- om_crash
+om_climatemove_crashrec$dem_params$movement <- om_climate_movement$dem_params$movement
+om_climatemove_crashrec$name <- "Crash Recruit | Climate Move"
