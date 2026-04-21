@@ -42,6 +42,7 @@ mse_options <- mse_options_base
 mse_options$n_spinup_years <- 54
 mse_options$recruitment_start_year <- 54
 mse_options$n_proj_years <- 50
+mse_options$run_estimation <- TRUE
 
 mse_options_list <- listN(mse_options)
 
@@ -56,10 +57,10 @@ model_runs <- run_mse_multiple(
     seed_list,
     mse_options_list=mse_options_list,
     diagnostics = TRUE,
-    save = FALSE
+    save = TRUE
 )
 toc()
-# extra_columns <- expand.grid(hcr=lapply(hcr_list, function(x) x$name), om=lapply(om_list, function(x) x$name))
+extra_columns <- expand.grid(hcr=lapply(hcr_list, function(x) x$name), om=lapply(om_list, function(x) x$name))
 
 
 # Data Processing
@@ -84,8 +85,8 @@ publication_metrics = c("Annual Catch", "Catch AAV", "SSB", "Average Age", "Prop
 recruitment_scenarios <- c("BH Recruit", "Regime Recruit", "Crash Recruit")
 
 extra_columns = expand.grid(
-    om=publication_oms,
-    hcr=publication_hcrs
+    om=c("BH Recruit | AB Move", "Regime Recruit | AB Move", "Crash Recruit | AB Move"),
+    hcr=c("F40Test", "F40 Hybrid")
 )
 
 interval_widths <- c(0.50, 0.80)
@@ -96,6 +97,9 @@ hcr_colors <- c("black", "#991c1c", "#001180", "#256c15", "#BB6A00", "#7500B0", 
 #names(hcr_colors) <- publication_hcrs
 
 hcr_colors = c("black", "#256c15", "#0763d3", "#BD4E98")
+
+hcr_filter <- c("F40", "F40 Hybrid")
+om_filter <- c("BH Recruit | AB Move", "Regime Recruit | AB Move", "Crash Recruit | AB Move")
 
 ###### Plot Diagnostics
 # plot_em_diagnostics(
@@ -126,6 +130,15 @@ unconverged <- convergence %>% filter(!is.na(failed))
 
 # convergence_summ %>% group_by(year) %>% summarise(c = sum(converged)/n()) %>% print(n=100)
 
+plot_diags(
+    hcr = "F40Test",
+    om = "Regime Recruit | AB Move",
+    simulation_seed = 1602,
+    simulation_year = 1,
+    om_list, 
+    seed_list
+)
+
 #############################################
 #############################################
 #############################################
@@ -133,13 +146,44 @@ unconverged <- convergence %>% filter(!is.na(failed))
 #############################################
 #############################################
 #############################################
-# ssb_data <- get_ssb_biomass(model_runs=NULL, extra_columns, sable_om$dem_params, hcr_filter=publication_hcrs, om_filter=publication_oms)
+ssb_data <- get_ssb_biomass(model_runs=NULL, extra_columns, sable_om$dem_params, hcr_filter=hcr_filter, om_filter=om_filter)
 
-# ssb_data <- ssb_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
-#     mutate(
-#         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
-#         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
-#     )
+ssb_data <- ssb_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
+    )
+
+write_csv(ssb_data, file.path("data", "zahneretal_2026_spatialmse_SSB_biomass.csv"))
+
+ssb_data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, spbio) %>%
+    filter_times(time_horizon) %>%
+    pivot_wider(names_from=L1, values_from=spbio) %>%
+    group_by(time, sim, om, Recruitment, Movement, hcr) %>%
+    mutate(naa = sum(naa, na.rm=TRUE)) %>%
+    filter(region == "Alaska") %>%
+    ungroup() %>%
+    mutate(
+        bias = (naa_est - naa)/naa
+    ) %>%
+    # group_by(time, om, Recruitment, Movement, hcr) %>%
+    # median_qi(bias, .width=c(0.50, 0.80)) %>%
+
+    ggplot()+
+        geom_boxplot(aes(x=om, y=bias))+
+        geom_hline(yintercept=0, linetype="dashed")+
+        facet_wrap(~hcr)+
+        scale_y_continuous(breaks=seq(-0.1, 0.2, 0.02))+
+        custom_theme
+
+    # ggplot()+
+    #     geom_lineribbon(aes(x=time, y=bias, ymin=.lower, ymax=.upper, group=hcr))+
+    #     geom_hline(yintercept=0, linetype="dashed")+
+    #     scale_fill_brewer(palette="Blues")+
+    #     facet_wrap(~om)+
+    #     custom_theme
+
+
 
 ssb_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_SSB_biomass.csv")) %>% mutate(
     Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -158,7 +202,7 @@ for(r in recruitment_scenarios){
 for(r in recruitment_scenarios){
     fname <- paste0("ssb_depletion_baseutil_", sub(" ", "_", tolower(r)))
     make_ssb_plot(
-        ssb_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms) %>% filter(Recruitment == r)
+        ssb_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms)# %>% filter(Recruitment == r)
     )
     ggsave(filename=file.path(figures_dir, paste0(fname, filetype)), width=width_medium, height=height_medium, units=c("in"))
 }
@@ -192,10 +236,10 @@ make_ssb_plot <- function(ssb_data){
 
     ssb_agg_plots <- plot_ssb(
             ssb_data, 
-            v1="hcr", v2="om", v3=NA, show_est = FALSE,
+            v1="hcr", v2="om", v3=NA, show_est = TRUE,
             common_trajectory=common_trajectory
         )+
-        scale_y_continuous(limits=c(0, 300))+
+        coord_cartesian(ylim=c(0, 300))+
         ggh4x::facet_nested(
             rows=vars(region), 
             cols=vars(Recruitment, Movement), 
@@ -237,7 +281,7 @@ reg_ssb_f40rel_plots <- plot_ssb(
 
 agg_ssb_f40rel_plots <- plot_ssb(
         ssb_data, 
-        v1="hcr", v2="om", v3=NA, show_est = FALSE,
+        v1="hcr", v2="om", v3=NA, show_est = TRUE,
         common_trajectory=common_trajectory, time_horizon = time_horizon,
         relative="F40"
     )+
@@ -352,12 +396,14 @@ ssb_data %>% filter_times(time_horizon) %>%
 #############################################
 #############################################
 #############################################
-catch_data <- get_landed_catch(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+catch_data <- get_landed_catch(model_runs=NULL, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
 catch_data <- catch_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
+
+write_csv(catch_data, file.path("data", "zahneretal_2026_spatialmse_catch.csv"))
 
 catch_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_catch.csv")) %>% mutate(
     Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -377,7 +423,7 @@ for(r in recruitment_scenarios){
 for(r in recruitment_scenarios){
     fname <- paste0("catch_baseutil_", sub(" ", "_", tolower(r)))
     make_catch_plot(
-        catch_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms) %>% filter(Recruitment == r)
+        catch_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms)# %>% filter(Recruitment == r)
     )
     ggsave(filename=file.path(figures_dir, paste0(fname, filetype)), width=width_medium, height=height_medium, units=c("in"))
 }
@@ -564,6 +610,8 @@ econ_data <- econ_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s
         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
 
+write_csv(econ_data, file.path("data", "zahneretal_2026_spatialmse_econvalue.csv"))
+
 econ_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_econvalue.csv")) %>% 
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -582,7 +630,7 @@ for(r in recruitment_scenarios){
 for(r in recruitment_scenarios){
     fname <- paste0("economic_value_baseutil_", sub(" ", "_", tolower(r)))
     make_econ_plot(
-        econ_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms) %>% filter(Recruitment == r)
+        econ_data %>% filter_hcr_om(hcrs=base_util_hcrs, oms=publication_oms)# %>% filter(Recruitment == r)
     )
     ggsave(filename=file.path(figures_dir, paste0(fname, filetype)), width=width_medium, height=height_medium, units=c("in"))
 }
@@ -784,7 +832,7 @@ ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=1
 #############################################
 #############################################
 #############################################
-abc_tac_land <- get_management_quantities(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+abc_tac_land <- get_management_quantities(model_runs=NULL, extra_columns, hcr_filter=c("F40Test", "F40 Hybrid"), om_filter=c("BH Recruit | AB Move", "Regime Recruit | AB Move", "Crash Recruit | AB Move"))
 abc_tac_land <- abc_tac_land %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -830,8 +878,9 @@ agg_abctac_plot <- plot_abc_tac(abc_tac_land, v1="hcr", v2="om", v3=NA, common_t
     labs(y="ABC/Landings (1000s mt)")+
     ggh4x::facetted_pos_scales(
         y = list(
-            scale_y_continuous(limits=c(0, 12)),
-            scale_y_continuous(limits=c(0, 12))
+            scale_y_continuous(limits=c(0, 50)),
+            scale_y_continuous(limits=c(0, 50)),
+            scale_y_continuous(limits=c(0, 50))
         )
     ) +
     theme(
