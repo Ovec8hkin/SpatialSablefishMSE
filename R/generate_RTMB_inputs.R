@@ -27,17 +27,17 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     # Recruitment
     input_list <- SPoRC::Setup_Mod_Rec(
         input_list = input_list,
-        do_rec_bias_ramp = 1,
+        do_rec_bias_ramp = 1, #0
         bias_year = c(length(1960:1979), length(1960:1989), (length(1960:(1960+nyears-1)) - 5), length(1960:(1960+nyears)) - 2) + 1,
         sigmaR_switch = as.integer(length(1960:1975)), 
         dont_est_recdev_last = 0, 
         ln_sigmaR = log(c(0.4, 1.2)),
         rec_model = "mean_rec", # recruitment model
-        sigmaR_spec = "fix", 
-        sexratio = as.vector(c(0.5, 0.5)), 
+        sigmaR_spec = "fix",#"fix_early_est_late", 
+        # sexratio = as.vector(c(0.5, 0.5)), 
         init_age_strc = 1,
-        init_F_prop = 0,
-        ln_global_R0 = log(16)
+        init_F_prop = 0.1,
+        ln_global_R0 = log(22)
     )
 
     # Biologicals
@@ -50,13 +50,20 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         input_list = input_list,
         WAA = WAA,
         MatAA = MatAA,
-        AgeingError = AgeingError,
+        AgeingError = NULL, #AgeingError,
         SizeAgeTrans = SizeAgeTrans,
         fit_lengths = 0,
         Use_M_prior = 1,
-        M_prior = c(0.1, 0.1),
-        M_spec = "est_ln_M_only",
-        ln_M = log(M),
+        M_prior =  data.frame( 
+            regionblk = 1, # region block
+            yearblk = 1, # year block
+            ageblk = c(1), # age block
+            sexblk = 1, # sex block
+            mu = 0.1, # mean
+            sd = 0.1 #sd
+        ),
+        M_spec = "est_ln_M",
+        ln_M = array(log(M), dim=c(1, 1, 1, 1)),
         M_offset = 0
     )
 
@@ -94,7 +101,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         # Model options
         Use_F_pen = 1,
         sigmaC_spec = 'fix',
-        Catch_Constant = c(0, 0)#c(0.01, 0.8)
+        ln_sigmaC = array(log(c(0.02, 0.02)), dim=c(1, nyears, 2)),
+        # Catch_Constant = c(0, 0)#c(0.01, 0.8)
     )
 
     ### Fishery Index and Composition Data ---------------------
@@ -138,8 +146,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         fish_idx_type = c("none", "none"),
         FishAgeComps_LikeType = c("Multinomial", "Multinomial"),
         FishLenComps_LikeType = c("none", "none"),
-        FishAgeComps_Type = c(paste0("spltRjntS_Year_1-",nyears,"_Fleet_1"), paste0("spltRjntS_Year_1-",nyears,"_Fleet_2")),
-        FishLenComps_Type = c(paste0("none_Year_1-",nyears,"_Fleet_1"), paste0("none_Year_1-",nyears,"_Fleet_2")),
+        FishAgeComps_Type = c(paste0("spltRjntS_Year_1-terminal_Fleet_1"), paste0("spltRjntS_Year_1-terminal_Fleet_2")),
+        FishLenComps_Type = c(paste0("none_Year_1-terminal_Fleet_1"), paste0("none_Year_1-terminal_Fleet_2"))
     )
 
     ### Survey Index and Composition Data ---------------------
@@ -189,12 +197,12 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         SrvAgeComps_LikeType = c("Multinomial", "Multinomial"),
         SrvLenComps_LikeType = c("none", "none"),
         SrvAgeComps_Type = c(
-            paste0("spltRjntS_Year_1-",nyears,"_Fleet_1"), 
-            paste0("spltRjntS_Year_1-",nyears,"_Fleet_2")
+            paste0("spltRjntS_Year_1-terminal_Fleet_1"), 
+            paste0("spltRjntS_Year_1-terminal_Fleet_2")
         ),
         SrvLenComps_Type = c(
-            paste0("none_Year_1-",nyears,"_Fleet_1"), 
-            paste0("none_Year_1-",nyears,"_Fleet_2")
+            paste0("none_Year_1-terminal_Fleet_1"), 
+            paste0("none_Year_1-terminal_Fleet_2")
         )
     )
 
@@ -208,39 +216,19 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         "",
         "none_Fleet_2"
     )
-    #if(nyears >= 57){
-    if(FALSE){
-        fsh_sel_blocks_base[1] <- paste0("Block_1_Year_1-56_Fleet_1")
-        fsh_sel_blocks_base[2] <- paste0("Block_2_Year_57-terminal_Fleet_1")
-        fsh_sel_map <- factor(c(1:7, 2, rep(c(8,9),2), rep(c(10,9),2)))
+    
+    fsh_sel_blocks_base <- fsh_sel_blocks_base[-c(2)]
+    fsh_sel_map <- factor(c(1:3, 2, rep(c(4,5),1), rep(c(6,5), 1)))
 
-        fleet_blocks <- data.frame(
-            fleet = c(1, 1, 2),     # fleets corresponding to time blocks (2 fixed gear time blocks, no trawl gear blocks)
-            block = c(1, 2, 1)      # corresponding time blocks
-        )
+    fleet_blocks <- data.frame(
+        fleet = c(1, 2),     # fleets corresponding to time blocks (2 fixed gear time blocks, no trawl gear blocks)
+        block = c(1, 1)      # corresponding time blocks
+    )
 
-        # Merge to get all valid combinations
-        fish_selex_structure <- merge(fleet_blocks, sex_par) %>%
-            dplyr::filter(!(fleet == 1 & block == 1 & sex == 2 & par == 2))               # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
-        #dplyr::filter(!(fleet == 2 & block == 1 & sex == 2 & par == 2))              # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
-
-
-    }else{
-        fsh_sel_blocks_base <- fsh_sel_blocks_base[-c(2)]
-        fsh_sel_map <- factor(c(1:3, 2, rep(c(4,5),1), rep(c(6,5), 1)))
-
-        fleet_blocks <- data.frame(
-            fleet = c(1, 2),     # fleets corresponding to time blocks (2 fixed gear time blocks, no trawl gear blocks)
-            block = c(1, 1)      # corresponding time blocks
-        )
-
-        # Merge to get all valid combinations
-        fish_selex_structure <- merge(fleet_blocks, sex_par) %>%
-            dplyr::filter(!(fleet == 1 & block == 1 & sex == 2 & par == 2))               # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
-        #dplyr::filter(!(fleet == 2 & block == 1 & sex == 2 & par == 2))              # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
-
-
-    }
+    # Merge to get all valid combinations
+    fish_selex_structure <- merge(fleet_blocks, sex_par) %>%
+        dplyr::filter(!(fleet == 1 & block == 1 & sex == 2 & par == 2))               # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
+    #dplyr::filter(!(fleet == 2 & block == 1 & sex == 2 & par == 2))              # remove priors for any unestimated pars -- par1=a50, par2=delta; NEEDS TO MATCH PARAMETER MAPPING
 
     # Add the lognormal prior values - creates a dataframe, each row is a unique parameter combination to apply the prior to
     fish_selex_prior <- cbind(
@@ -281,6 +269,14 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         fish_selex_prior = fish_selex_prior_tf
     )
 
+    srv_q_prior <- data.frame(
+        region = 1, # apply catchability prior to region 1
+        fleet = c(1, 2), # apply catchability prior to region 1, fleets 1 - 3
+        block = 1, # apply catchability prior to region 1, fleets 1 - 3, block 1
+        mu = c(6.1, 0.85), # corresponding mean catchability prior values
+        sd = c(0.1, 0.35) # corresponding standard deviation prior values
+    )
+
     input_list <- SPoRC::Setup_Mod_Srvsel_and_Q(
         input_list = input_list,
         # Model options
@@ -304,6 +300,8 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
         # whether to estimate all 
         # fixed effects for survey catchability
         srv_q_spec = c("est_all", "est_all"),
+        # Use_srv_q_prior = 1,
+        # srv_q_prior = srv_q_prior,
         ln_srv_q = array(log(c(6.1, 0.85)), dim=c(1, 1, 2))
     )
     input_list$par$ln_srv_fixed_sel_pars[1,,,,] <- log(2)
@@ -322,8 +320,6 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
 
     input_list <- SPoRC::Setup_Mod_Weighting(
         input_list = input_list,
-        sablefish_ADMB = 0,
-        likelihoods = 1,
         Wt_Catch = 1, #50,
         Wt_FishIdx = 0,
         Wt_SrvIdx = 1, #5,
@@ -336,7 +332,7 @@ generate_RTMB_inputs <- function(nyears, dem_params, agg_land_caa, aggregated_su
     )
 
     ### Extra Parameter Setting ---------------------------
-    input_list$par$ln_sigmaC <- array(log(c(0.02, 0.02)), dim=c(1, 2))
+    # input_list$par$ln_sigmaC <- array(log(c(0.02, 0.02)), dim=c(1, 2))
     input_list$par$ln_fish_fixed_sel_pars[1,2,,,1] <- log(2)
     input_list$par$ln_fish_fixed_sel_pars[1,2,,,2] <- log(2)
 
