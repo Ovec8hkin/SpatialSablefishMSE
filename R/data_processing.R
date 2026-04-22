@@ -714,7 +714,7 @@ get_convergence_data <- function(model_runs, extra_columns, hcr_filter, om_filte
 get_estimation_bias <- function(data, om_em_cols, value_col, time_horizon){
     data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, value_col) %>%
         filter_times(time_horizon) %>%
-        mutate(region = ifelse(is.na(region), "Alaska", region)) %>%
+        mutate(region = ifelse(is.na(region), "Alaska", as.character(region))) %>%
         pivot_wider(names_from=L1, values_from=value_col) %>%
         group_by(time, sim, om, Recruitment, Movement, hcr) %>%
         mutate(true = sum(eval(rlang::parse_expr(om_em_cols[1])), na.rm=TRUE)) %>%

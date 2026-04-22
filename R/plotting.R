@@ -572,6 +572,30 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
     return(plot+custom_theme)
 }
 
+#' Plot Estimation Bias
+#' Create either a boxplot or a timeseries plot of estimation bias across
+#' OMs and HCRs.
+#' 
+#' @param bias_data tibble produced from get_estimation_bias()
+#' @param type either "boxplot" or "timeseries"
+plot_estimation_bias <- function(bias_data, type="boxplot"){
+    if(type == "boxplot"){
+        plot <- ggplot(bias_data)+
+            geom_boxplot(aes(x=om, y=bias))+
+            geom_hline(yintercept=0, linetype="dashed")+
+            facet_wrap(~hcr)+
+            scale_x_discrete(labels=scales::label_wrap(15))+
+            custom_theme
+    }else if(type=="timeseries"){
+        plot <- ggplot(data=bias_data, aes(x=time, y=bias, color=hcr, fill=hcr))+
+            stat_lineribbon(.width=c(0.50, 0.80), alpha=0.25)+
+            geom_hline(yintercept=0, linetype="dashed")+
+            facet_wrap(~om)+
+            custom_theme
+    }
+    return(plot)
+}
+
 plot_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80)){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "total_F")]
