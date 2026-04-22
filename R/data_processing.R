@@ -692,3 +692,37 @@ get_convergence_data <- function(model_runs, extra_columns, hcr_filter, om_filte
     }
     return(o)
 }
+
+#' Calculation Bias Between OM and EM Outputs
+#' 
+#' Calculates relative between quantities from the OM and estimates from the 
+#' EM. Because the EM is spatially aggregated, biases are calculated at the
+#' Alaska-wide level, rather than at the regional level. Bias is calculated
+#' as (estimate - true)/true, where the true value is the sum of the regional
+#' values from the OM.
+#' 
+#' This function has only been tested on SSB and recruitment, 04/21/2026.
+#' 
+#' @param data tibble of output data with both OM and EM outputs
+#' @param om_em_cols values of L1 column in data indicating OM and EM outputs (e.g., "naa" and "naa_est")
+#' @param value_col name of column in data containing values to compare between OM and EM
+#' @param time_horizon vector of time steps to include in bias calculation
+#' 
+#' @return tibble of bias between OM and EM outputs
+#' 
+#' @export get_estimation_bias
+get_estimation_bias <- function(data, om_em_cols, value_col, time_horizon){
+    data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, value_col) %>%
+        filter_times(time_horizon) %>%
+        mutate(region = ifelse(is.na(region), "Alaska", region)) %>%
+        pivot_wider(names_from=L1, values_from=value_col) %>%
+        group_by(time, sim, om, Recruitment, Movement, hcr) %>%
+        mutate(true = sum(eval(rlang::parse_expr(om_em_cols[1])), na.rm=TRUE)) %>%
+        rename(est = om_em_cols[2]) %>%
+        filter(region == "Alaska") %>%
+        ungroup() %>%
+        mutate(
+            bias = (est - true)/true
+        ) %>%
+        select(-om_em_cols[1])
+}
