@@ -151,19 +151,21 @@ ssb_data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, spbio
     # group_by(time, om, Recruitment, Movement, hcr) %>%
     # median_qi(bias, .width=c(0.50, 0.80)) %>%
 
-    ggplot()+
-        geom_boxplot(aes(x=om, y=bias))+
-        geom_hline(yintercept=0, linetype="dashed")+
-        facet_wrap(~hcr)+
-        scale_y_continuous(breaks=seq(-0.1, 0.2, 0.02))+
-        custom_theme
-
     # ggplot()+
-    #     geom_lineribbon(aes(x=time, y=bias, ymin=.lower, ymax=.upper, group=hcr))+
+    #     geom_boxplot(aes(x=om, y=bias))+
     #     geom_hline(yintercept=0, linetype="dashed")+
-    #     scale_fill_brewer(palette="Blues")+
-    #     facet_wrap(~om)+
+    #     facet_wrap(~hcr)+
+    #     scale_y_continuous(breaks=seq(-0.1, 0.2, 0.02))+
+    #     scale_x_discrete(labels=scales::label_wrap(15))+
     #     custom_theme
+
+    ggplot(aes(x=time, y=bias, color=hcr, fill=hcr))+
+        stat_lineribbon(.width=c(0.50, 0.80), alpha=0.25)+
+        geom_hline(yintercept=0, linetype="dashed")+
+        # scale_fill_brewer(palette="Blues")+
+        scale_y_continuous(breaks=seq(-0.1, 0.2, 0.02))+
+        facet_wrap(~om)+
+        custom_theme
 
 
 
@@ -786,11 +788,19 @@ econ_data %>% filter_times(time_horizon) %>%
 
 
 # Plot Recruitment
-recruit_data <- get_recruits(model_runs, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+recruit_data <- get_recruits(model_runs=NULL, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
+
+recruit_data <- recruit_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
+    mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
+    )
+
 
 reg_rec_plots <- plot_recruitment(recruit_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)
 
-recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
+recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", show_est=TRUE, common_trajectory = common_trajectory)+
     scale_y_continuous("Recruits (millions)", limits=c(0, 100))+
     facet_wrap(~om, ncol=1)+
     labs(title="Alaska-Wide Recruitment")+
@@ -805,7 +815,56 @@ recruit_agg_plot + reg_rec_plots +
 
 ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=16, height=8, units=c("in"))
 
+recruit_data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, rec) %>%
+    filter_times(time_horizon) %>%
+    mutate(region = ifelse(is.na(region), "Alaska", region)) %>%
+    pivot_wider(names_from=L1, values_from=rec) %>%
+    group_by(time, sim, om, Recruitment, Movement, hcr) %>%
+    mutate(naa = sum(naa, na.rm=TRUE)) %>%
+    filter(region == "Alaska") %>%
+    ungroup() %>%
+    mutate(
+        bias = (naa_est - naa)/naa
+    ) %>%
+    # group_by(time, om, Recruitment, Movement, hcr) %>%
+    # median_qi(bias, .width=c(0.50, 0.80)) %>%
 
+    ggplot()+
+        geom_boxplot(aes(x=om, y=bias))+
+        geom_hline(yintercept=0, linetype="dashed")+
+        facet_wrap(~hcr)+
+        scale_y_continuous(breaks=seq(-1, 5, 0.5))+
+        scale_x_discrete(labels=scales::label_wrap(15))+
+        # coord_cartesian(ylim=c(-1, 1))+
+        custom_theme
+
+    # ggplot(aes(x=time, y=bias, color=hcr, fill=hcr))+
+    #     stat_lineribbon(.width=c(0.50, 0.80), alpha=0.25)+
+    #     geom_hline(yintercept=0, linetype="dashed")+
+    #     # scale_fill_brewer(palette="Blues")+
+    #     # scale_y_continuous(breaks=seq(-0.1, 0.2, 0.02))+
+    #     facet_wrap(~om)+
+    #     custom_theme
+
+recruit_data %>% select(time, sim, L1, om, Recruitment, Movement, hcr, region, rec) %>%
+    filter_times(time_horizon) %>%
+    mutate(region = ifelse(is.na(region), "Alaska", region)) %>%
+    pivot_wider(names_from=L1, values_from=rec) %>%
+    group_by(time, sim, om, Recruitment, Movement, hcr) %>%
+    mutate(naa = sum(naa, na.rm=TRUE)) %>%
+    filter(region == "Alaska") %>%
+    ungroup() %>%
+    mutate(
+        bias = (naa_est - naa)/naa
+    ) %>%
+    group_by(om, hcr) %>%
+    reframe(
+        quants = quantile(bias, probs=c(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0))
+    ) %>%
+    mutate(
+        quantile = rep(c("min", "5%", "25%", "50%", "75%", "95%", "max"), length.out=7*3*2)
+    ) %>%
+    pivot_wider(names_from=quantile, values_from=quants)
 
 #############################################
 #############################################
