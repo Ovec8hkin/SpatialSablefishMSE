@@ -289,7 +289,7 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, commo
         coord_cartesian(expand=0)
 
     if(show_est){
-        plot <- plot + geom_pointrange(data = f %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+        plot <- plot + geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
     }
 
     if(!is.na(v2) && is.na(v3)){
