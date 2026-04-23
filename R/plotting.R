@@ -239,14 +239,25 @@ plot_fishing_mortalities <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALS
     return(plot+custom_theme)
 }
 
-plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40"){
+plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), time_horizon=NULL, base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "rec")]
+    r <- data %>% distinct(.keep_all=TRUE)
 
-    r <- data
+    if(!is.null(time_horizon)){
+        r <- r %>% filter_times(time_horizon)
+    }
+
     if(is.na(v3)){
-        group_columns <- group_columns[group_columns != "region"]
-        r <- r %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(rec=sum(rec))
+        groups <- group_columns[group_columns != "region"]
+        r <- r %>% 
+            group_by(across(all_of(c(groups, "sim")))) %>% 
+            summarise(
+                rec=sum(rec)
+            ) %>% 
+            mutate(region="Alaska")
+        v3 <- "region"
+
         mean_rec <- r %>% filter(time > common_trajectory, L1=="naa") %>%
             group_by(om) %>%
             summarise(
@@ -260,45 +271,77 @@ plot_recruitment <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, commo
             )
     }
 
+    # Relativize to specific HCR
+    hcrs <- r %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        r <- r %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="rec", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
+    }
+
     r <- r %>%
-        # summarise SSB across year and sim 
         group_by(across(all_of(group_columns))) %>%
         median_qi(rec, .width=interval_widths, .simple_names=FALSE) %>%
         reformat_ggdist_long(n=length(group_columns))
 
-    hcr1 <- as.character((r %>% pull(hcr) %>% unique)[1])
-
-    traj_column <- ifelse(is.na(v3), v2, v3)
-    traj <- r %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
-
-    common <- r %>% left_join(traj, by=traj_column) %>% filter(L1=="naa", hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
-
-    base_hcr_d <- r %>% filter(L1 == "naa", hcr == base_hcr)
-
     max_year <- r %>% pull(time) %>% max
 
-    plot <- ggplot(r %>% filter(L1 == "naa")) + 
-        geom_lineribbon(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85)+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed") + 
-        geom_text(data=mean_rec, aes(x=max_year*0.85, y=70, label=round(rec, 2)), size=5)+
-        scale_fill_brewer(palette="Blues")+
-        scale_color_manual(values=hcr_colors)+
-        scale_y_continuous(name="Recruits (millions)", limits=c(0, 75))+
-        coord_cartesian(expand=0)
-
+    plot <- plot_timeseries(r %>% filter(L1 == "naa"), v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Recruitment (millions)")
+    
     if(show_est){
-        plot <- plot + geom_pointrange(data = r %>% filter(L1 == "naa_est"), aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), alpha=0.35)
+        plot <- plot + geom_pointrange(
+                            data = r %>% filter(L1 == "naa_est"), 
+                            aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), 
+                            alpha=0.35
+                        )
     }
 
-    if(!is.na(v2) && is.na(v3)){
-        plot <- plot + facet_wrap(~.data[[v2]])+guides(fill="none")
-    }else if(!is.na(v2) && !is.na(v3)){
-        plot <- plot + facet_grid(rows=vars(.data[[v2]]), cols=vars(.data[[v3]]))+guides(fill="none")
+    return(plot)
+}
+
+plot_random_recruitment_trajectories <- function(data, seed_list, nsims, time_horizon, by_region=FALSE){
+    group_columns <- colnames(data)
+    group_columns <- group_columns[! group_columns %in% c("rec")]
+    
+    groups <- group_columns
+    if(!by_region){
+        groups <- group_columns[group_columns != "region"]
     }
 
-    return(plot+custom_theme)
+    r <- recruit_data %>%
+        filter_times(time_horizon) %>%
+        filter(sim %in% sample(seed_list, nsims)) %>%
+        group_by(across(all_of(groups))) %>%
+        summarise(rec = sum(rec, na.rm=TRUE))
+
+    ymax <- max(r$rec)
+
+    mean_rec <- r %>% group_by(om) %>% summarise(r=median(rec))
+
+    summ_rec <- r %>%
+        group_by(time, om) %>%
+        median_qi(rec, .width=interval_widths)
+
+    plot <- ggplot(r %>% filter(L1 == "naa"))+
+        geom_line(aes(x=time, y=rec, color=hcr, fill=hcr, group=sim), alpha=0.8)+
+        geom_line(data=summ_rec, aes(x=time, y=rec, ymin=.lower, ymax=.upper), color="black", size=1, alpha=0.75)+
+        # geom_line(aes(x=time, y=rec, color=om, group=sim), size=0.5, alpha=0.6)+
+        geom_hline(data=mean_rec, aes(yintercept=r), linetype="dashed")+
+        geom_text(data=mean_rec, aes(x=100, y=ymax*0.90, label=round(r, 3)), size=6)+
+        labs(x="Year", y="Recruitment (millions)", color="Management \nStrategy")+
+        custom_theme
+
+    if(!by_region){
+        plot <- plot + facet_grid(hcr~om)
+    }else{
+        plot <- plot + facet_grid(rows=vars(region), cols=vars(om), scales="free_y")
+    }
+
+    return(plot)
 }
 
 plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
@@ -458,61 +501,6 @@ plot_ssb_catch <- function(ssb_data, catch_data, v1="hcr", v2=NA, v3=NA, common_
     return(plot+custom_theme)
 }
 
-plot_atage_trajectory_ternary <- function(data, segments, col_names){
-    axis_names = names(data)[6:8]
-    return(
-        ggplot(data, aes(x=.data[[col_names[1]]], y=.data[[col_names[2]]], z=.data[[col_names[3]]], color=hcr))+
-            coord_tern(Tlim=c(0, 1), Llim=c(0, 1), Rlim=c(0, 1))+
-            geom_point()+
-            geom_segment(
-                data = segments, 
-                aes(x=x, y=y, z=z, xend=xend, yend=yend, zend=zend, group=hcr),
-                arrow=arrow(length = unit(3, "mm"))
-            )+
-            scale_T_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            scale_L_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            scale_R_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            facet_grid(rows=vars(om), cols=vars(hcr))+
-            labs(x=axis_names[1], y=axis_names[2], z=axis_names[3])+
-            theme_bw()+
-            theme(
-                legend.position="bottom",
-                tern.axis.arrow.show = TRUE,
-                panel.spacing.x = unit(1, "cm"),
-                panel.grid.minor = element_line(color="white")
-            )
-    
-    )
-
-}
-
-plot_atage_density_ternary <- function(data, col_names){
-    axis_names <- names(data)[6:8]
-    return(
-        ggplot(data, aes(x=.data[[col_names[1]]], y=.data[[col_names[2]]], z=.data[[col_names[3]]]))+
-            coord_tern()+
-            stat_density_tern(
-                geom='polygon',
-                aes(fill=..level..),
-                bins=100,
-            )+
-            geom_mean_ellipse(color="white")+
-            scale_fill_viridis(limits=c(0, 65))+
-            scale_T_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            scale_L_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            scale_R_continuous(breaks = seq(0, 1, 0.5), labels=seq(0, 100, 50))+
-            facet_grid(rows=vars(om), cols=vars(hcr))+
-            labs(fill="Simulation Years", x=axis_names[1], y=axis_names[2], z=axis_names[3])+
-            theme_bw()+
-            theme(
-                legend.position="bottom",
-                tern.axis.arrow.show = TRUE,
-                panel.spacing.x = unit(1, "cm"),
-                panel.grid.minor = element_line(color="white")
-            )
-    )
-}
-
 plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", by_fleet=FALSE){
     group_columns <- colnames(data)
     group_columns <- group_columns[! group_columns %in% c("sim", "value")]
@@ -578,6 +566,9 @@ plot_abc_tac <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, int
 #' 
 #' @param bias_data tibble produced from get_estimation_bias()
 #' @param type either "boxplot" or "timeseries"
+#' 
+#' @export plot_estimation_bias
+#' 
 plot_estimation_bias <- function(bias_data, type="boxplot"){
     if(type == "boxplot"){
         plot <- ggplot(bias_data)+
@@ -714,53 +705,6 @@ plot_hcr_phase_diagram <- function(data, ref_pts, v1="hcr", v2=NA, common_trajec
 
     return(plot)
 
-}
-
-plot_mse_summary <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, common_trajectory=54){
-    all_data <- bind_rows(
-        get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=spbio),
-        get_management_quantities(model_runs, extra_columns, hcr_filter, om_filter, spinup_years = common_trajectory),
-        get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=total_catch),
-        get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>% select(time, sim, L1, om, hcr, value=total_F)
-    )
-
-    ad <- all_data %>% 
-        filter(L1 %in% c("tac", "faa", "naa", "land_caa")) %>%
-        group_by(time, L1, om, hcr) %>%
-        median_qi(value, .width = interval_widths) %>%
-        reformat_ggdist_long(n=4) %>%
-        mutate(
-            L1 = factor(
-                L1,
-                levels = c("tac", "land_caa", "faa", "naa"),
-                labels = c("TAC", "Catch", "Fishing Mortality", "Spawning Biomass")
-            )
-        )
-    
-    hcr1 <- as.character((ad %>% pull(hcr) %>% unique)[1])
-    traj <- ad %>% distinct(om) %>% mutate(common=common_trajectory)
-
-    common <- ad %>% left_join(traj, by="om") %>% filter(hcr==hcr1) %>% group_by(om) %>% filter(time <= common)
-
-    plot <- ggplot(ad %>% filter(time > common_trajectory-1), aes(x=time, y=median, color=hcr))+
-        geom_line(size=0.85)+
-        geom_line(data = common, aes(x=time, y=median), size=0.85, color="black")+
-        geom_vline(data=common, aes(xintercept=common), linetype="dashed")+
-        facet_grid(cols=vars(om), rows=vars(L1), scales="free_y")+
-        facetted_pos_scales(
-            y = list(
-                scale_y_continuous(limits=c(0, 50), breaks=seq(0, 50, 10)),
-                scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 15)),
-                scale_y_continuous(limits=c(0, 0.2), breaks=seq(0, 0.20, 0.05)),
-                scale_y_continuous(limits=c(0, 320, breaks=seq(0, 320, 50)))
-            )
-        )+
-        scale_x_continuous(limits=c(0, ad %>% pull(time) %>% max))+
-        scale_color_manual(values=hcr_colors)+
-        labs(y="", x="Year", color="Management \n Strategy")+
-        coord_cartesian(expand=0)
-
-    return(plot+custom_theme)
 }
 
 plot_performance_metric_summary <- function(perf_data, v1="hcr", v2="om", is_relative=FALSE, summary_hcr="F40"){
