@@ -388,7 +388,7 @@ get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #' @param seed_list simulation seeds used in `model_runs`
 #'
-get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list){
+get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list, year=55){
 
     om_names <- om_filter
     hcr_names <- hcr_filter
@@ -418,12 +418,24 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
         return(c(ref_pts$Fref, ref_pts$Fmax, ref_pts$Bref, ref_pts$B0))
     }
 
-    avg_recruitment <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter) %>%
+    r <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter)
+    groups <- colnames(r)
+    groups <- groups[!groups %in% c("region", "rec")]
+
+    avg_recruitment <- r %>%
+        filter(L1 == "naa") %>%
+        group_by(across(all_of(groups))) %>%
+        summarise(rec=sum(rec)) %>%
         group_by(sim, om) %>%
         summarise(rec=mean(rec))
 
-    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>%
-        filter(L1 != "faa_est") %>%
+    fs <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter)
+
+    prop_fs_df <- fs %>%
+        filter(L1 == "faa_est") %>%
+        pivot_wider(names_from="fleet", values_from="F") %>%
+        mutate(total_F = Fixed + Trawl) %>%
+        pivot_longer(Fixed:Trawl, names_to="fleet", values_to="F") %>%
         group_by(time, sim, om, hcr, fleet) %>%
         mutate(
             prop_f = F/total_F
@@ -438,7 +450,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
     ref_pts_df <- prop_fs_df %>% 
         left_join(avg_recruitment, by=c("sim", "om")) %>%
         group_by(sim, om, hcr) %>%
-        reframe(rps = get_rps(om, hcr, rec, time, c(Fixed, Trawl))) %>%
+        reframe(rps = get_rps(om, hcr, rec, year, c(Fixed, Trawl))) %>%
         mutate(rp_name = rep(c("Fref", "Fmax", "Bref", "B0"), length(hcr_filter)*length(om_filter)*length(seed_list))) %>%
         pivot_wider(names_from="rp_name", values_from="rps") %>%
         group_by(om, hcr) %>%
@@ -473,7 +485,7 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
 
     b40s <- b40_tseries %>% 
         group_by(time, om) %>%
-        median_qi(B40, .width=interval_widths)
+        median_qi(rp, .width=interval_widths)
 
     return(b40s)
 
@@ -499,10 +511,12 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
 get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, ref_pt, spr_target="hcr"){
 
     get_rps <- function(om_name, hcr_name, recruitment, year, prop_fs){
+
         om <- om_list[which(om_filter == om_name)]
         hcr <- hcr_list[which(hcr_filter == hcr_name)]
 
         om <- om[[1]]
+        hcr <- hcr[[1]]
 
         joint_selret <- calculate_joint_selret(
             sel=om$dem_params$sel[year,,,,,drop=FALSE],
@@ -523,14 +537,25 @@ get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, 
         return(ref_pts[[ref_pt]])
     }
 
-    avg_recruitment <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter) %>% 
-        filter(L1 == "naa_est") %>% 
+    r <- get_recruits(model_runs, extra_columns, hcr_filter, om_filter)
+    groups <- colnames(r)
+    groups <- groups[!groups %in% c("region", "rec")]
+
+    avg_recruitment <- r %>% 
+        filter(L1 == "naa") %>% 
+        group_by(across(all_of(groups))) %>%
+        summarise(rec=sum(rec)) %>%
         group_by(sim, om, hcr) %>%
         mutate(avg_rec = unlist(lapply(slider::slide(rec, ~.x, .before=Inf), \(x) mean(x)))) %>%
         arrange(hcr, om, sim)
 
-    prop_fs_df <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>%
-        filter(L1 != "faa_est") %>%
+    fs <- get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter)
+
+    prop_fs_df <- fs %>%
+        filter(L1 == "faa_est") %>%
+        pivot_wider(names_from="fleet", values_from="F") %>%
+        mutate(total_F = Fixed + Trawl) %>%
+        pivot_longer(Fixed:Trawl, names_to="fleet", values_to="F") %>%
         group_by(time, sim, om, hcr, fleet) %>%
         mutate(
             prop_f = F/total_F
@@ -542,7 +567,8 @@ get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, 
         summarise(Fixed = mean(Fixed), Trawl=mean(Trawl))
 
     rps <- prop_fs_df %>% 
-        left_join(avg_recruitment %>% select(-c(L1)), by=c("time", "sim", "om", "hcr")) %>%
+        left_join(avg_recruitment, by=c("time", "sim", "om", "hcr")) %>%
+        rowwise() %>%
         mutate(rp = get_rps(om, hcr, avg_rec, time, c(Fixed, Trawl))) #%>% 
         # group_by(time, om) %>%
         # median_qi(B40, .width=interval_widths)
