@@ -494,3 +494,72 @@ set_factor_levels <- function(data){
         region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA"))
     )
 }
+
+
+movement_matrices <- reshape2::melt(sable_om$dem_params$movement[,,55,30,1,drop=FALSE]) %>%
+    rename(start="region") %>%
+    rename(end="region") %>%
+    select(start, end, time, value) %>%
+    bind_rows(
+        reshape2::melt(sable_om$dem_params$move[,,55+15,30,1,drop=FALSE]) %>%
+            rename(start="region") %>%
+            rename(end="region") %>%
+            select(start, end, time, value)
+    ) %>%
+    bind_rows(
+        reshape2::melt(sable_om$dem_params$move[,,55+50,30,1,drop=FALSE]) %>%
+            rename(start="region") %>%
+            rename(end="region") %>%
+            select(start, end, time, value)
+    ) %>%
+    as_tibble() %>%
+    mutate(
+        scenario = "AB Movement"
+    ) %>%
+    bind_rows(
+        reshape2::melt(om_climate_movement$dem_params$movement[,,55,30,1,drop=FALSE]) %>%
+            rename(start="region") %>%
+            rename(end="region") %>%
+            select(start, end, time, value) %>%
+            bind_rows(
+                reshape2::melt(om_climate_movement$dem_params$movement[,,55+15,30,1,drop=FALSE]) %>%
+                    rename(start="region") %>%
+                    rename(end="region") %>%
+                    select(start, end, time, value)
+            ) %>%
+            bind_rows(
+                reshape2::melt(om_climate_movement$dem_params$movement[,,55+50,30,1,drop=FALSE]) %>%
+                    rename(start="region") %>%
+                    rename(end="region") %>%
+                    select(start, end, time, value)
+            ) %>%
+            as_tibble() %>%
+            mutate(
+                scenario = "Climate Movement"
+            )
+    ) %>%
+    mutate(
+        scenario=factor(scenario),
+        time = factor(time, labels=c("Initial", "Mid", "Final"))
+    ) %>%
+
+    ggplot()+
+        geom_tile(aes(x=start, y=end, fill=value))+
+        geom_text(aes(x=start, y=end, label=round(value, 2)), size=5)+
+        scale_fill_continuous(palette="Reds", limits=c(0, 1))+
+        coord_cartesian(expand=0)+
+        # facet_wrap(~time, ncol=1, strip.position="left")+
+        facet_grid(scenario~time, switch="y")+
+        guides(alpha="none", fill=guide_colorbar(title="", barwidth=12))+
+        labs(x = "Start Region", y="End Region")+
+        custom_theme+
+        theme(
+            axis.text.x = element_text(angle=45, hjust=1)
+        )
+
+library(patchwork)
+
+map <- plot_alaska_map()
+
+movement_matrices + map + plot_layout(nrow=1, guides="collect") & theme(legend.position="bottom")
+ggsave(file.path(figures_dir, "movement.jpeg"), width=20, height=height_medium, units="in")
