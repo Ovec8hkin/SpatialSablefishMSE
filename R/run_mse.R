@@ -241,7 +241,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                 #             )
                 #         })
 
-                rISS <- matrix(rep(c(200, 100, 200, 100), nyears), nrow=nyears, byrow=TRUE)
+                rISS <- matrix(rep(om$model_options$obs_pars$ac_samps, nyears), nrow=nyears, byrow=TRUE)
 
                 suppressMessages({
                     input_list <- generate_RTMB_inputs(

@@ -24,7 +24,7 @@ rpw_moving_average <- function(survey_obs, y, window_size=5){
 #' Set a temporally fixed regional ABC apportionment.
 #' 
 #' @param app fixed regional apportionment (dim [1, nregions])
-#' @param ... extra posisble parameters for generalized compatability
+#' @param ... extra possible parameters for generalized compatability
 #' with other apportionment functions
 #' 
 #' @return vector of regional apportionment
