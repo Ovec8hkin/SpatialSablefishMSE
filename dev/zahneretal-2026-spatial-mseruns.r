@@ -108,6 +108,8 @@ convergence <- get_convergence_data(
     hcr_filter,
     om_filter
 )
+write_csv(convergence, file.path("data", "zahneretal_2026_spatialmse_convergence.csv"))
+
 
 unconverged <- convergence %>% filter(!converged)
 converged_sims <- convergence %>% filter(converged) %>% pull(sim) %>% unique()
@@ -385,7 +387,7 @@ catch_data %>% filter_times(time_horizon) %>%
 #############################################
 #############################################
 #############################################
-econ_data <- get_dynamic_economic_value(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+econ_data <- get_dynamic_economic_value(model_runs=NULL, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
 econ_data <- econ_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -428,11 +430,13 @@ make_econ_plot <- function(econ_data){
         )+
         ggh4x::facetted_pos_scales(
             y = list(
-                scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
-                scale_y_continuous(limits=c(0, 3), breaks=seq(0, 2, 0.5)),
-                scale_y_continuous(limits=c(0, 2), breaks=seq(0, 2, 0.5)),
-                scale_y_continuous(limits=c(0, 6), breaks=seq(0, 6, 2)),
-                scale_y_continuous(limits=c(0, 6), breaks=seq(0, 6, 2))
+                scale_y_continuous(limits=c(0, 30), breaks=seq(0, 30, 10)),
+                scale_y_continuous(limits=c(0, 40), breaks=seq(0, 40, 10)),
+                scale_y_continuous(limits=c(0, 30), breaks=seq(0, 30, 10)),
+                scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 30)),
+                scale_y_continuous(limits=c(0, 100), breaks=seq(0, 100, 30))
+                # scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 20)),
+                # scale_y_continuous(limits=c(0, 60), breaks=seq(0, 60, 20))
             )
         )+
         theme(
@@ -442,7 +446,7 @@ make_econ_plot <- function(econ_data){
         )
 
     econ_agg_plot <- plot_econ_value(econ_data, v1="hcr", v2="om", common_trajectory = common_trajectory)+
-        scale_y_continuous(limits=c(0, 15))+
+        scale_y_continuous(limits=c(0, 200))+
         ggh4x::facet_nested(
             rows=vars(region), 
             cols=vars(Recruitment, Movement), 
@@ -510,7 +514,7 @@ recruit_data <- recruit_data %>% separate(om, c("Recruitment", "Movement"), sep=
 
 reg_rec_plots <- plot_recruitment(recruit_data, v1="hcr", v2="om", v3="region", common_trajectory = common_trajectory)
 
-recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", show_est=TRUE, common_trajectory = common_trajectory)+
+recruit_agg_plot <- plot_recruitment(recruit_data, v1="hcr", v2="om", show_est=FALSE, common_trajectory = common_trajectory)+
     scale_y_continuous("Recruits (millions)", limits=c(0, 100))+
     facet_wrap(~om, ncol=1)+
     labs(title="Alaska-Wide Recruitment")+
@@ -526,7 +530,7 @@ recruit_agg_plot + reg_rec_plots +
 ggsave(filename=file.path(figures_dir, paste0("recruitment", filetype)), width=16, height=8, units=c("in"))
 
 get_estimation_bias(recruit_data, om_em_cols=c("naa", "naa_est"), value_col="rec", time_horizon) %>%
-    plot_estimation_bias(type="trajectory")
+    plot_estimation_bias(type="boxplot")
 
 get_estimation_bias(recruit_data, om_em_cols=c("naa", "naa_est"), value_col="rec", time_horizon) %>%
     group_by(om, hcr) %>%
@@ -557,7 +561,7 @@ plot_random_recruitment_trajectories(recruit_data, seed_list, 5, time_horizon)
 #############################################
 #############################################
 #############################################
-abc_tac_land <- get_management_quantities(model_runs=NULL, extra_columns, hcr_filter=c("F40Test", "F40 Hybrid"), om_filter=c("BH Recruit | AB Move", "Regime Recruit | AB Move", "Crash Recruit | AB Move"))
+abc_tac_land <- get_management_quantities(model_runs=NULL, extra_columns, hcr_filter=hcr_filter, om_filter=om_filter)
 abc_tac_land <- abc_tac_land %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
@@ -705,12 +709,14 @@ ggsave(file.path(here::here(), "figures", "average_age.jpeg"), width=width_large
 #############################################
 #############################################
 #############################################
-napg_data <- get_numbers_at_age(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms)
+napg_data <- get_numbers_at_age(model_runs=NULL, extra_columns, hcr_filter=publication_hcrs, om_filter=publication_oms, pop_or_catch = "catch")
 napg_data <- napg_data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE) %>%
     mutate(
         Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
         Movement = factor(Movement, levels=c("AB Move", "Climate Move"))
     )
+
+write_csv(napg_data, file.path("data", "zahneretal_2026_spatialmse_napg_cat.csv"))
 
 napg_data <- read_csv(file.path("data", "zahneretal_2026_spatialmse_napg.csv")) %>%
     mutate(
@@ -746,11 +752,11 @@ make_napg_plot <- function(napg_data){
         # scale_y_continuous(limits=c(0, 25))+
         ggh4x::facetted_pos_scales(
             y = list(
-                scale_y_continuous(limits=c(0, 15)),
-                scale_y_continuous(limits=c(0, 15)),
-                scale_y_continuous(limits=c(0, 10)),
-                scale_y_continuous(limits=c(0, 25)),
-                scale_y_continuous(limits=c(0, 25))
+                scale_y_continuous(limits=c(0, 2.5)),
+                scale_y_continuous(limits=c(0, 2.5)),
+                scale_y_continuous(limits=c(0, 1.5)),
+                scale_y_continuous(limits=c(0, 7.5)),
+                scale_y_continuous(limits=c(0, 7.5))
             )
         )+
         theme(
@@ -767,7 +773,7 @@ make_napg_plot <- function(napg_data){
         )+
         guides(color="none", shape="none")+
         labs(y="Number Grade 7+ Individuals")+
-        scale_y_continuous(limits=c(0, 45))+
+        scale_y_continuous(limits=c(0, 18))+
         theme(
             strip.background.x = element_blank(),
             strip.text.x = element_blank()
