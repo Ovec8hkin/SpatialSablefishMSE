@@ -224,10 +224,10 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
     price_data_max <- matrix(c(price_age_f_max, price_age_m_max), nrow=length(price_age_f_max), ncol=2)
     dimnames(price_data_max) <- list("age"=2:31, "sex"=c("F", "M"))
     
-    max_price <- max(c(price_age_f_max, price_age_m_max))
-    price_data_low <- price_data_low/price_data_max
-    price_data_max <- price_data_max/max_price
-    price_data_low <- price_data_max*price_data_low
+    # max_price <- max(c(price_age_f_max, price_age_m_max))
+    # price_data_low <- price_data_low/price_data_max
+    # price_data_max <- price_data_max/max_price
+    # price_data_low <- price_data_max*price_data_low
 
     return(
         process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process) %>%
@@ -258,7 +258,7 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
 #'
 #' @export get_numbers_at_age
 #'
-get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop"){
     process <- function(data){
         data %>%
             mutate(
@@ -273,9 +273,11 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter)
             summarise(value=sum(value))
     }
 
+    v = ifelse(pop_or_catch == "pop", "naa", "caa")
+
     group_columns <- c("time", "class", "region", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
             
     )
