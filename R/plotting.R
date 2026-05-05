@@ -1230,14 +1230,19 @@ annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax
 
 plot_timeseries <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", ylab=""){
 
-    hcr1 <- as.character((data %>% pull(hcr) %>% unique)[1])
+    hcr1 <- as.character((data %>% dplyr::pull(hcr) %>% unique)[1])
 
     traj_column <- ifelse(is.na(v3), v2, v3)
     traj <- data %>% distinct(eval(rlang::parse_expr(traj_column))) %>% mutate(common=common_trajectory) %>% rename(!!traj_column := 1)
 
     common <- data %>% left_join(traj, by=traj_column) %>% filter(hcr==hcr1) %>% group_by(eval(rlang::parse_expr(v2))) %>% filter(time <= common)
 
-    base_hcr_d <- data %>% filter(hcr == base_hcr)
+    if(base_hcr %in% as.character(data %>% dplyr::pull(hcr) %>% unique)){
+        base_hcr_d <- data %>% filter(hcr == base_hcr)
+    }else{
+        base_hcr_d <- data %>% filter(hcr == hcr1)
+    }
+    
 
     plot <- ggplot(data) + 
         geom_line(data = base_hcr_d, aes(x=time, y=median, ymin=lower, ymax=upper, group=.data[[v1]], color=.data[[v1]]), size=0.85)+
