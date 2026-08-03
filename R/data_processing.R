@@ -247,7 +247,7 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
         data %>%
             group_by(across(all_of(c("time", group_columns)))) %>%
             mutate(tot_catch = sum(value)) %>%
-            filter(fleet == "Fixed") %>%
+            # filter(fleet == "Fixed") %>%
             left_join(
                 reshape2::melt(price_data_low) %>% rename(min_price=value),
                 by = c("age", "sex")
@@ -260,7 +260,7 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
             mutate(
                 dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
             ) %>%
-            group_by(across(all_of(c("time", "region", group_columns)))) %>%
+            group_by(across(all_of(c("time", "region", "fleet", group_columns)))) %>%
             summarise(total_value = sum(dyn_price*value))
     }
 
