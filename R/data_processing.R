@@ -327,7 +327,7 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter,
 
     v = ifelse(pop_or_catch == "pop", "naa", "caa")
 
-    group_columns <- c("time", "class", "region", "sim", "L1", names(extra_columns))
+    group_columns <- c("time", "class", "fleet", "region", "sim", "L1", names(extra_columns))
     return(
         process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
