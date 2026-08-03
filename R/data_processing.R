@@ -369,10 +369,10 @@ get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, po
     )
 }
 
-#' Get Timeseries of Dynamic Economic Value
+#' Get Timeseries of Dynamic Price
 #' 
-#' Process MSE simulations for dynamic economic value (Goethel et al. 2025).
-#' Economic value calculated as a linear adjustment in price by size grade
+#' Process MSE simulations for dynamic price (Goethel et al. 2025).
+#' Price calculated as a linear adjustment in price by size grade
 #' between a max price achieved at low total landings and a min price achieved
 #' at high total landings. Value is calculated only for the Fixed gear fleet. 
 #'
@@ -381,7 +381,7 @@ get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, po
 #' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #'
-#' @export get_dynamic_economic_value
+#' @export get_average_dynamic_price
 #'
 get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_filter){
     process <- function(data){
