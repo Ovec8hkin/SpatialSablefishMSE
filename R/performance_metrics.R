@@ -304,7 +304,8 @@ prop_low_biomass <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
+    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter)
+    all_ssb <- ssb_data %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
                         select(-c("L1", "biomass")) %>%
@@ -312,18 +313,20 @@ prop_low_biomass <- function(
     
     group_columns <- c("sim", summarise_by)
 
+    threshold <- all_ssb %>% filter(time == 1) %>% group_by(across(all_of(summarise_by))) %>% summarise(spbio=mean(spbio)) %>% mutate(threshold=0.35*spbio)
     #threshold <- all_ssb %>% filter(time == 1) %>% pull(spbio) %>% min
-    threshold <- 0.35*299.901
+    # threshold <- 0.35*299.901
 
     prop_years_low_biomass <- all_ssb %>% 
         filter_times(time_horizon=time_horizon) %>%
+        left_join(threshold %>% select(-spbio), by=summarise_by) %>%
         mutate(
             low_bio = spbio <= threshold
         ) %>%
-        group_by(sim, om, hcr) %>%
+        group_by(across(all_of(group_columns))) %>%
         summarise(
             total_low_bio = sum(low_bio),
-            prop_years = total_low_bio/(time_horizon[2]-time_horizon[1])
+            prop_years = total_low_bio/(time_horizon[2]-time_horizon[1]+1)
         ) %>%
         relativize_performance(
             rel_column = "hcr",
