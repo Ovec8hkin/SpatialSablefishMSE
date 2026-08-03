@@ -1296,4 +1296,21 @@ plot_timeseries <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, 
     return(plot+custom_theme)
 }
 
-
+plot_regional_props <- function(prop_data){
+    ggplot(prop_data)+
+        geom_bar(aes(y="1", x=prop, fill=region), stat="identity", position="fill")+
+            scale_color_manual(values=hcr_colors)+
+            scale_x_continuous(labels=seq(0, 1, 0.25))+
+            coord_cartesian(expand=0)+
+            ggh4x::facet_nested(
+                cols=vars(hcr), 
+                rows=vars(Recruitment, Movement), 
+            )+
+            custom_theme+
+            theme(
+                axis.title.y = element_blank(),
+                axis.text.y = element_blank(),
+                axis.ticks.y = element_blank(),
+                panel.spacing.x = unit(15, "pt"),
+            )
+}
