@@ -868,3 +868,77 @@ get_estimation_bias <- function(data, om_em_cols, value_col, time_horizon){
         ) %>%
         select(-om_em_cols[1])
 }
+
+#' Calculate Proportion of Value Attributable to Each Region
+#' 
+#' Calculates the proportion of a given value (e.g., catch, SSB, recruitment) 
+#' attributable to each region. This is done by summing the values across all 
+#' regions for each simulation and time step, and then dividing the value for 
+#' each region by the total value. The function also calculates the difference 
+#' in proportions between two movement scenarios (e.g., "Base Move" and "Climate Move") 
+#' and scales this difference by the proportion under the base movement scenario.
+#' 
+#' @param data tibble of output data with regional values (e.g. from get_ssb_biomass, get_landed_catch, etc.)
+#' @param val_name name of column in data containing values to calculate proportions for
+#' 
+#' @return tibble of proportions by region, movement scenario, and other grouping variables
+#' 
+#' @export calculate_regional_props
+#' 
+calculate_regional_props <- function(data, val_name){
+    data %>%
+        pivot_wider(names_from=region, values_from=val_name) %>%
+        rowwise() %>%
+        mutate(alaska = sum(across(BS:EGOA))) %>%
+        mutate(across(BS:EGOA, ~ .x/alaska)) %>%
+        filter_times(time_horizon) %>%
+        pivot_longer(BS:EGOA, names_to="region", values_to="prop") %>%
+        select(-alaska, -om) %>%
+        pivot_wider(names_from="Movement", values_from="prop") %>%
+        mutate(
+            delta = (`Climate Move`-`Base Move`),
+            scaled_delta = delta/`Base Move`
+        ) %>%
+        pivot_longer(cols=c(`Base Move`, `Climate Move`), names_to="Movement", values_to="prop") %>% 
+        group_by(Recruitment, Movement, hcr, region) %>%
+        median_qi(prop, delta, scaled_delta, .width = interval_widths) %>%
+        reformat_ggdist_long(n=4)
+}
+
+#' Decompose Changes in Value into Quantity and Quality Effects
+#' 
+#' Calculates the quantity and quality effects of changes in a given value 
+#' (e.g., catch, SSB, recruitment) over time. 
+#' The quantity effect is the change in value due to changes in the quantity of individuals, 
+#' while the quality effect is the change in value due to changes in the average quality 
+#' (e.g., age) of individuals. Output is analagous to calculations reported in NPFMC
+#' Econ SAFE reports.
+#' 
+#' @param quantity_data tibble of output data with quantity values (e.g., from get_ssb_biomass, get_landed_catch, etc.)
+#' @param quality_data tibble of output data with quality values (e.g., from get_average_age, get_average_dynamic_price, etc.)
+#' @param val_name name of column in quantity_data containing values to decompose
+#'
+#' @return tibble of quantity and quality effects over time, summarised across simulations
+#' 
+#' @export calculate_decomp
+#' 
+calculate_decomp <- function(quantity_data, quality_data, val_name){
+    quantity_data %>%
+        filter_times(time_horizon) %>%
+        left_join(quality_data, by=c("time", "sim", "om", "Recruitment", "Movement", "hcr", "region")) %>%
+        group_by(sim, om, Recruitment, Movement, hcr, region) %>%
+        mutate(
+            start_quality = first(avg_age),
+            start_quantity = first(eval(rlang::parse_expr(val_name)))
+        ) %>%
+        filter(time %in% seq(55, 105, 10)) %>%
+        group_by(time, sim, om, Recruitment, Movement, hcr, region) %>%
+        summarise(
+            quality_effect = (avg_age - start_quality)*start_quantity,
+            quantity_effect = (eval(rlang::parse_expr(val_name)) - start_quantity)*start_quality,
+            net_effect = quality_effect + quantity_effect
+        ) %>%
+        group_by(time, om, Recruitment, Movement, hcr, region) %>%
+        median_qi(quality_effect, quantity_effect, net_effect, .width = interval_widths) %>%
+        reformat_ggdist_long(n=6)
+}
