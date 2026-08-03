@@ -152,6 +152,53 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     )
 }
 
+#' Get Catch and Population Numbers
+#' 
+#' Process MSE simulations for landed catches by fleet in numbers of fish.
+#' Total landed catch in numbers across fleets is also computed. Numbers
+#' caught are calculated as C = N*(1-exp(-F*v)), where N is the number of fish 
+#' in the population, F is the fishing mortality rate.
+#'
+#' @param model_runs list of completed MSE simulation objects
+#' @param extra_columns additional columns to append to output
+#' @param hcr_filter vector of HCR names to process (must match names in `extra_columns`)
+#' @param om_filter vector of OM names to process (must match names in `extra_columns`)
+#'
+#' @export get_catch_pop_numbers
+#'
+get_catch_pop_numbers <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
+    process <- function(data){
+        data %>% as_tibble() %>%
+            pivot_wider(names_from=L1, values_from=value) %>%
+            # left_join(
+            #     melt(dem_params$sel, value.name="selectivity"),
+            #     by=c("time", "age", "sex", "region", "fleet")
+            # ) %>%
+            mutate(
+                true_faa = faa#*selectivity
+            ) %>%
+            group_by(across(all_of(c(group_columns, "age", "sex")))) %>%
+            mutate(faa = sum(true_faa, na.rm=TRUE)) %>%
+            filter(is.na(fleet)) %>%
+            select(-fleet, -true_faa) %>%
+            mutate(
+                dead = naa*(1-exp(-faa))
+            ) %>%
+            group_by(across(all_of(group_columns))) %>%
+            summarise(
+                total_dead = sum(dead, na.rm=TRUE),
+                total_num = sum(naa, na.rm=TRUE)
+            )
+            # select(-faa, -dead, -naa)
+    }
+    group_columns <- c("time", "region", "sim", names(extra_columns)) 
+
+    return(
+        process_big_outputs(model_runs, c("naa", "faa"), extra_columns, hcr_filter, om_filter, process) %>%
+            format(hcr_filter, om_filter)
+    )
+}
+
 #' Get ABC, TAC, and Expected Landings
 #' 
 #' Process MSE simulations for ABC, TAC, and expected 
