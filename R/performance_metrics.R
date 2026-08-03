@@ -708,7 +708,9 @@ average_annual_catch_variation <- function(
     avg_catch_var <- get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>%
         filter_times(time_horizon = time_horizon) %>%
         round_to_zero("total_catch") %>%
-        group_by(across(all_of(group_columns))) %>%
+        group_by(across(all_of(c("time", group_columns)))) %>%
+        summarise(total_catch = sum(total_catch)) %>%
+        group_by(across(all_of(c(group_columns)))) %>%
         summarise(
             aav = aav(total_catch)
         ) %>%
