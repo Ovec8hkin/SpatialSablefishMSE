@@ -1,7 +1,7 @@
 plot_ssb <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
-    d <- data %>% distinct(.keep_all=TRUE) %>% select(-biomass)
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass", "dep", "ssb0")]
+    d <- data %>% distinct(.keep_all=TRUE) %>% select(-biomass, -dep, -ssb0)
 
     if(!is.null(time_horizon)){
         d <- d %>% filter_times(time_horizon)
@@ -98,7 +98,7 @@ plot_average_age <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54,
 
 plot_numbers_at_pricegrade <- function(data, v1="hcr", v2=NA, v3=NA, price_grade="Grade 1/2 (1-2yo)", common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "value")]
+    group_columns <- group_columns[! group_columns %in% c("sim", "fleet", "value")]
     d <- data %>% distinct(.keep_all=TRUE)
 
     if(!is.null(time_horizon)){
@@ -143,29 +143,61 @@ plot_numbers_at_pricegrade <- function(data, v1="hcr", v2=NA, v3=NA, price_grade
     return(plot)
 }
 
-plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="F40", scales="fixed"){
+plot_depletion <- function(data, v1="hcr", v2=NA, v3=NA, show_est=FALSE, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass")]
-    d <- data
-    if(is.na(v3)){
-        group_columns <- group_columns[group_columns != "region"]
-        d <- d %>% group_by(across(all_of(c(group_columns, "sim")))) %>% summarise(spbio=sum(spbio), biomass=sum(biomass))
+    group_columns <- group_columns[! group_columns %in% c("sim", "spbio", "biomass", "dep", "ssb0")]
+    d <- data %>% distinct(.keep_all=TRUE) %>% select(-biomass, -spbio, -ssb0)
+
+    if(!is.null(time_horizon)){
+        d <- d %>% filter_times(time_horizon)
     }
+
+    if(is.na(v3)){
+        groups <- group_columns[group_columns != "region"]
+        d <- d %>% 
+            group_by(across(all_of(c(groups, "sim")))) %>% 
+            summarise(
+                spbio=sum(spbio),
+                ssb0=sum(ssb0),
+                dep = spbio/ssb0
+            ) %>% 
+            mutate(region="Alaska")
+        v3 <- "region"
+    }
+
+    # Relativize to specific HCR
+    hcrs <- d %>% distinct(hcr) %>% pull
+    if(!is.na(relative) && relative %in% hcrs){
+        d <- d %>% 
+            relativize_performance(
+                rel_column="hcr", 
+                value_column="dep", 
+                rel_value=relative, 
+                grouping=c("sim", group_columns)
+            )
+    }
+
     # Plot spawning biomass from OM and EM
     d <- d %>%
-        select(-c("biomass")) %>%
-        group_by(across(all_of(group_columns[group_columns != "time"]))) %>%
-        mutate(dep=spbio/spbio[time==1]) %>%
-        ungroup() %>%
-        # Compute quantiles of SSB distribution
         group_by(across(all_of(group_columns))) %>%
         median_qi(dep, .width=interval_widths, .simple_names=FALSE) %>%
-        # Reformat ggdist tibble into long format
         reformat_ggdist_long(n=length(group_columns))
 
-    return(
-        plot_timeseries(d, v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Average Age (Years)")
-    )
+    plot <- plot_timeseries(d %>% filter(L1 == "naa"), v1, v2, v3, common_trajectory, interval_widths, base_hcr, ylab="Depletion (SSB/SSB0)")
+    
+    if(show_est){
+        plot <- plot + geom_pointrange(
+                            data = d %>% filter(L1 == "naa_est"), 
+                            aes(x=time, y=median, ymin=lower, ymax=upper, color=hcr), 
+                            alpha=0.35
+                        )
+    }
+    
+    if(!is.na(relative)){
+        plot <- plot+geom_hline(yintercept=1, linetype="dashed")
+    }
+
+    return(plot)
 }
 
 plot_relative_ssb <- function(data, v1="hcr", v2=NA, common_trajectory=54, interval_widths=c(0.50, 0.80), base_hcr="No Fishing"){
@@ -397,7 +429,7 @@ plot_landed_catch <- function(data, v1="hcr", v2=NA, v3=NA, by_fleet=FALSE, comm
 
 plot_econ_value <- function(data, v1="hcr", v2=NA, v3=NA, common_trajectory=54, time_horizon=NULL, interval_widths=c(0.50, 0.80), base_hcr="F40", relative=NA){
     group_columns <- colnames(data)
-    group_columns <- group_columns[! group_columns %in% c("sim", "total_value")]
+    group_columns <- group_columns[! group_columns %in% c("sim", "fleet", "total_value")]
     d <- data %>% distinct(.keep_all=TRUE)
 
     if(!is.null(time_horizon)){
@@ -1161,11 +1193,11 @@ plot_alaska_map <- function(regions = c("BS", "AI", "WGOA", "CGOA", "EGOA")){
         labs(x = "Longitude", y = "Latitude")+
         theme(
             legend.position = "none",
-            axis.text = element_blank(),
-            axis.ticks = element_blank(),
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            panel.background = element_blank(),
+            # axis.text = element_blank(),
+            # axis.ticks = element_blank(),
+            # axis.title = element_blank(),
+            panel.grid = element_line(color = "gray80", size = 0.5),
+            panel.background = element_blank()
         )
     
     return(map)
