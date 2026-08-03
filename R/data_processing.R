@@ -349,7 +349,7 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter,
 #'
 #' @export get_average_age
 #'
-get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop"){
     process <- function(data){
         data %>% filter_times(time_horizon=time_horizon) %>%
             ungroup() %>%
@@ -361,8 +361,10 @@ get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter){
             )
     }
 
+    v = ifelse(pop_or_catch == "pop", "naa", "caa")
+
     return(
-        process_big_outputs(model_runs, c("naa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
     )
 }
