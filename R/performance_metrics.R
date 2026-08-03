@@ -1276,7 +1276,7 @@ performance_metric_summary <- function(
         "SSB"="spbio", 
         "Proportion of Years SSB < B35"="prop_years", 
         "Catch AAV"="aav", 
-        "Proportion Large Catch"="catch", 
+        "Proportion Large Catch"="prop_large", 
         "Proportion Old Biomass"="bio", 
         "Annual Value"="annual_value", 
         "Dynamic Annual Value"="dyn_annual_value", 
