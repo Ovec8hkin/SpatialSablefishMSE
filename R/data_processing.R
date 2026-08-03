@@ -1,7 +1,8 @@
 #' Get Spawning Biomass and Total Biomass
 #' 
 #' Process MSE simulations for spawning biomass,
-#' and total stock biomass.
+#' total stock biomass, and depletion. Depletion calculated as the ratio
+#' of annual SSB to SSB in timestep 1.
 #'
 #' @param model_runs list of completed MSE simulation objects
 #' @param extra_columns additional columns to append to output
@@ -53,9 +54,13 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
         dimnames=c(dimnames(dem_params$mat)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
     )
 
-    return(
-        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
+    out <- process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
             format(hcr_filter, om_filter)
+
+    ssb0 <- out %>% filter(time == 1) %>% select(sim, L1, om, hcr, region, ssb0=spbio)
+
+    return(
+        out %>% left_join(ssb0, by=c(group_columns[-1], "region")) %>% mutate(dep=spbio/ssb0)
     )
 }
 
