@@ -274,3 +274,35 @@ format <- function(data, hcr_filter, om_filter){
                 hcr = factor(hcr, levels=hcr_filter)
             )
 }
+
+#' Separate OM Name into Recruitment and Movement Components
+#' 
+#' Separates `om` column in dataframe into two new columns, 
+#' `Recruitment` and `Movement`, based on the OM name format.
+#' Works only for OM names that follow the format "Recruitment | Movement".
+#' 
+#' @param data dataframe of processed MSE data
+#' 
+#' @export separate_om_name
+#' 
+separate_om_name <- function(data){
+    data %>% separate(om, c("Recruitment", "Movement"), sep=c("\\s[|]\\s"), remove=FALSE)
+}
+
+#' Set Default Factor Levels and Names for Processed MSE Data
+#' 
+#' Sets default factor levels and names for `Recruitment`, `Movement`, 
+#' `region`, and `hcr` columns in a dataframe of processed MSE data. 
+#' 
+#' @param data dataframe of processed MSE data
+#' 
+#' @export set_factor_levels
+#' 
+set_factor_levels <- function(data){
+    data %>% mutate(
+        Recruitment = factor(Recruitment, levels=c("BH Recruit", "Regime Recruit", "Crash Recruit")),
+        Movement = factor(Movement, levels=c("AB Move", "Base Move", "Climate Move"), labels=c("Base Move", "Base Move", "Climate Move")),
+        region = factor(region, levels=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")),
+        hcr = factor(hcr, levels=publication_hcrs),
+    )
+}
