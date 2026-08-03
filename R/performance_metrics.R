@@ -772,62 +772,37 @@ average_proportion_catch_large <- function(
     process <- function(data){
         data %>% filter_times(time_horizon = time_horizon) %>%
             mutate(
-                size_group = case_when(
-                    age < 5 ~ "Small",
-                    age < 9 ~ "Medium",
-                    TRUE ~ "Large"
-                )
+                price_grade = factor(
+                    case_when(age < 3 ~ "1/2", age < 5 ~ "2/3", age < 7 ~ "3/4", age < 9 ~ "4/5", age < 15 ~ "5/7", age > 14 ~ "7+"), 
+                    levels=c("1/2", "2/3", "3/4", "4/5", "5/7", "7+"), 
+                    labels=c("Grade 1/2 (1-2yo)", "Grade 2/3 (3-4yo)", "Grade 3/4 (5-6yo)", "Grade 4/5 (7-8yo)", "Grade 5/7 (9-14yo)", "Grade 7+ (15+yo)")
+                ),
+                L1 = factor(L1, levels=c("caa", "naa"))
             ) %>%
-            group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
-            summarise(total_catch = sum(value)) %>%
+            group_by(across(all_of(c("time", "price_grade", group_columns)))) %>%
+            summarise(pg_catch = sum(value)) %>%
             ungroup() %>%
-            pivot_wider(names_from = "size_group", values_from="total_catch") %>%
-            rowwise() %>%
-            mutate(
-                total_catch = sum(Large, Medium, Small)
-            ) %>%
-            round_to_zero("total_catch") %>%
-            mutate(across(Large:Small, ~ ./total_catch)) %>%
-            round_to_zero("Large") %>%
-            round_to_zero("Medium") %>%
-            round_to_zero("Small")
+            group_by(across(all_of(c("time", group_columns)))) %>%
+            mutate(total_catch = sum(pg_catch)) %>%
+            filter(price_grade == c("Grade 7+ (15+yo)")) %>%
+            mutate(prop_large = pg_catch/total_catch) %>%
+            round_to_zero("prop_large")
     }
     
     group_columns <- c("sim", summarise_by)
     prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
-        # filter_times(time_horizon = time_horizon) %>%
-        # mutate(
-        #     size_group = case_when(
-        #         age < 5 ~ "Small",
-        #         age < 9 ~ "Medium",
-        #         TRUE ~ "Large"
-        #     )
-        # ) %>%
-        # group_by(across(all_of(c("time", "size_group", group_columns)))) %>%
-        # summarise(total_catch = sum(value)) %>%
-        # ungroup() %>%
-        # pivot_wider(names_from = "size_group", values_from="total_catch") %>%
-        # rowwise() %>%
-        # mutate(
-        #     total_catch = sum(Large, Medium, Small)
-        # ) %>%
-        # round_to_zero("total_catch") %>%
-        # mutate(across(Large:Small, ~ ./total_catch)) %>%
-        # round_to_zero("Large") %>%
-        # round_to_zero("Medium") %>%
-        # round_to_zero("Small") %>%
         select(-total_catch) %>%
-        ungroup() %>%
-        pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
+        # ungroup() %>%
+        # pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
         relativize_performance(
             rel_column = "hcr",
-            value_column = "catch",
+            value_column = "prop_large",
             rel_value = relative,
-            grouping = c("size_group", group_columns)
-        ) %>%
-        filter(size_group == "Large")
+            grouping = c("price_grade", group_columns)
+        )
+        # filter(size_group == "Large")
 
     if(!is.null(extra_filter)){
         prop_lg_catch <- prop_lg_catch %>% filter(eval(extra_filter))
@@ -837,7 +812,7 @@ average_proportion_catch_large <- function(
     if(summary_out){
         out <- prop_lg_catch %>%
             group_by(across(all_of(summarise_by))) %>%
-            median_qi(catch, .width=interval_widths, .simple_names=FALSE)
+            median_qi(prop_large, .width=interval_widths, .simple_names=FALSE)
     }
     
     return(out)
