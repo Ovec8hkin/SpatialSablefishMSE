@@ -1045,9 +1045,10 @@ average_annual_dynamic_value <- function(
 
     process <- function(data){
         data %>% filter_times(time_horizon = time_horizon) %>%
-            group_by(across(all_of(c("time", group_columns)))) %>%
+            # group_by(across(all_of(c("time", group_columns[-which(group_columns=="region")])))) %>%
+            group_by(across(all_of(c("time", group_columns[!(group_columns %in% "region")])))) %>%
             mutate(tot_catch = sum(value)) %>%
-            filter(fleet == "Fixed") %>%
+            # filter(fleet == "Fixed") %>%
             left_join(
                 reshape2::melt(price_data_low) %>% rename(min_price=value),
                 by = c("age", "sex")
@@ -1060,10 +1061,12 @@ average_annual_dynamic_value <- function(
             mutate(
                 dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
             ) %>%
+            group_by(across(all_of(c("time", "region", group_columns)))) %>%
+            summarise(dyn_annual_value = sum(dyn_price*value)) %>%
             group_by(across(all_of(c("time", group_columns)))) %>%
-            summarise(total_value = sum(dyn_price*value)) %>%
-            group_by(across(all_of(group_columns))) %>%
-            summarise(dyn_annual_value = mean(total_value))
+            summarise(dyn_annual_value = sum(dyn_annual_value))
+            # group_by(across(all_of(group_columns))) %>%
+            # summarise(dyn_annual_value = mean(total_value))
     }
 
     price_age_f_low <- c(0.597895623, 1.320303448, 1.320303448, 1.856562267, 2.610111345, 2.610111345, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875)
@@ -1076,36 +1079,16 @@ average_annual_dynamic_value <- function(
     price_data_max <- matrix(c(price_age_f_max, price_age_m_max), nrow=length(price_age_f_max), ncol=2)
     dimnames(price_data_max) <- list("age"=2:31, "sex"=c("F", "M"))
     
-    max_price <- max(c(price_age_f_max, price_age_m_max))
-    price_data_low <- price_data_low/price_data_max
-    price_data_max <- price_data_max/max_price
-    price_data_low <- price_data_max*price_data_low
+    # max_price <- max(c(price_age_f_max, price_age_m_max))
+    # price_data_low <- price_data_low/price_data_max
+    # price_data_max <- price_data_max/max_price
+    # price_data_low <- price_data_max*price_data_low
 
     group_columns <- c("sim", summarise_by)
 
     dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
-        # filter_times(time_horizon = time_horizon) %>%
-        # group_by(across(all_of(c("time", group_columns)))) %>%
-        # mutate(tot_catch = sum(value)) %>%
-        # filter(fleet == "Fixed") %>%
-        # left_join(
-        #     reshape2::melt(price_data_low) %>% rename(min_price=value),
-        #     by = c("age", "sex")
-        # ) %>%
-        # left_join(
-        #     reshape2::melt(price_data_max) %>% rename(max_price=value),
-        #     by = c("age", "sex")
-        # ) %>%
-        # rowwise() %>%
-        # mutate(
-        #     dyn_price = compute_dynamic_value(tot_catch, min_price, max_price)
-        # ) %>%
-        # group_by(across(all_of(c("time", group_columns)))) %>%
-        # summarise(total_value = sum(dyn_price*value)) %>%
-        # group_by(across(all_of(group_columns))) %>%
-        # summarise(dyn_annual_value = mean(total_value)) %>%
         relativize_performance(
             rel_column = "hcr",
             value_column = "dyn_annual_value",
