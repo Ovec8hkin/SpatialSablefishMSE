@@ -385,7 +385,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
                         naa = naa_proj,
                         waa = dp_y$waa,
                         mort = dp_y$mort,
-                        selex = joint_selret$sel,
+                        selex = array(joint_selret$sel, dim=c(dim(joint_selret$sel), 1)),
                         f_guess=0.01
                     )
                 }
