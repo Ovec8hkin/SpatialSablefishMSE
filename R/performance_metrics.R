@@ -270,7 +270,7 @@ average_ssb <- function(
 
 #' Compute proportion of years SSB is below a threshold level across projection period
 #' 
-#' Compute average proportion of years where SSB is below 0.4*SSB0
+#' Compute average proportion of years where SSB is below 0.35*SSB0
 #' (median and CIs) across all years and simulation seeds, 
 #' for each combination of operating models and management procedures. 
 #'
@@ -549,16 +549,6 @@ average_age <- function(
             as_tibble() %>%
             ungroup() %>%
             filter_hcr_om(hcr_filter, om_filter) %>%
-            # filter_times(time_horizon=time_horizon) %>%
-            # # group_by(time, age, sim, om, hcr) %>%
-            # # mutate(value = sum(value)) %>%
-            # # round_to_zero("value") %>%
-            # filter(sex == "F") %>%
-            # ungroup() %>%
-            # group_by(time, sim, hcr, om, region) %>%
-            # summarise(
-            #     avg_age = compute_average_age(value, 2:31)
-            # ) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_age",
@@ -621,7 +611,6 @@ average_abi <- function(
         data %>% filter_times(time_horizon=time_horizon) %>%
             group_by(time, age, sim, om, hcr) %>%
             mutate(value = sum(value)) %>%
-            # round_to_zero("value") %>%
             filter(sex == "F") %>%
             ungroup() %>%
             group_by(time, sim, hcr, om) %>%
@@ -632,20 +621,10 @@ average_abi <- function(
     
     group_columns <- c("sim", summarise_by)
 
-    avg_abi <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+    avg_abi <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%
             as_tibble() %>%
             ungroup() %>%
             filter_hcr_om(hcr_filter, om_filter) %>%
-            # filter_times(time_horizon=time_horizon) %>%
-            # group_by(time, age, sim, om, hcr) %>%
-            # mutate(value = sum(value)) %>%
-            # # round_to_zero("value") %>%
-            # filter(sex == "F") %>%
-            # ungroup() %>%
-            # group_by(time, sim, hcr, om) %>%
-            # summarise(
-            #     avg_abi = abi(value, ref_naa)
-            # ) %>%
             relativize_performance(
                 rel_column = "hcr",
                 value_column = "avg_abi",
@@ -792,12 +771,10 @@ average_proportion_catch_large <- function(
     }
     
     group_columns <- c("sim", summarise_by)
-    prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
         select(-total_catch) %>%
-        # ungroup() %>%
-        # pivot_longer(Large:Small, names_to="size_group", values_to="catch") %>%
         relativize_performance(
             rel_column = "hcr",
             value_column = "prop_large",
@@ -815,99 +792,6 @@ average_proportion_catch_large <- function(
         out <- prop_lg_catch %>%
             group_by(across(all_of(summarise_by))) %>%
             median_qi(prop_large, .width=interval_widths, .simple_names=FALSE)
-    }
-    
-    return(out)
-}
-
-#' Compute average proportion of population that is "Old" across projection period
-#' 
-#' Compute aaverage proportion of population that is "Old" (median and CIs) 
-#' per year across all years and simulation seeds, for each combination 
-#' of operating models and management procedures. "Old" fish are those 
-#' >21yo.
-#'
-#' @param model_runs list of completed MSE simulations runs
-#' @param extra_columns data.frame specifying names for OM and HCR to attach
-#' to each model_run (see `bind_mse_outputs` for more details)
-#' @param hcr_filter vector of HCR names to calculate metric over
-#' @param om_filter vector of OM names to calculate metric over
-#' @param interval_widths confidence intevrals to compute
-#' @param extra_filter an additional set of filters to apply before computing 
-#' medians and confidence intervals
-#' @param relative a management procedure to compute metric relative to
-#' @param summarise_by vector of columns to summarise metric by
-#' @param summary_out whether to output data summarised by `ggdist` or full data
-#' 
-#' @export average_proportion_biomass_old
-#'
-#' @example
-#'
-average_proportion_biomass_old <- function(
-    model_runs, 
-    extra_columns, 
-    dem_params,
-    hcr_filter,
-    om_filter, 
-    interval_widths=c(0.50, 0.80), 
-    time_horizon=c(65, NA), 
-    extra_filter=NULL, 
-    relative=NULL, 
-    summarise_by=c("om", "hcr"),
-    summary_out=TRUE
-){
-    
-    group_columns <- c("sim", summarise_by)
-    prop_old_biomass <- bind_mse_outputs(model_runs, "naa", extra_columns) %>%
-        as_tibble() %>%
-        filter_hcr_om(hcr_filter, om_filter) %>%
-        filter_times(time_horizon = time_horizon) %>%
-        # join WAA and maturity-at-age for computing SSB
-        left_join(
-            melt(dem_params$waa, value.name="weight"), 
-            by=c("time", "age", "sex")
-        ) %>%
-        mutate(bio = value*weight) %>%
-        mutate(
-            age_group = case_when(
-                age < 7 ~ "Young",
-                age < 21 ~ "Adult",
-                TRUE ~ "Old"
-            )
-        ) %>%
-        group_by(across(all_of(c("time", "age_group", group_columns)))) %>%
-        summarise(total_bio = sum(bio)) %>%
-        ungroup() %>%
-        pivot_wider(names_from = "age_group", values_from="total_bio") %>%
-        rowwise() %>%
-        mutate(
-            total_bio = sum(Young, Adult, Old)
-        ) %>%
-        round_to_zero("total_bio") %>%
-        mutate(across(Adult:Young, ~ ./total_bio)) %>%
-        round_to_zero("Young") %>%
-        round_to_zero("Adult") %>%
-        round_to_zero("Old") %>%
-        select(-total_bio) %>%
-        ungroup() %>%
-        pivot_longer(Adult:Young, names_to="age_group", values_to="bio") %>%
-        relativize_performance(
-            rel_column = "hcr",
-            value_column = "bio",
-            rel_value = relative,
-            grouping = c("age_group", group_columns)
-        ) %>%
-        filter(age_group == "Old")
-
-    if(!is.null(extra_filter)){
-        prop_old_biomass <- prop_old_biomass %>% filter(eval(extra_filter))
-    }
-
-    out <- prop_old_biomass
-    if(summary_out){
-        out <- prop_old_biomass %>%
-            group_by(across(all_of(summarise_by))) %>%
-            median_qi(bio, .width=interval_widths, .simple_names=FALSE)
     }
     
     return(out)
@@ -1032,25 +916,11 @@ average_annual_dynamic_value <- function(
     summarise_by=c("om", "hcr"),
     summary_out=TRUE
 ){
-    
-    compute_dynamic_value <- function(landings, min_price_age, max_price_age, breakpoints=c(15, 30)){
-        if(landings < breakpoints[1]){
-            return(max_price_age)
-        }else if(landings >= breakpoints[1] & landings <= breakpoints[2]){
-            return(
-                min_price_age + (breakpoints[2]-landings)/(breakpoints[2]-breakpoints[1])*(max_price_age-min_price_age)
-            )
-        }else{
-            return(min_price_age)
-        }
-    }
 
     process <- function(data){
         data %>% filter_times(time_horizon = time_horizon) %>%
-            # group_by(across(all_of(c("time", group_columns[-which(group_columns=="region")])))) %>%
             group_by(across(all_of(c("time", group_columns[!(group_columns %in% "region")])))) %>%
             mutate(tot_catch = sum(value)) %>%
-            # filter(fleet == "Fixed") %>%
             left_join(
                 reshape2::melt(price_data_low) %>% rename(min_price=value),
                 by = c("age", "sex")
@@ -1088,7 +958,7 @@ average_annual_dynamic_value <- function(
 
     group_columns <- c("sim", summarise_by)
 
-    dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, c("land_caa"), extra_columns) %>%
+    dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
         relativize_performance(
@@ -1155,7 +1025,6 @@ average_annual_dynamic_value <- function(
 #'      - `avg_abi` -> average ABI of the population (Griffiths et al. 2023)
 #'      - `avg_variation` -> average annual catch variation
 #'      - `avg_catch_lg` -> average proportion of catch that is "large"
-#'      - `avg_pop_old` -> average proportion of population that is "old"
 #'      - `annual_value` -> annual relative value
 #'      - `dynamic_value` -> annual dynamic value
 #'      - `crash_time` -> number of years required for population to delcine below 0.2B0
@@ -1241,12 +1110,6 @@ performance_metric_summary <- function(
         print("Done calculating Average Proportion of Catch that is Large")
     }
 
-    # Average proportion of population that is "old"
-    if(any(c("avg_pop_old", "all") %in% metric_list)){
-        avg_pop_old <- average_proportion_biomass_old(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
-        print("Done calculating Average Proportion of SSB that is Old")
-    }
-
     # Average annual value
     if(any(c("annual_value", "all") %in% metric_list)){
         annual_value <- average_annual_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
@@ -1277,7 +1140,6 @@ performance_metric_summary <- function(
         "Proportion of Years SSB < B35"="prop_years", 
         "Catch AAV"="aav", 
         "Proportion Large Catch"="prop_large", 
-        "Proportion Old Biomass"="bio", 
         "Annual Value"="annual_value", 
         "Dynamic Annual Value"="dyn_annual_value", 
         "Average ABI"="avg_abi", 

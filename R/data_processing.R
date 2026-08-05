@@ -429,70 +429,6 @@ get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_
 
 }
 
-#' Get Catch or Numbers-at-Age by Age Groups
-#' 
-#' Process MSE simulation results for -at-age by
-#' specified age groups. 
-#'
-#' @param model_runs list of completed MSE simulation objects
-#' @param extra_columns additional columns to append to output
-#' @param q either "caa" (for catch-at-age) or "naa" (for numbers-at-age)
-#' @param age_groups ages that define age groups (3 groups required)
-#' @param group_names names for each age group
-#' @param group_abbs abbreviated names for each age group
-#' @param summarise whether to summarise across simualtions or not
-#' @param make_segments whether to generate data.frame of segment for use in plotting 
-#'
-#'
-get_atage_groups <- function(model_runs, extra_columns, hcr_filter, om_filter, q, age_groups, group_names, group_abbs, spinup_years=64, summarise=FALSE, make_segments=FALSE){
-    data <- bind_mse_outputs(model_runs, c(q), extra_columns) %>%
-            as_tibble() %>%
-            filter(hcr %in% hcr_filter, om %in% om_filter) %>%
-            mutate(
-                class = factor(
-                    case_when(age < age_groups[1] ~ group_names[1], age < age_groups[2] ~ group_names[2], TRUE ~ group_names[3]), 
-                    levels=group_names, 
-                    labels=group_abbs
-                ),
-                L1 = factor(L1, levels=c("caa", "naa"), labels=c("Catch-at-Age", "Numbers-at-Age"))
-            ) %>%
-            group_by(time, class, sim, L1, hcr, om) %>%
-            summarise(value=sum(value)) %>%
-            filter(time > spinup_years) %>%
-            select(time, class, sim, hcr, om, value) %>%
-            pivot_wider(names_from="hcr", values_from="value") %>%
-            group_by(time, sim, om) %>%
-            mutate(across(3:(ncol(.)-3), ~ ./sum(.))) %>% 
-            pivot_longer(6:(ncol(.)), names_to="hcr", values_to="value") %>%
-            ungroup() %>%
-            pivot_wider(names_from="class", values_from="value")
-
-    if(summarise){
-        data <- data %>% group_by(time, hcr, om) %>%
-            filter(time > spinup_years) %>%
-            summarise(across((ncol(.)-2-3):(ncol(.)-3), ~ mean(.)))
-    }
-
-    if(make_segments){
-        segments <- data %>% as_tibble() %>% 
-            select(2:ncol(.)) %>% 
-            rename(x=3, y=4, z=5) %>%
-            group_by(om, hcr) %>%
-            mutate(
-                xend = lead(x, 1),
-                yend = lead(y, 1),
-                zend = lead(z, 1)
-            ) %>%
-            ungroup() %>%
-            arrange(om, hcr) %>%
-            drop_na()
-        
-        return(afscOM::listN(data, segments))
-    }else{
-        return(data)
-    }
-}
-
 #' Get Reference Points from MSE Simulations
 #' 
 #' Derive fishing mortality and biomass reference points
@@ -712,7 +648,9 @@ get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filte
             ungroup() %>%
             select(-L1) %>%
             left_join(
-                get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>% filter(L1 == "faa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_F),
+                get_fishing_mortalities(model_runs, extra_columns, hcr_filter, om_filter) %>% 
+                    filter(L1 == "faa", fleet == "Fixed") %>% 
+                    select(time, sim, om, hcr, total_F),
                 by = c("time", "sim", "hcr", "om"),
             )
     )
@@ -734,15 +672,10 @@ get_phaseplane_data <- function(model_runs, extra_columns, dem_params, hcr_filte
 get_hcrphase_data <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
     return(
         get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
-            # SSB is females only
-            # filter(sex == "F", L1 == "naa") %>%
-            # summarise SSB across year and sim 
-            # group_by(time, hcr, sim, L1) %>%
-            # summarise(spbio=sum(spbio)) %>%
             ungroup() %>%
             select(-L1) %>%
             left_join(
-                bind_mse_outputs(model_runs, "hcr_f", extra_columns) %>% as_tibble() %>% filter(hcr %in% hcr_filter, om %in% om_filter),
+                bind_mse_outputs(model_runs, "hcr_f", extra_columns) %>% as_tibble() %>% filter_hcr_om(hcr_filter, om_filter),
                 by = c("time", "sim", "hcr", "om"),
             ) %>%
             select(-c(Var2, Var3, region, L1))
@@ -768,7 +701,9 @@ get_phaseplane_catch_data <- function(model_runs, extra_columns, dem_params, hcr
             ungroup() %>%
             select(-L1) %>%
             left_join(
-                get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>% filter(L1 == "land_caa", fleet == "Fixed") %>% select(time, sim, om, hcr, total_catch),
+                get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>% 
+                    filter(L1 == "land_caa", fleet == "Fixed") %>% 
+                    select(time, sim, om, hcr, total_catch),
                 by = c("time", "sim", "hcr", "om"),
             )
     )
