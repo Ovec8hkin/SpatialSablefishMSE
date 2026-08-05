@@ -114,18 +114,21 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
             fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
 
         o <- bind_rows(
-            parallel::mclapply(seq_along(fs), function(i){
-                x <- fs[i]
-                # print(x)
-                m <- readRDS(x)
-                mse <- m$mse_objects
-                model_run <- list(mse[[length(mse)]])
-                if(!(model_run[[1]]$om$name %in% om_filter)){
-                    return(data.frame())
-                }
-                extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
-                out <- get_output(model_run, var, model_grid=extra_columns, process_func)
-            }, mc.cores=as.integer(min(15, parallel::detectCores()-2)))
+            mcprogress::pmclapply(seq_along(fs), function(i){
+                    x <- fs[i]
+                    # print(x)
+                    m <- readRDS(x)
+                    mse <- m$mse_objects
+                    model_run <- list(mse[[length(mse)]])
+                    if(!(model_run[[1]]$om$name %in% om_filter)){
+                        return(data.frame())
+                    }
+                    extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
+                    out <- get_output(model_run, var, model_grid=extra_columns, process_func)
+                }, 
+                spinner=TRUE,
+                mc.cores=as.integer(min(15, parallel::detectCores()-2))
+            )
         ) 
     }else{
         model_grid <- extra_columns
