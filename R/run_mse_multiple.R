@@ -44,6 +44,15 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
             nsims2 <- length(seeds)
             mse_run <- run_mse_parallel(nsims2, seeds, om, hcr, mse_options=opt, diagnostics=diagnostics)
             
+            file_pattern <- paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr$name))), "_\\d+",".RDS")
+            if(overwrite){
+                file.remove(list.files(out.dir, pattern=file_pattern, full.names = TRUE))
+                counter <- 0
+                overwrite <- FALSE
+            }else{
+                files <- list.files(out.dir, pattern=file_pattern)
+                counter <- length(files)
+            }
             counter <- counter+1
 
             z <- ifelse(!save && nsim_iters==1, i, j)
