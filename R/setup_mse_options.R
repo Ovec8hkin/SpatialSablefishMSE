@@ -64,7 +64,8 @@ setup_mse_options <- function(){
             recruitment_start_year = 54,
             catch_tseries = NULL,
             recruit_tseries = NULL,
-            run_estimation = TRUE
+            run_estimation = TRUE,
+            mse_verboce=TRUE
         )
     )
 }

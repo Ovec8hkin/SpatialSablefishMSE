@@ -12,7 +12,7 @@
 #'
 #' @export run_mse
 #'
-run_mse <- function(om, mp, mse_options, seed=1120){
+run_mse <- function(om, mp, mse_options, seed=1120, verbose=TRUE){
    
     spinup_years <- mse_options$n_spinup_years
     nyears_input <- mse_options$n_proj_years + mse_options$n_spinup_years
@@ -425,7 +425,7 @@ run_mse <- function(om, mp, mse_options, seed=1120){
    
         }
 
-        if(y %% 10 == 0){
+        if(verbose && (y %% 10 == 0)){
             print(paste0("OM: ", om$name, "; MP: ", mp$name, "; Sim ", seed, ": ", y, "/", nyears_input, " complete."))
         }   
     }
