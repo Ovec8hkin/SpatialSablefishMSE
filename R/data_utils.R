@@ -88,7 +88,7 @@ bind_mse_outputs <- function(model_runs, var, extra_columns){
 #' @return a tibble of processed MSE output data
 #' @export process_big_outputs
 #'
-process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_filter, process_func, ...){
+process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_filter, process_func, dir=file.path("data", "active"), ...){
     get_output <- function(model_runs, var, model_grid, process_func, ...){
             t <- bind_rows(
                 lapply(
@@ -109,7 +109,7 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
     }
 
     if(is.null(model_runs)){
-        fs <- list.files(file.path(here::here(), "data", "active"), full.names = TRUE)
+        fs <- list.files(dir, full.names = TRUE)
         if(!is.null(hcr_filter))
             fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
 

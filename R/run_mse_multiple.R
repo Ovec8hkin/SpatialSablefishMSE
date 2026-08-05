@@ -17,15 +17,11 @@
 #' @return list of MSE simulation results
 #' @export run_mse_multiple
 #'
-run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, diagnostics=FALSE, save=FALSE){
-    
-    # if(length(mse_options_list) != 1 && length(mse_options_list) != length(om_list)){
-    #     stop("Invalid input for parameter `mse_options`. Parameter must have same length as `om_list` or length 1. If length 1, the same set of options will be used across OMs.")
-    # }
+run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, diagnostics=FALSE, save=FALSE, out.dir=file.path("data", "active"), overwrite=FALSE){
 
-    # if(length(mse_options_list) == 1){
-    #     mse_options_list <- rep(mse_options_list, length(om_list))
-    # }
+    if(save && !file.exists(out.dir)){
+        dir.create(out.dir, recursive=TRUE)
+    }
 
     mse_run_grid <- expand.grid(om=names(om_list), hcr=names(hcr_list), opt=names(mse_options_list))
     mse_objects <- list()
@@ -58,7 +54,7 @@ run_mse_multiple <- function(om_list, hcr_list, seed_list, mse_options_list, dia
             print(save)
             if(save || nsim_iters>1){
                 # Going to save files by HCR
-                filename <- file.path(here::here(), "data", "active", paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr$name))), "_",counter,".RDS"))
+                filename <- file.path(out.dir, paste0("mse_runs_", sub("/", "", sub(" ", "_", tolower(hcr$name))), "_",counter,".RDS"))
                 obj <- listN(mse_objects, om, hcr, mse_options_list, seeds)
                 saveRDS(obj, file=filename)
                 # m <- m+1
