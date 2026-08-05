@@ -922,11 +922,11 @@ average_annual_dynamic_value <- function(
             group_by(across(all_of(c("time", group_columns[!(group_columns %in% "region")])))) %>%
             mutate(tot_catch = sum(value)) %>%
             left_join(
-                reshape2::melt(price_data_low) %>% rename(min_price=value),
+                reshape2::melt(prices$price_data_low) %>% rename(min_price=value),
                 by = c("age", "sex")
             ) %>%
             left_join(
-                reshape2::melt(price_data_max) %>% rename(max_price=value),
+                reshape2::melt(prices$price_data_max) %>% rename(max_price=value),
                 by = c("age", "sex")
             ) %>%
             rowwise() %>%
@@ -937,24 +937,9 @@ average_annual_dynamic_value <- function(
             summarise(dyn_annual_value = sum(dyn_price*value)) %>%
             group_by(across(all_of(c("time", group_columns)))) %>%
             summarise(dyn_annual_value = sum(dyn_annual_value))
-            # group_by(across(all_of(group_columns))) %>%
-            # summarise(dyn_annual_value = mean(total_value))
     }
-
-    price_age_f_low <- c(0.597895623, 1.320303448, 1.320303448, 1.856562267, 2.610111345, 2.610111345, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 6.01401531, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875, 7.435514875)
-    price_age_m_low <- c(0.597895623, 0.597895623, 1.320303448, 1.320303448, 1.856562267, 1.856562267, 1.856562267, 1.856562267, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345, 2.610111345)
-    price_data_low <- matrix(c(price_age_f_low, price_age_m_low), nrow=length(price_age_f_low), ncol=2)
-    dimnames(price_data_low) <- list("age"=2:31, "sex"=c("F", "M"))
-
-    price_age_f_max <- c(7.917460094, 8.40756497, 8.40756497, 9.944657109, 11.46480347, 11.46480347, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 12.97470389, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658, 14.86275658)
-    price_age_m_max <- c(7.917460094, 7.917460094, 8.40756497, 8.40756497, 9.944657109, 9.944657109, 9.944657109, 9.944657109, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347, 11.46480347)
-    price_data_max <- matrix(c(price_age_f_max, price_age_m_max), nrow=length(price_age_f_max), ncol=2)
-    dimnames(price_data_max) <- list("age"=2:31, "sex"=c("F", "M"))
     
-    # max_price <- max(c(price_age_f_max, price_age_m_max))
-    # price_data_low <- price_data_low/price_data_max
-    # price_data_max <- price_data_max/max_price
-    # price_data_low <- price_data_max*price_data_low
+    prices <- set_prices()
 
     group_columns <- c("sim", summarise_by)
 
