@@ -29,7 +29,8 @@ average_catch <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
     process <- function(data){
         data %>% filter_times(time_horizon) %>%
@@ -39,7 +40,7 @@ average_catch <- function(
 
     group_columns <- c("sim", summarise_by)
     
-    avg_catch <- process_big_outputs(model_runs, "caa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
+    avg_catch <- process_big_outputs(model_runs, "caa", extra_columns, hcr_filter, om_filter, process, dir=dir) %>%#bind_mse_outputs(model_runs, "caa", extra_columns) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
         round_to_zero("annual_catch") %>%
@@ -99,7 +100,8 @@ tot_catch <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
     
     group_columns <- c("sim", summarise_by)
@@ -164,7 +166,8 @@ prop_years_catch <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out = TRUE
+    summary_out = TRUE,
+    dir=file.path("data", "active")
 ){
     
     group_columns <- c("sim", summarise_by)
@@ -236,12 +239,13 @@ average_ssb <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out = TRUE
+    summary_out = TRUE,
+    dir=file.path("data", "active")
 ){
     
     group_columns <- c("sim", summarise_by)
 
-    avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
+    avg_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=dir) %>%
             ungroup() %>%
             filter(L1 != "naa_est") %>%
             dplyr::select(-c("L1", "biomass")) %>%
@@ -302,9 +306,10 @@ prop_low_biomass <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
-    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter)
+    ssb_data <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=dir)
     all_ssb <- ssb_data %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
@@ -385,9 +390,10 @@ biomass_crash_time <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=dir) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
                         select(-L1) %>%
@@ -459,9 +465,10 @@ biomass_recovery_time <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
-    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter) %>%
+    all_ssb <- get_ssb_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=dir) %>%
                         ungroup() %>%
                         filter(L1 != "naa_est") %>%
                         select(-L1) %>%
@@ -531,7 +538,8 @@ average_age <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
     process <- function(data){
         data %>% filter_times(time_horizon=time_horizon) %>%
@@ -545,7 +553,7 @@ average_age <- function(
     
     group_columns <- c("sim", summarise_by)
 
-    avg_age <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%#bind_mse_outputs(model_runs, "naa", extra_columns) %>%
+    avg_age <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process, dir=dir) %>%#bind_mse_outputs(model_runs, "naa", extra_columns) %>%
             as_tibble() %>%
             ungroup() %>%
             filter_hcr_om(hcr_filter, om_filter) %>%
@@ -604,7 +612,8 @@ average_abi <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
 
     process <- function(data){
@@ -621,7 +630,7 @@ average_abi <- function(
     
     group_columns <- c("sim", summarise_by)
 
-    avg_abi <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process) %>%
+    avg_abi <- process_big_outputs(model_runs, "naa", extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             as_tibble() %>%
             ungroup() %>%
             filter_hcr_om(hcr_filter, om_filter) %>%
@@ -680,11 +689,12 @@ average_annual_catch_variation <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
     
     group_columns <- c("sim", summarise_by)
-    avg_catch_var <- get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter) %>%
+    avg_catch_var <- get_landed_catch(model_runs, extra_columns, hcr_filter, om_filter, dir=dir) %>%
         filter_times(time_horizon = time_horizon) %>%
         round_to_zero("total_catch") %>%
         group_by(across(all_of(c("time", group_columns)))) %>%
@@ -748,7 +758,8 @@ average_proportion_catch_large <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
     process <- function(data){
         data %>% filter_times(time_horizon = time_horizon) %>%
@@ -771,7 +782,7 @@ average_proportion_catch_large <- function(
     }
     
     group_columns <- c("sim", summarise_by)
-    prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process) %>%
+    prop_lg_catch <- process_big_outputs(model_runs, var="caa", extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
         select(-total_catch) %>%
@@ -831,7 +842,8 @@ average_annual_value <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
 
     group_columns <- c("sim", summarise_by)
@@ -914,7 +926,8 @@ average_annual_dynamic_value <- function(
     extra_filter=NULL, 
     relative=NULL, 
     summarise_by=c("om", "hcr"),
-    summary_out=TRUE
+    summary_out=TRUE,
+    dir=file.path("data", "active")
 ){
 
     process <- function(data){
@@ -943,7 +956,7 @@ average_annual_dynamic_value <- function(
 
     group_columns <- c("sim", summarise_by)
 
-    dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process) %>%
+    dyn_value <- process_big_outputs(model_runs, "land_caa", extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
         as_tibble() %>%
         filter_hcr_om(hcr_filter, om_filter) %>%
         relativize_performance(
@@ -1036,84 +1049,85 @@ performance_metric_summary <- function(
     relative=NULL, 
     summarise_by=c("om", "hcr"),
     summary_out=TRUE,
-    metric_list="all"
+    metric_list="all",
+    dir=file.path("data", "active")
 ){
 
     n <- ifelse(summary_out, length(summarise_by), 0)
 
     # Average Catch Across Projection Period
     if(any(c("avg_catch", "all") %in% metric_list)){
-        avg_catch <- average_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_catch <- average_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average Catch")
     }
 
     # Total Catch Across Projection Period
     if(any(c("tot_catch", "all") %in% metric_list)){
-        tot_catch <- tot_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, extra_filter=extra_filter, time_horizon=time_horizon, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        tot_catch <- tot_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, extra_filter=extra_filter, time_horizon=time_horizon, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Total Catch")
     }
 
     # Prop Years High Catch
     if(any(c("prop_years_high_catch", "all") %in% metric_list)){
-        prop_years_high_catch <- prop_years_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, catch_threshold = 30, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        prop_years_high_catch <- prop_years_catch(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, catch_threshold = 30, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Proportion Years of High Catch")
     }
 
     # Average SSB Across Projection Period
     if(any(c("avg_ssb", "all") %in% metric_list)){
-        avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_ssb <- average_ssb(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average SSB")
     }
 
     # Average Proportion of Years SSB < B35 Across Projection Period
     if(any(c("prop_years_lowssb", "all") %in% metric_list)){
-        prop_years_lowssb <- prop_low_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        prop_years_lowssb <- prop_low_biomass(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Proportion of Years SSB < B35")
     }
 
     # Average Age Across Projection Period
     if(any(c("avg_age", "all") %in% metric_list)){
-        avg_age <- average_age(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_age <- average_age(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average Age")
     }
 
     # Average ABI Across Projection Period
     if(any(c("avg_abi", "all") %in% metric_list)){
-        avg_abi <- average_abi(model_runs, extra_columns, ref_naa, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_abi <- average_abi(model_runs, extra_columns, ref_naa, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average ABI")
     }
 
     # Average Annual Catch Variation Across Projection Period
     if(any(c("avg_variation", "all") %in% metric_list)){
-        avg_variation <- average_annual_catch_variation(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_variation <- average_annual_catch_variation(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Catch AAV")
     }
 
     # Average proportion of catch that is "large"
     if(any(c("avg_catch_lg", "all") %in% metric_list)){
-        avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        avg_catch_lg <- average_proportion_catch_large(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average Proportion of Catch that is Large")
     }
 
     # Average annual value
     if(any(c("annual_value", "all") %in% metric_list)){
-        annual_value <- average_annual_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        annual_value <- average_annual_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average Annual Value")
     }
 
     # Dynamic annual value
     if(any(c("dynamic_value", "all") %in% metric_list)){
-        dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        dynamic_value <- average_annual_dynamic_value(model_runs, extra_columns, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, relative=relative, extra_filter=extra_filter, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Average Dynamic Annual Value")
     }
 
     if(any(c("crash_time", "all") %in% metric_list)){
-        crash_time <- biomass_crash_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        crash_time <- biomass_crash_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Crash Time")
     }
 
     if(any(c("recovery_time", "all") %in% metric_list)){
-        recovery_time <- biomass_recovery_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out) %>% reformat_ggdist_long(n=n)
+        recovery_time <- biomass_recovery_time(model_runs, extra_columns, dem_params, hcr_filter, om_filter, interval_widths, time_horizon=time_horizon, extra_filter=extra_filter, relative=relative, summarise_by = summarise_by, summary_out=summary_out, dir=dir) %>% reformat_ggdist_long(n=n)
         print("Done calculating Recovery Time")
     }
     

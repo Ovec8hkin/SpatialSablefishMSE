@@ -12,7 +12,7 @@
 #'
 #' @export get_ssb_biomass
 #'
-get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
+get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             left_join(
@@ -54,7 +54,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
         dimnames=c(dimnames(dem_params$mat)[1:3], list("region"=c("BS", "AI", "WGOA", "CGOA", "EGOA", "Alaska")))
     )
 
-    out <- process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>%
+    out <- process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
 
     ssb0 <- out %>% filter(time == 1) %>% select(sim, L1, om, hcr, region, ssb0=spbio)
@@ -77,7 +77,7 @@ get_ssb_biomass <- function(model_runs, extra_columns, dem_params, hcr_filter, o
 #'
 #' @export get_fishing_mortalities
 #'
-get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             group_by(across(all_of(group_columns))) %>%
@@ -88,7 +88,7 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
     }
     group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("faa", "faa_est"), extra_columns, hcr_filter, om_filter, process) %>% 
+        process_big_outputs(model_runs, c("faa", "faa_est"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>% 
             format(hcr_filter, om_filter)
     )
 }
@@ -104,7 +104,7 @@ get_fishing_mortalities <- function(model_runs, extra_columns, hcr_filter, om_fi
 #'
 #' @export get_recruits
 #'
-get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             filter(age == 2) %>%
@@ -113,7 +113,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
     }
     group_columns <- c("time", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process) %>% 
+        process_big_outputs(model_runs, c("naa", "naa_est"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>% 
             format(hcr_filter, om_filter)
     )
 }
@@ -130,7 +130,7 @@ get_recruits <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @export get_landed_catch
 #'
-get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>% group_by(across(all_of(group_columns))) %>%
             # compute fleet-based F as the maximum F across age classes
@@ -147,7 +147,7 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
     }
     group_columns <- c("time", "fleet", "region", "sim", "L1", names(extra_columns)) 
     return(
-        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -166,7 +166,7 @@ get_landed_catch <- function(model_runs, extra_columns, hcr_filter, om_filter){
 #'
 #' @export get_catch_pop_numbers
 #'
-get_catch_pop_numbers <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter){
+get_catch_pop_numbers <- function(model_runs, extra_columns, dem_params, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>% as_tibble() %>%
             pivot_wider(names_from=L1, values_from=value) %>%
@@ -194,7 +194,7 @@ get_catch_pop_numbers <- function(model_runs, extra_columns, dem_params, hcr_fil
     group_columns <- c("time", "region", "sim", names(extra_columns)) 
 
     return(
-        process_big_outputs(model_runs, c("naa", "faa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("naa", "faa"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -213,7 +213,7 @@ get_catch_pop_numbers <- function(model_runs, extra_columns, dem_params, hcr_fil
 #'
 #' @export get_management_quantities
 #'
-get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=54){
+get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_filter, spinup_years=54, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             select(group_columns) %>%
@@ -223,7 +223,7 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
     }
     group_columns <- c("time", "sim", "region", "fleet", "value", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("abc", "tac", "exp_land"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -242,7 +242,7 @@ get_management_quantities <- function(model_runs, extra_columns, hcr_filter, om_
 #'
 #' @export get_dynamic_economic_value
 #'
-get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             group_by(across(all_of(c("time", group_columns)))) %>%
@@ -279,7 +279,7 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
     prices <- set_prices()
 
     return(
-        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 
@@ -307,7 +307,7 @@ get_dynamic_economic_value <- function(model_runs, extra_columns, hcr_filter, om
 #'
 #' @export get_numbers_at_age
 #'
-get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop"){
+get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop", dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             mutate(
@@ -326,7 +326,7 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter,
 
     group_columns <- c("time", "class", "fleet", "region", "sim", "L1", names(extra_columns))
     return(
-        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
             
     )
@@ -346,7 +346,7 @@ get_numbers_at_age <- function(model_runs, extra_columns, hcr_filter, om_filter,
 #'
 #' @export get_average_age
 #'
-get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop"){
+get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, pop_or_catch="pop", dir=file.path("data", "active")){
     process <- function(data){
         data %>% filter_times(time_horizon=time_horizon) %>%
             ungroup() %>%
@@ -361,7 +361,7 @@ get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, po
     v = ifelse(pop_or_catch == "pop", "naa", "caa")
 
     return(
-        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c(v), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 }
@@ -380,7 +380,7 @@ get_average_age <- function(model_runs, extra_columns, hcr_filter, om_filter, po
 #'
 #' @export get_average_dynamic_price
 #'
-get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
     process <- function(data){
         data %>%
             group_by(across(all_of(c("time", group_columns)))) %>%
@@ -417,7 +417,7 @@ get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_
     prices <- set_prices()
 
     return(
-        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process) %>%
+        process_big_outputs(model_runs, c("land_caa"), extra_columns, hcr_filter, om_filter, process, dir=dir) %>%
             format(hcr_filter, om_filter)
     )
 
@@ -434,7 +434,7 @@ get_average_dynamic_price <- function(model_runs, extra_columns, hcr_filter, om_
 #' @param om_filter vector of OM names to process (must match names in `extra_columns`)
 #' @param seed_list simulation seeds used in `model_runs`
 #'
-get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list, year=55){
+get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filter, seed_list, year=55, dir=file.path("data", "active")){
 
     om_names <- om_filter
     hcr_names <- hcr_filter
@@ -525,7 +525,7 @@ get_reference_points <- function(model_runs, extra_columns, hcr_filter, om_filte
 #' 
 #' @return timeseries of B40 reference point summarised across simulations
 #'
-get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter){
+get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, dir=file.path("data", "active")){
 
     b40_tseries <- get_rp_timeseries(model_runs, extra_columns, hcr_filter, om_filter, ref_pt="Bref", spr_target=0.40)
 
@@ -554,7 +554,7 @@ get_b40_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter)
 #' 
 #' @return timeseries of reference point value
 #'
-get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, ref_pt, spr_target="hcr"){
+get_rp_timeseries <- function(model_runs, extra_columns, hcr_filter, om_filter, ref_pt, spr_target="hcr", dir=file.path("data", "active")){
 
     get_rps <- function(om_name, hcr_name, recruitment, year, prop_fs){
 

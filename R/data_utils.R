@@ -114,7 +114,7 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
             fs <- unlist(sapply(hcr_filter, \(x) fs[grepl(paste0(sub("|", "\\|", sub("/", "", sub(" ", "_", tolower(x))), fixed=TRUE), "_\\d+"), fs)]))
 
         o <- bind_rows(
-            mcprogress::pmclapply(seq_along(fs), function(i){
+            parallel::mclapply(seq_along(fs), function(i){
                     x <- fs[i]
                     # print(x)
                     m <- readRDS(x)
@@ -126,7 +126,6 @@ process_big_outputs <- function(model_runs, var, extra_columns, hcr_filter, om_f
                     extra_columns <- expand.grid(om=model_run[[1]]$om$name, hcr=model_run[[1]]$mp$name)
                     out <- get_output(model_run, var, model_grid=extra_columns, process_func)
                 }, 
-                spinner=TRUE,
                 mc.cores=as.integer(min(15, parallel::detectCores()-2))
             )
         ) 
