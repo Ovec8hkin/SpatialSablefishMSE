@@ -17,8 +17,8 @@ sbpr <- compute_sbpr(
     mort = dp_y$mort[,,1,1],
     mat = dp_y$mat[,,1,1],
     waa = dp_y$waa[,,1,1],
-    sel =  joint_selret$sel[,,1,,drop=FALSE],
-    ret = joint_selret$ret[,,1,,drop=FALSE],
+    sel =  joint_selret$sel[,,1,1,drop=FALSE],
+    ret = joint_selret$ret[,,1,1,drop=FALSE],
     F = 0
 )
 
